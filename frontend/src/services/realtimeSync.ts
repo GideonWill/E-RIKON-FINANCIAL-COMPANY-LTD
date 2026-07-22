@@ -26,7 +26,8 @@ export type SyncEventType =
   | 'LOAN_APPROVED'
   | 'LOAN_DISBURSED'
   | 'LOAN_REPAYMENT_RECORDED'
-  | 'DAY_31_FEE_RETAINED';
+  | 'DAY_31_FEE_RETAINED'
+  | 'MANUAL_SYNC';
 
 export interface RealtimeSyncPayload {
   type: SyncEventType;
