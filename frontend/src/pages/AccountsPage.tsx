@@ -56,7 +56,7 @@ export const AccountsPage: React.FC = () => {
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="text-[11px] font-mono text-amber-500 font-extrabold">{acc.accountNumber}</div>
-                    <h4 className="font-extrabold text-sm mt-0.5">
+                    <h4 className="font-extrabold text-sm mt-0.5 text-slate-900 dark:text-white">
                       {acc.customer?.firstName} {acc.customer?.lastName}
                     </h4>
                     <div className="text-[11px] text-slate-400">{acc.type.replace('_', ' ')}</div>

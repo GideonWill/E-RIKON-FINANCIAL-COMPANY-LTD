@@ -289,7 +289,7 @@ export const CustomersPage: React.FC = () => {
                 <UserPlus className="w-5 h-5 text-amber-500" />
                 Register New Customer (Ghana Card Onboarding)
               </h3>
-              <button onClick={() => setShowRegisterModal(false)} className="text-slate-400 hover:text-white cursor-pointer">
+              <button onClick={() => setShowRegisterModal(false)} className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>

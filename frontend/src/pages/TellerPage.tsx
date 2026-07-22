@@ -239,7 +239,7 @@ export const TellerPage: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="font-mono text-xs font-extrabold text-amber-500">{acc.accountNumber}</div>
-                      <h4 className="font-bold text-xs mt-0.5">
+                      <h4 className="font-bold text-xs mt-0.5 text-slate-900 dark:text-white">
                         {acc.customer?.firstName} {acc.customer?.lastName}
                       </h4>
                     </div>
@@ -249,7 +249,7 @@ export const TellerPage: React.FC = () => {
                   </div>
 
                   <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400 font-mono flex items-center gap-1">
+                    <span className="text-slate-500 dark:text-slate-400 font-mono flex items-center gap-1">
                       <CreditCard className="w-3 h-3 text-slate-500" /> {acc.customer?.ghanaCardNumber}
                     </span>
                     <span className="font-mono font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md">
@@ -293,10 +293,10 @@ export const TellerPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setOperationType('DEPOSIT')}
-                  className={`py-3 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all ${
+                  className={`py-3 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
                     operationType === 'DEPOSIT'
                       ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-white'
+                      : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >
                   <ArrowUpRight className="w-4 h-4" />
@@ -306,10 +306,10 @@ export const TellerPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setOperationType('WITHDRAWAL')}
-                  className={`py-3 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all ${
+                  className={`py-3 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
                     operationType === 'WITHDRAWAL'
                       ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-white'
+                      : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >
                   <ArrowDownLeft className="w-4 h-4" />

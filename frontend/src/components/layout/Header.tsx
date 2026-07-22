@@ -4,7 +4,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { StaffProfileModal } from '../ui/StaffProfileModal';
 import { NotificationsModal } from '../ui/NotificationsModal';
 import { LoadingScreen } from '../ui/LoadingScreen';
-import { subscribeRealtimeEvents, broadcastRealtimeEvent } from '../../services/realtimeSync';
+import { subscribeRealtimeEvents } from '../../services/realtimeSync';
 import logoImg from '../../assets/logo.jpeg';
 import { 
   Building2, 
@@ -13,18 +13,20 @@ import {
   ShieldCheck, 
   LogOut,
   BellRing,
-  User,
-  Wifi,
-  Smartphone
+  Menu
 } from 'lucide-react';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  onToggleMobileMenu?: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const { currentUser, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [lastSyncTime, setLastSyncTime] = useState<string>('Just now');
+  const [, setLastSyncTime] = useState<string>('Just now');
 
   useEffect(() => {
     const unsubscribe = subscribeRealtimeEvents(() => {
@@ -60,25 +62,32 @@ export const Header: React.FC = () => {
         />
       )}
 
-      <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3 transition-colors duration-200">
+      <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 py-2.5 sm:py-3 transition-colors duration-200">
         <div className="flex items-center justify-between">
           
-          {/* Left: Organization Branding & Active Branch */}
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3">
+          {/* Left: Hamburger Toggle Button (Mobile) + Organization Branding & Active Branch */}
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            {onToggleMobileMenu && (
+              <button
+                type="button"
+                onClick={onToggleMobileMenu}
+                className="lg:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer"
+                title="Open Navigation Menu"
+                aria-label="Toggle Mobile Menu"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
+
+            <div className="flex items-center space-x-2 sm:space-x-3">
               <img 
                 src={logoImg} 
                 alt="E-RIKON Logo" 
-                className="h-10 sm:h-12 w-auto object-contain"
+                className="h-8 sm:h-12 w-auto object-contain"
               />
-              <div>
-                <h1 className="font-extrabold text-base sm:text-lg leading-none tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
-                  E-RIKON <span className="text-amber-500 font-semibold text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30">ECFMS v1.0</span>
-                </h1>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 hidden sm:block">
-                  E-RIKON GROUP FINANCIAL COMPANY LTD
-                </p>
-              </div>
+              <span className="text-amber-500 font-bold text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30">
+                ECFMS v1.0
+              </span>
             </div>
 
             <div className="hidden md:flex items-center space-x-2 bg-slate-100 dark:bg-slate-800/80 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80">
@@ -88,7 +97,7 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Right: Controls, Real-time Sync Badge & User Profile Badge */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex items-center space-x-1.5 sm:space-x-3">
             
             {/* Live Multi-Device Realtime Sync Indicator */}
             <div 
@@ -118,7 +127,7 @@ export const Header: React.FC = () => {
             <button
               type="button"
               onClick={toggleTheme}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-amber-500 dark:hover:text-amber-400 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-amber-500 dark:hover:text-amber-400 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
             >
               {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
@@ -128,7 +137,7 @@ export const Header: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowNotificationsModal(true)}
-              className="relative p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-amber-500 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
+              className="relative p-1.5 sm:p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-amber-500 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
               title="View Live System Notifications"
             >
               <BellRing className="w-4 h-4" />
@@ -136,13 +145,13 @@ export const Header: React.FC = () => {
             </button>
 
             {/* User Profile Badge (Clickable to open Staff Profile Modal) */}
-            <div className="flex items-center space-x-2 sm:space-x-3 pl-2 border-l border-slate-200 dark:border-slate-800">
+            <div className="flex items-center space-x-1.5 sm:space-x-3 pl-1.5 sm:pl-2 border-l border-slate-200 dark:border-slate-800">
               <div
                 onClick={() => setShowProfileModal(true)}
-                className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-all"
+                className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group p-0.5 sm:p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-all"
                 title="View Staff Identity Profile"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-slate-700 to-slate-900 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-white text-xs font-bold ring-2 ring-amber-500/40 group-hover:ring-amber-500">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-slate-700 to-slate-900 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-white text-xs font-bold ring-2 ring-amber-500/40 group-hover:ring-amber-500">
                   {currentUser.firstName[0]}{currentUser.lastName[0]}
                 </div>
                 <div className="hidden sm:block text-left">
@@ -160,7 +169,7 @@ export const Header: React.FC = () => {
               <button
                 type="button"
                 onClick={handleLogoutClick}
-                className="p-2 rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border border-rose-500/30 transition-all text-xs flex items-center gap-1 ml-1 font-bold cursor-pointer"
+                className="p-1.5 sm:p-2 rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border border-rose-500/30 transition-all text-xs flex items-center gap-1 font-bold cursor-pointer"
                 title="Logout to Role Login Portal"
               >
                 <LogOut className="w-4 h-4" />

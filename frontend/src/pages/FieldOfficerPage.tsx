@@ -190,7 +190,7 @@ export const FieldOfficerPage: React.FC = () => {
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-xs">
+                  <h4 className="font-bold text-xs text-slate-900 dark:text-white">
                     {acc.customer?.firstName} {acc.customer?.lastName}
                   </h4>
                   <span className="font-mono text-xs font-bold text-amber-500">

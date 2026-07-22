@@ -486,7 +486,7 @@ export const LoansPage: React.FC = () => {
                 <DollarSign className="w-5 h-5 text-amber-500" />
                 Record Loan Repayment Cash
               </h3>
-              <button onClick={() => setShowRepayModal(false)} className="text-slate-400 hover:text-white cursor-pointer">
+              <button onClick={() => setShowRepayModal(false)} className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -553,7 +553,7 @@ export const LoansPage: React.FC = () => {
                 <Calculator className="w-5 h-5 text-amber-500" />
                 Originate ER-Fast Loan Application
               </h3>
-              <button onClick={() => setShowApplyModal(false)} className="text-slate-400 hover:text-white cursor-pointer">
+              <button onClick={() => setShowApplyModal(false)} className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer">
                 ✕
               </button>
             </div>
