@@ -94,6 +94,7 @@ export const LoginPage: React.FC = () => {
     setErrorMsg('');
     setIsLoading(true);
 
+    // 5-second classy loading duration
     setTimeout(() => {
       const success = login(email, password, selectedRole);
       setIsLoading(false);
@@ -125,15 +126,14 @@ export const LoginPage: React.FC = () => {
       } else {
         setErrorMsg('Invalid staff authentication credentials or unauthorized role assignment.');
       }
-    }, 1200);
+    }, 5000);
   };
 
   return (
     <>
       {isLoading && (
         <LoadingScreen 
-          message={`Authenticating ${selectedRole.replace('_', ' ')} Workstation Clearance...`}
-          subMessage="E-RIKON GROUP FINANCIAL COMPANY LTD • Securing Session"
+          message={`Authenticating ${selectedRole.replace('_', ' ')} Workstation...`}
         />
       )}
 

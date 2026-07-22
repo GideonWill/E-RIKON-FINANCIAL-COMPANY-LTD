@@ -19,7 +19,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       setTargetPath(location.pathname);
       const timer = setTimeout(() => {
         setIsNavigating(false);
-      }, 500); // Smooth 500ms splash screen transition on screen switch
+      }, 500); // Smooth 500ms transition on screen switch
       return () => clearTimeout(timer);
     }
   }, [location.pathname, targetPath]);
@@ -52,7 +52,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       {isNavigating && (
         <LoadingScreen 
           message={getPageTitle(location.pathname)}
-          subMessage="E-RIKON GROUP FINANCIAL COMPANY LTD • Workstation Transfer"
         />
       )}
 
