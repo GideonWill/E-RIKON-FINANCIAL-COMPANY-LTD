@@ -22,10 +22,10 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
           />
         </div>
 
-        {/* Minimal Classy Progress Line & Message */}
+        {/* Minimal Classy Progress Line & Message (3 Seconds) */}
         <div className="w-full space-y-4">
           <div className="w-full bg-slate-900 rounded-full h-1 overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-amber-500 to-amber-400 rounded-full animate-[loading_5s_linear_infinite] w-full origin-left"></div>
+            <div className="h-1 bg-gradient-to-r from-amber-500 to-amber-400 rounded-full animate-[loading_3s_linear_infinite] w-full origin-left"></div>
           </div>
 
           <p className="text-xs font-mono font-medium text-slate-400 tracking-wider">

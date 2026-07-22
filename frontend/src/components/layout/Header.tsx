@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { StaffProfileModal } from '../ui/StaffProfileModal';
 import { NotificationsModal } from '../ui/NotificationsModal';
+import { LoadingScreen } from '../ui/LoadingScreen';
 import { subscribeRealtimeEvents, broadcastRealtimeEvent } from '../../services/realtimeSync';
 import logoImg from '../../assets/logo.jpeg';
 import { 
@@ -22,11 +23,11 @@ export const Header: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
-  const [isRealtimeConnected, setIsRealtimeConnected] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('Just now');
 
   useEffect(() => {
-    const unsubscribe = subscribeRealtimeEvents((payload) => {
+    const unsubscribe = subscribeRealtimeEvents(() => {
       setLastSyncTime(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     });
 
@@ -41,10 +42,24 @@ export const Header: React.FC = () => {
     };
   }, []);
 
+  const handleLogoutClick = () => {
+    setIsLoggingOut(true);
+    setTimeout(() => {
+      logout();
+      setIsLoggingOut(false);
+    }, 3000); // 3-second classy logout loading duration
+  };
+
   if (!currentUser) return null;
 
   return (
     <>
+      {isLoggingOut && (
+        <LoadingScreen 
+          message="Terminating Workstation Session & Securing Ledger..."
+        />
+      )}
+
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3 transition-colors duration-200">
         <div className="flex items-center justify-between">
           
@@ -144,7 +159,7 @@ export const Header: React.FC = () => {
               {/* Logout / Switch Role Button */}
               <button
                 type="button"
-                onClick={logout}
+                onClick={handleLogoutClick}
                 className="p-2 rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border border-rose-500/30 transition-all text-xs flex items-center gap-1 ml-1 font-bold cursor-pointer"
                 title="Logout to Role Login Portal"
               >
