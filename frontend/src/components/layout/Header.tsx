@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { StaffProfileModal } from '../ui/StaffProfileModal';
 import { NotificationsModal } from '../ui/NotificationsModal';
 import { LoadingScreen } from '../ui/LoadingScreen';
-import { subscribeRealtimeEvents } from '../../services/realtimeSync';
 import logoImg from '../../assets/logo.jpeg';
 import { 
   Building2, 
@@ -26,23 +25,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [, setLastSyncTime] = useState<string>('Just now');
-
-  useEffect(() => {
-    const unsubscribe = subscribeRealtimeEvents(() => {
-      setLastSyncTime(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-    });
-
-    const handleCustom = () => {
-      setLastSyncTime(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-    };
-
-    window.addEventListener('erikon_realtime_update', handleCustom);
-    return () => {
-      unsubscribe();
-      window.removeEventListener('erikon_realtime_update', handleCustom);
-    };
-  }, []);
 
   const handleLogoutClick = () => {
     setIsLoggingOut(true);
@@ -99,18 +81,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           {/* Right: Controls, Real-time Sync Badge & User Profile Badge */}
           <div className="flex items-center space-x-1.5 sm:space-x-3">
             
-            {/* Live Multi-Device Realtime Sync Indicator */}
-            <div 
-              className="hidden xl:flex items-center space-x-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-xl text-xs font-mono font-bold"
-              title="Real-Time Device Synchronization Active across all staff phones, tablets & desktops"
-            >
-              <div className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </div>
-              <span>REAL-TIME SYNC: ONLINE</span>
-            </div>
-
             {/* Active Workstation Role Badge */}
             <button
               type="button"
