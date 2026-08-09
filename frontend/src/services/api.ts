@@ -393,8 +393,26 @@ export const saveStoredTransactions = (txs: Transaction[]) => {
   localStorage.setItem('erikon_transactions', JSON.stringify(txs));
 };
 
+export const getStoredBranches = (): Branch[] => {
+  const data = localStorage.getItem('erikon_branches');
+  if (!data) {
+    localStorage.setItem('erikon_branches', JSON.stringify(MOCK_BRANCHES));
+    return MOCK_BRANCHES;
+  }
+  try {
+    return JSON.parse(data);
+  } catch {
+    return MOCK_BRANCHES;
+  }
+};
+
+export const saveStoredBranches = (branches: Branch[]) => {
+  localStorage.setItem('erikon_branches', JSON.stringify(branches));
+};
+
 // Aliases for initial load compatibility
 export const MOCK_CUSTOMERS = getStoredCustomers();
 export const MOCK_ACCOUNTS = getStoredAccounts();
 export const MOCK_LOANS = getStoredLoans();
 export const MOCK_TRANSACTIONS = getStoredTransactions();
+
