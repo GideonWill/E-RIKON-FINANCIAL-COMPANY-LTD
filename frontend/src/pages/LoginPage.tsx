@@ -277,7 +277,12 @@ export const LoginPage: React.FC = () => {
         />
       )}
 
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between p-3 sm:p-6 lg:p-8 relative overflow-hidden font-sans">
+      <div 
+        className="min-h-screen bg-slate-950 text-white flex flex-col justify-between p-3 sm:p-6 lg:p-8 relative overflow-hidden font-sans"
+        style={{
+          paddingTop: 'max(calc(env(safe-area-inset-top, 0px) + 1rem), 2.75rem)',
+        }}
+      >
         
         {/* Ambient Glows */}
         <div className="absolute -top-40 -left-40 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>

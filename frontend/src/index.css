@@ -17,10 +17,17 @@ body {
   padding-top: 0;
 }
 
-/* Safe Area Inset Support for iPhone 14 Pro Max Dynamic Island & Modern Mobile Displays */
+/* Safe Area Inset Support: Moves navbar completely below iPhone battery, wifi & Dynamic Island */
 header.app-header {
-  padding-top: max(env(safe-area-inset-top, 0px), 0.75rem) !important;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem) !important;
   padding-bottom: 0.75rem !important;
+}
+
+@media only screen and (max-width: 768px) {
+  header.app-header {
+    padding-top: max(calc(env(safe-area-inset-top, 0px) + 0.75rem), 3.25rem) !important;
+    padding-bottom: 0.75rem !important;
+  }
 }
 
 /* Input typography: crisp dark font in light mode, bright white font in dark mode */
