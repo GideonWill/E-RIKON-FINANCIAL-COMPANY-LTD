@@ -150,10 +150,19 @@ export const LoginPage: React.FC = () => {
     setIsLoading(false);
 
     if (success) {
-      switch (selectedRole) {
+      let targetRole = selectedRole;
+      try {
+        const stored = localStorage.getItem('erikon_current_user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.role) {
+            targetRole = parsed.role;
+          }
+        }
+      } catch {}
+
+      switch (targetRole) {
         case 'SUPER_ADMIN':
-          navigate('/dashboard');
-          break;
         case 'ADMIN':
           navigate('/dashboard');
           break;
@@ -176,7 +185,7 @@ export const LoginPage: React.FC = () => {
           navigate('/dashboard');
       }
     } else {
-      setErrorMsg('Invalid authentication credentials or unauthorized role assignment. If you registered on another device (e.g. laptop), tap "Pair / Sync Devices" below to instantly pull your accounts.');
+      setErrorMsg('Invalid authentication credentials. If you registered on another device (e.g. laptop), tap "Pair / Sync Devices" above to instantly pull your accounts.');
     }
   };
 

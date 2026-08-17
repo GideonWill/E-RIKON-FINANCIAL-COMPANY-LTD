@@ -1,6 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, RoleName, ApprovalRequest } from '../types';
-import { MOCK_USERS, registerNewUserRole, getRegisteredUsers, RegisteredUserRecord } from '../services/api';
+import { 
+  MOCK_USERS, 
+  registerNewUserRole, 
+  getRegisteredUsers, 
+  saveRegisteredUsers,
+  RegisteredUserRecord,
+  apiClient,
+  MOCK_BRANCHES 
+} from '../services/api';
 import { initCloudSync, pushLocalToCloud, pullCloudToLocal } from '../services/cloudSync';
 
 interface AuthContextType {
@@ -58,11 +66,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
-    // 1. Check in local registered users
+    // 1. Authenticate against Live Render API Backend
+    try {
+      const { data } = await apiClient.post('/auth/login', {
+        email: cleanEmail,
+        password: cleanPass,
+      });
+      if (data && data.user) {
+        if (data.accessToken) {
+          localStorage.setItem('erikon_access_token', data.accessToken);
+        }
+        const backendUser: RegisteredUserRecord = {
+          id: data.user.id,
+          employeeId: data.user.employeeId || `EMP-${Date.now().toString().slice(-4)}`,
+          firstName: data.user.firstName,
+          lastName: data.user.lastName,
+          email: data.user.email,
+          phone: data.user.phone || '+233 24 000 0000',
+          role: data.user.role,
+          password: cleanPass,
+          ghanaCard: data.user.ghanaCard || 'GHA-000000000-0',
+          branchId: data.user.branchId || 'br-01',
+          branch: data.user.branch || MOCK_BRANCHES[0],
+          createdAt: new Date().toISOString(),
+          status: 'ACTIVE',
+        };
+
+        const localUsers = getRegisteredUsers();
+        saveRegisteredUsers([
+          backendUser,
+          ...localUsers.filter((u) => u.email.toLowerCase() !== cleanEmail),
+        ]);
+
+        setCurrentUser(backendUser);
+        localStorage.setItem('erikon_current_user', JSON.stringify(backendUser));
+        pushLocalToCloud().catch(() => {});
+        return true;
+      }
+    } catch (apiErr) {
+      console.warn('Live Render backend login unavailable, verifying via cloud relay...', apiErr);
+    }
+
+    // 2. Fallback: Check in local registered users & cloud sync relay
     let registered = getRegisteredUsers();
     let match = registered.find((u) => u.email.toLowerCase() === cleanEmail);
 
-    // 2. If not found locally, immediately fetch from cloud relay
     if (!match) {
       await pullCloudToLocal().catch(() => {});
       registered = getRegisteredUsers();

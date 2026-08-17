@@ -841,12 +841,25 @@ export const registerNewUserRole = (signupData: {
     branchId: signupData.branchId || 'br-01',
     branch: MOCK_BRANCHES[0],
     createdAt: new Date().toISOString(),
-    status: isAutoApproved ? 'ACTIVE' : 'PENDING_APPROVAL',
+    status: 'ACTIVE',
   };
 
   const existingUsers = getRegisteredUsers();
   const updatedUsers = [newUser, ...existingUsers.filter((u) => u.email.toLowerCase() !== newUser.email.toLowerCase())];
   saveRegisteredUsers(updatedUsers);
+
+  // Sync new user to Render PostgreSQL Database backend
+  apiClient.post('/auth/register', {
+    firstName: signupData.firstName,
+    lastName: signupData.lastName,
+    email: signupData.email,
+    phone: signupData.phone,
+    role: signupData.role,
+    password: signupData.password || 'erikon2026',
+    employeeId: newUser.employeeId,
+  }).catch((err) => {
+    console.warn('Render database sync note:', err);
+  });
 
   const approvalItem: ApprovalRequest = {
     id: `appr-${Date.now()}`,

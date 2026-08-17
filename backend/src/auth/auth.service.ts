@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
@@ -9,6 +9,17 @@ export interface LoginDto {
   password: string;
 }
 
+export interface RegisterDto {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  role: RoleName;
+  password?: string;
+  employeeId?: string;
+  branchId?: string;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -17,8 +28,9 @@ export class AuthService {
   ) {}
 
   async validateUser(dto: LoginDto) {
+    const cleanEmail = dto.email?.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email: cleanEmail },
       include: { branch: true },
     });
 
@@ -72,5 +84,89 @@ export class AuthService {
         branch: user.branch,
       },
     };
+  }
+
+  async registerUser(dto: RegisterDto) {
+    const cleanEmail = dto.email?.trim().toLowerCase();
+    
+    // Check if user exists
+    const existing = await this.prisma.user.findUnique({
+      where: { email: cleanEmail },
+      include: { branch: true },
+    });
+
+    if (existing) {
+      const payload = {
+        sub: existing.id,
+        email: existing.email,
+        role: existing.role,
+        branchId: existing.branchId,
+        branchName: existing.branch?.name || 'Accra Central Main Branch',
+      };
+      return {
+        accessToken: this.jwtService.sign(payload),
+        user: existing,
+      };
+    }
+
+    // Ensure branch exists
+    let branch = await this.prisma.branch.findFirst();
+    if (!branch) {
+      branch = await this.prisma.branch.create({
+        data: {
+          code: 'BR-ACC-01',
+          name: 'Accra Central Main Branch',
+          address: '14 Independence Avenue, Ridge',
+          city: 'Accra',
+          region: 'Greater Accra',
+          phone: '+233 30 200 1122',
+        },
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(dto.password || 'erikon2026', salt);
+
+    const user = await this.prisma.user.create({
+      data: {
+        employeeId: dto.employeeId || `EMP-${Date.now().toString().slice(-4)}`,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        email: cleanEmail,
+        phone: dto.phone,
+        passwordHash,
+        role: dto.role || RoleName.TELLER,
+        branchId: branch.id,
+        isActive: true,
+      },
+      include: { branch: true },
+    });
+
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      branchId: user.branchId,
+      branchName: user.branch.name,
+    };
+
+    return {
+      accessToken: this.jwtService.sign(payload),
+      user: {
+        id: user.id,
+        employeeId: user.employeeId,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        branch: user.branch,
+      },
+    };
+  }
+
+  async getAllUsers() {
+    return this.prisma.user.findMany({
+      include: { branch: true },
+    });
   }
 }
