@@ -25,8 +25,21 @@ import {
   Lock,
   RotateCcw,
   Sparkles,
-  Trash2
+  Trash2,
+  RefreshCw,
+  Share2,
+  Copy,
+  Check,
+  Wifi,
+  Laptop
 } from 'lucide-react';
+import { 
+  pullCloudToLocal, 
+  pushLocalToCloud, 
+  exportPairingBundle, 
+  importPairingBundle, 
+  getLastSyncTime 
+} from '../services/cloudSync';
 
 export const LoginPage: React.FC = () => {
   const { login, signupRole } = useAuth();
@@ -43,6 +56,13 @@ export const LoginPage: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [resetSuccessMsg, setResetSuccessMsg] = useState<string | null>(null);
+
+  // Multi-Device Cloud Sync State
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [copiedPairingCode, setCopiedPairingCode] = useState(false);
+  const [importCodeInput, setImportCodeInput] = useState('');
 
   // Sign Up State
   const [signupRoleType, setSignupRoleType] = useState<RoleName>('SUPER_ADMIN');
@@ -121,45 +141,81 @@ export const LoginPage: React.FC = () => {
     setErrorMsg('');
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      const success = login(email, password, selectedRole);
-      setIsLoading(false);
+    const success = await login(email, password, selectedRole);
+    setIsLoading(false);
 
-      if (success) {
-        switch (selectedRole) {
-          case 'SUPER_ADMIN':
-            navigate('/dashboard');
-            break;
-          case 'ADMIN':
-            navigate('/dashboard');
-            break;
-          case 'TELLER':
-            navigate('/teller');
-            break;
-          case 'FIELD_OFFICER':
-            navigate('/field-officer');
-            break;
-          case 'LOAN_OFFICER':
-            navigate('/loans');
-            break;
-          case 'BRANCH_ADMIN':
-            navigate('/branches');
-            break;
-          case 'AUDITOR':
-            navigate('/audit');
-            break;
-          default:
-            navigate('/dashboard');
-        }
-      } else {
-        setErrorMsg('Invalid authentication credentials or unauthorized role assignment. If you signed up, make sure your email and password match.');
+    if (success) {
+      switch (selectedRole) {
+        case 'SUPER_ADMIN':
+          navigate('/dashboard');
+          break;
+        case 'ADMIN':
+          navigate('/dashboard');
+          break;
+        case 'TELLER':
+          navigate('/teller');
+          break;
+        case 'FIELD_OFFICER':
+          navigate('/field-officer');
+          break;
+        case 'LOAN_OFFICER':
+          navigate('/loans');
+          break;
+        case 'BRANCH_ADMIN':
+          navigate('/branches');
+          break;
+        case 'AUDITOR':
+          navigate('/audit');
+          break;
+        default:
+          navigate('/dashboard');
       }
-    }, 1200);
+    } else {
+      setErrorMsg('Invalid authentication credentials or unauthorized role assignment. If you registered on another device (e.g. laptop), tap "Pair / Sync Devices" below to instantly pull your accounts.');
+    }
+  };
+
+  const handleManualCloudSync = async () => {
+    setIsSyncing(true);
+    setSyncStatusMsg('Connecting to Cloud Relay & Syncing...');
+    try {
+      await pushLocalToCloud();
+      const pullSuccess = await pullCloudToLocal();
+      if (pullSuccess) {
+        setSyncStatusMsg('✅ Cloud Synchronization Complete! All devices are up to date.');
+      } else {
+        setSyncStatusMsg('✅ Local accounts pushed to Cloud Relay.');
+      }
+    } catch {
+      setSyncStatusMsg('⚠️ Cloud Sync check finished.');
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncStatusMsg(null), 5000);
+    }
+  };
+
+  const handleCopyPairingCode = () => {
+    const code = exportPairingBundle();
+    navigator.clipboard.writeText(code);
+    setCopiedPairingCode(true);
+    setTimeout(() => setCopiedPairingCode(false), 3000);
+  };
+
+  const handleImportPairingCode = () => {
+    if (!importCodeInput.trim()) return;
+    const success = importPairingBundle(importCodeInput.trim());
+    if (success) {
+      setSyncStatusMsg('🎉 Device paired successfully! All staff accounts cloned to this phone/laptop.');
+      setImportCodeInput('');
+      setTimeout(() => setSyncStatusMsg(null), 5000);
+    } else {
+      setSyncStatusMsg('❌ Invalid device pairing code. Please re-copy from the original device.');
+    }
   };
 
   const handleSignupSubmit = (e: React.FormEvent) => {
@@ -269,6 +325,41 @@ export const LoginPage: React.FC = () => {
             >
               <UserPlus className="w-4 h-4" />
               <span>Register / Sign Up</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Multi-Device Live Cloud Sync Ribbon */}
+        <div className="max-w-7xl w-full mx-auto my-2 flex flex-wrap items-center justify-between gap-3 p-2.5 sm:p-3 rounded-2xl bg-slate-900/90 border border-slate-800 text-xs">
+          <div className="flex items-center space-x-2.5">
+            <span className="flex h-2.5 w-2.5 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span className="font-bold text-slate-300">Multi-Device Live Sync:</span>
+            <span className="text-[11px] text-emerald-400 font-mono">
+              {getLastSyncTime() ? `Synced at ${getLastSyncTime()}` : 'Cloud Relay Active'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleManualCloudSync}
+              disabled={isSyncing}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-[11px] flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-amber-400' : ''}`} />
+              <span>{isSyncing ? 'Syncing...' : 'Sync Cloud Now'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setIsSyncModalOpen(true); setSyncStatusMsg(null); }}
+              className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-400 font-bold text-[11px] flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Pair Phone & Laptop</span>
             </button>
           </div>
         </div>
@@ -647,6 +738,126 @@ export const LoginPage: React.FC = () => {
             <span>Reset All Records to Zero (0)</span>
           </button>
         </div>
+
+        {/* Device Pairing & Multi-Device Cloud Sync Modal */}
+        {isSyncModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+            <div className="max-w-lg w-full p-6 sm:p-7 rounded-3xl bg-slate-900 border border-slate-800 text-white shadow-2xl space-y-5 my-auto">
+              
+              <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-3 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400">
+                    <Wifi className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base sm:text-lg text-white">
+                      Multi-Device Sync & Pairing
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Sync staff accounts between Laptop, Phone, and Tablets
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSyncModalOpen(false)}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {syncStatusMsg && (
+                <div className="p-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold text-center">
+                  {syncStatusMsg}
+                </div>
+              )}
+
+              {/* Action 1: Cloud Relay Sync */}
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <RefreshCw className="w-4 h-4 text-emerald-400" />
+                    <span className="font-bold text-xs text-white">Live Cloud Sync Relay</span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-bold">
+                    Connected
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Pushes all registered staff credentials from this browser to the cloud relay, and pulls any accounts created on other devices.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleManualCloudSync}
+                  disabled={isSyncing}
+                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-md"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isSyncing ? 'Synchronizing with Cloud...' : 'Sync Cloud Accounts Now'}</span>
+                </button>
+              </div>
+
+              {/* Action 2: Export from Laptop */}
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5">
+                <div className="flex items-center space-x-2">
+                  <Laptop className="w-4 h-4 text-amber-400" />
+                  <span className="font-bold text-xs text-white">Step 1: Export from Laptop</span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  On the device where you created the account, click below to copy your encrypted staff pairing code:
+                </p>
+                <button
+                  type="button"
+                  onClick={handleCopyPairingCode}
+                  className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md"
+                >
+                  {copiedPairingCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedPairingCode ? '✓ Pairing Code Copied!' : 'Copy Device Pairing Code'}</span>
+                </button>
+              </div>
+
+              {/* Action 3: Import on Phone */}
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5">
+                <div className="flex items-center space-x-2">
+                  <Smartphone className="w-4 h-4 text-cyan-400" />
+                  <span className="font-bold text-xs text-white">Step 2: Import on Phone</span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  On your phone, paste the pairing code below to instantly clone your staff accounts:
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={importCodeInput}
+                    onChange={(e) => setImportCodeInput(e.target.value)}
+                    placeholder="Paste pairing code here..."
+                    style={{ color: '#ffffff' }}
+                    className="flex-1 p-2 rounded-xl bg-slate-900 border border-slate-700 text-white !text-white text-xs font-mono placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleImportPairingCode}
+                    className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs transition-all cursor-pointer shrink-0"
+                  >
+                    Pair Phone
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setIsSyncModalOpen(false)}
+                  className="px-6 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs cursor-pointer"
+                >
+                  Done / Close
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
 
       </div>
     </>

@@ -44,7 +44,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         />
       )}
 
-      <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 py-2.5 sm:py-3 transition-colors duration-200">
+      <header 
+        className="app-header sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3.5 sm:px-6 transition-colors duration-200"
+        style={{
+          paddingTop: 'max(env(safe-area-inset-top, 0px), 0.75rem)',
+          paddingBottom: '0.75rem',
+        }}
+      >
         <div className="flex items-center justify-between">
           
           {/* Left: Hamburger Toggle Button (Mobile) + Organization Branding & Active Branch */}
@@ -53,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               <button
                 type="button"
                 onClick={onToggleMobileMenu}
-                className="lg:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer"
+                className="lg:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs"
                 title="Open Navigation Menu"
                 aria-label="Toggle Mobile Menu"
               >
@@ -65,10 +71,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               <img 
                 src={logoImg} 
                 alt="E-RIKON Logo" 
-                className="h-8 sm:h-12 w-auto object-contain"
+                className="h-8 sm:h-10 w-auto object-contain rounded-md"
               />
-              <span className="text-amber-500 font-bold text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30">
-                ECFMS v1.0
+              <span className="text-amber-500 font-bold text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 font-mono">
+                ECFMS
               </span>
             </div>
 

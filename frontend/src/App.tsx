@@ -17,6 +17,7 @@ import { ReportsPage } from './pages/ReportsPage';
 import { AuditPage } from './pages/AuditPage';
 import { CompanyInterestPage } from './pages/CompanyInterestPage';
 import { ApprovalsPage } from './pages/ApprovalsPage';
+import { SplashScreen } from './components/ui/SplashScreen';
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ export const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
+          <SplashScreen minDuration={1800} />
           <BrowserRouter>
             <Routes>
               {/* Login & Registration Portal */}

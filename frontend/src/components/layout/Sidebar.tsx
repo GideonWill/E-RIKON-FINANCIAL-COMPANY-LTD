@@ -182,7 +182,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
             className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
             onClick={onClose}
           />
-          <aside className="relative z-10 w-4/5 max-w-xs bg-slate-900 text-slate-300 h-full shadow-2xl flex flex-col border-r border-slate-800">
+          <aside 
+            className="relative z-10 w-4/5 max-w-xs bg-slate-900 text-slate-300 h-full shadow-2xl flex flex-col border-r border-slate-800"
+            style={{
+              paddingTop: 'max(env(safe-area-inset-top, 0px), 0.75rem)',
+              paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
+            }}
+          >
             {sidebarContent}
           </aside>
         </div>

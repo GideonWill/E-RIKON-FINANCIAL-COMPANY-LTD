@@ -6,12 +6,21 @@
   :root {
     --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 
 body {
   font-family: var(--font-sans);
   overflow-x: hidden;
+  padding-top: 0;
+}
+
+/* Safe Area Inset Support for iPhone 14 Pro Max Dynamic Island & Modern Mobile Displays */
+header.app-header {
+  padding-top: max(env(safe-area-inset-top, 0px), 0.75rem) !important;
+  padding-bottom: 0.75rem !important;
 }
 
 /* Input typography: crisp dark font in light mode, bright white font in dark mode */

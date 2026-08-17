@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, RoleName, ApprovalRequest } from '../types';
 import { MOCK_USERS, registerNewUserRole, getRegisteredUsers, RegisteredUserRecord } from '../services/api';
+import { initCloudSync, pushLocalToCloud, pullCloudToLocal } from '../services/cloudSync';
 
 interface AuthContextType {
   currentUser: User | null;
   isAuthenticated: boolean;
-  login: (email?: string, password?: string, role?: RoleName) => boolean;
+  login: (email?: string, password?: string, role?: RoleName) => Promise<boolean>;
   loginAsRole: (role: RoleName) => void;
   signupRole: (data: {
     firstName: string;
@@ -43,7 +44,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentUser]);
 
-  const login = (email?: string, password?: string, role?: RoleName): boolean => {
+  // Launch background cloud sync to keep laptop and phone aligned in real-time
+  useEffect(() => {
+    const cleanup = initCloudSync();
+    return () => cleanup();
+  }, []);
+
+  const login = async (email?: string, password?: string, _role?: RoleName): Promise<boolean> => {
     const cleanEmail = email?.trim().toLowerCase();
     const cleanPass = password?.trim();
 
@@ -51,9 +58,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
-    // Check in dynamically registered users
-    const registered = getRegisteredUsers();
-    const match = registered.find((u) => u.email.toLowerCase() === cleanEmail);
+    // 1. Check in local registered users
+    let registered = getRegisteredUsers();
+    let match = registered.find((u) => u.email.toLowerCase() === cleanEmail);
+
+    // 2. If not found locally, immediately fetch from cloud relay
+    if (!match) {
+      await pullCloudToLocal().catch(() => {});
+      registered = getRegisteredUsers();
+      match = registered.find((u) => u.email.toLowerCase() === cleanEmail);
+    }
+
     if (match) {
       if (!match.password || match.password === cleanPass) {
         setCurrentUser(match);
@@ -85,6 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     password?: string;
   }) => {
     const res = registerNewUserRole(data);
+    pushLocalToCloud().catch(() => {});
     return res;
   };
 

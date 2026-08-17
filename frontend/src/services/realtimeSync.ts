@@ -54,13 +54,32 @@ export const subscribeRealtimeEvents = (callback: (payload: RealtimeSyncPayload)
     }
   };
 
+  const handleStorageEvent = (event: StorageEvent) => {
+    if (event.key && event.key.startsWith('erikon_')) {
+      callback({
+        type: 'MANUAL_SYNC',
+        timestamp: new Date().toISOString(),
+        data: { key: event.key },
+      });
+    }
+  };
+
   if (syncChannel) {
     syncChannel.addEventListener('message', handleBroadcastMessage);
   }
 
   if (typeof window !== 'undefined') {
     window.addEventListener('erikon_realtime_update', handleCustomEvent);
+    window.addEventListener('storage', handleStorageEvent);
   }
+
+  // Periodic heartbeat sync (every 3 seconds) for multi-device network consistency
+  const heartbeatInterval = setInterval(() => {
+    callback({
+      type: 'MANUAL_SYNC',
+      timestamp: new Date().toISOString(),
+    });
+  }, 3000);
 
   return () => {
     if (syncChannel) {
@@ -68,7 +87,9 @@ export const subscribeRealtimeEvents = (callback: (payload: RealtimeSyncPayload)
     }
     if (typeof window !== 'undefined') {
       window.removeEventListener('erikon_realtime_update', handleCustomEvent);
+      window.removeEventListener('storage', handleStorageEvent);
     }
+    clearInterval(heartbeatInterval);
   };
 };
 

@@ -178,20 +178,21 @@ export const TellerPage: React.FC = () => {
   return (
     <div className="space-y-6 pb-12">
       
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <Landmark className="w-6 h-6 text-amber-500" />
-            Teller Workstation & Cash Desk
+      {/* Header - Fully Responsive on iPhone & Desktop */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div className="space-y-1">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <Landmark className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 shrink-0" />
+            <span>Teller Workstation & Cash Desk</span>
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
             Manual Physical Deposit, 31-Day Savings Contribution Ticking & Withdrawal Processing
           </p>
         </div>
 
-        <div className="flex items-center space-x-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3.5 py-1.5 rounded-xl border border-emerald-500/20 text-xs font-mono font-bold">
-          <ShieldAlert className="w-4 h-4" /> Vault Cash Balanced: GHS 124,800.00
+        <div className="flex items-center space-x-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3.5 py-2 rounded-xl border border-emerald-500/20 text-xs font-mono font-bold w-fit shrink-0 shadow-xs">
+          <ShieldAlert className="w-4 h-4 shrink-0" /> 
+          <span>Vault Cash Balanced: GHS 124,800.00</span>
         </div>
       </div>
 
