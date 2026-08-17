@@ -1,7 +1,7 @@
 services:
   - type: web
     name: e-rikon-ecfms-backend
-    env: node
+    runtime: node
     plan: free
     rootDir: backend
     buildCommand: npm install && npx prisma generate && npm run build
@@ -21,3 +21,4 @@ databases:
     plan: free
     databaseName: erikondb
     user: erikon_admin
+    ipAllowList: []
