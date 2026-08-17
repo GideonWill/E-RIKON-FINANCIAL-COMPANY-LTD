@@ -1,5 +1,6 @@
 export type RoleName = 
   | 'SUPER_ADMIN'
+  | 'ADMIN'
   | 'BRANCH_ADMIN'
   | 'TELLER'
   | 'FIELD_OFFICER'
@@ -12,6 +13,10 @@ export type AccountType = 'SAVINGS' | 'CURRENT' | 'EDUCATION_FUND' | 'RETIREMENT
 
 export type AccountStatus = 'ACTIVE' | 'FROZEN' | 'CLOSED';
 
+export type SavingsPackage = 5 | 10 | 20 | 30 | 40 | 50 | 60 | 70 | 80 | 90 | 100 | 200;
+
+export const SAVINGS_PACKAGES: SavingsPackage[] = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200];
+
 export type TransactionType = 
   | 'DEPOSIT'
   | 'WITHDRAWAL'
@@ -19,6 +24,7 @@ export type TransactionType =
   | 'LOAN_REPAYMENT'
   | 'INTEREST_CHARGE'
   | 'COMPANY_FEE_DEDUCTION'
+  | 'COMPANY_INTEREST_WITHDRAWAL'
   | 'PENALTY_FEE';
 
 export type PaymentMode = 'PHYSICAL_CASH' | 'MTN_MOBILE_MONEY' | 'BANK_TRANSFER';
@@ -55,6 +61,8 @@ export interface User {
   role: RoleName;
   branchId: string;
   branch?: Branch;
+  createdAt?: string;
+  status?: 'ACTIVE' | 'PENDING_APPROVAL' | 'REJECTED';
 }
 
 export interface Customer {
@@ -113,6 +121,29 @@ export interface Guarantor {
   monthlyIncome?: number;
 }
 
+export interface DailySplitEntry {
+  dayNumber: number; // 1 to 31
+  date: string;
+  amount: number;
+  receiptNo: string;
+  recordedBy?: string;
+  isCompanyFee?: boolean;
+}
+
+export interface DailyCollectionCycle {
+  id: string;
+  cycleNumber: number;
+  currentDayCount: number; // 0 to 31
+  dailyTargetAmount: number; // e.g. 5, 10, 20, 50, 100, 200 GHS
+  totalDeposited: number;
+  feeDeducted: boolean;
+  companyFeeAmount: number;
+  isCompleted: boolean;
+  startDate?: string;
+  endDate?: string;
+  dailySplits?: DailySplitEntry[];
+}
+
 export interface Account {
   id: string;
   accountNumber: string;
@@ -124,20 +155,75 @@ export interface Account {
   currentBalance: number;
   availableBalance: number;
   interestRate: number;
+  savingsPackage?: SavingsPackage;
+  isPackageLockedForMonth?: boolean;
   status: AccountStatus;
   openingDate: string;
   dailyCycles?: DailyCollectionCycle[];
 }
 
-export interface DailyCollectionCycle {
+export interface CompanyInterestRecord {
   id: string;
+  customerId: string;
+  customerName: string;
+  accountId: string;
+  accountNumber: string;
   cycleNumber: number;
-  currentDayCount: number; // 1 to 31
-  dailyTargetAmount: number;
-  totalDeposited: number;
-  feeDeducted: boolean;
-  companyFeeAmount: number;
-  isCompleted: boolean;
+  packageAmount: number; // e.g. GHS 20.00
+  accumulatedAmount: number; // e.g. GHS 20.00
+  period: string; // e.g. "Cycle #1 (30-Day Accumulation)"
+  status: 'ACCUMULATED' | 'WITHDRAWN';
+  withdrawnAt?: string;
+  withdrawalId?: string;
+  createdAt: string;
+}
+
+export interface CompanyInterestWithdrawal {
+  id: string;
+  referenceNo: string;
+  amount: number;
+  destinationType: 'COMPANY_BANK_ACCOUNT' | 'MTN_MOMO_MERCHANT' | 'VAULT_CASH';
+  destinationDetails: string; // e.g. "GCB Bank Corporate - 10293849102"
+  requestedBy: {
+    id: string;
+    name: string;
+    role: RoleName;
+  };
+  approvedBy?: {
+    id: string;
+    name: string;
+    role: RoleName;
+  };
+  status: 'PENDING_SUPER_ADMIN_APPROVAL' | 'APPROVED' | 'REJECTED';
+  remarks?: string;
+  requestedAt: string;
+  approvedAt?: string;
+}
+
+export type ApprovalType = 
+  | 'STAFF_ROLE_SIGNUP'
+  | 'COMPANY_INTEREST_WITHDRAWAL'
+  | 'LOAN_APPROVAL'
+  | 'LARGE_TRANSACTION'
+  | 'CUSTOMER_KYC';
+
+export interface ApprovalRequest {
+  id: string;
+  type: ApprovalType;
+  title: string;
+  description: string;
+  targetId: string;
+  requestedById: string;
+  requestedByName: string;
+  requestedRole: RoleName;
+  amount?: number;
+  details?: Record<string, any>;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  reviewedById?: string;
+  reviewedByName?: string;
+  reviewedAt?: string;
+  reviewRemarks?: string;
+  createdAt: string;
 }
 
 export interface LoanProduct {

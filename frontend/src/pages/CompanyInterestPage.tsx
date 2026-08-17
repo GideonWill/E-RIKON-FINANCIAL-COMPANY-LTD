@@ -1,0 +1,456 @@
+import React, { useState } from 'react';
+import { 
+  getStoredCompanyInterest, 
+  getStoredCompanyWithdrawals, 
+  requestCompanyInterestWithdrawal, 
+  getStoredAccounts
+} from '../services/api';
+import { useRealtimeSync } from '../services/realtimeSync';
+import { CompanyInterestRecord, CompanyInterestWithdrawal } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import { 
+  PiggyBank, 
+  ArrowUpRight, 
+  Building2, 
+  Smartphone, 
+  Vault, 
+  CheckCircle2, 
+  Clock, 
+  AlertCircle, 
+  Coins, 
+  ShieldCheck, 
+  Search, 
+  Filter,
+  Download,
+  Calendar,
+  Layers,
+  Sparkles,
+  ArrowDownRight
+} from 'lucide-react';
+
+export const CompanyInterestPage: React.FC = () => {
+  const { currentUser } = useAuth();
+  const [interestRecords, setInterestRecords] = useState<CompanyInterestRecord[]>(getStoredCompanyInterest());
+  const [withdrawals, setWithdrawals] = useState<CompanyInterestWithdrawal[]>(getStoredCompanyWithdrawals());
+  const [accounts, setAccounts] = useState(getStoredAccounts());
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Real-time multi-device subscription
+  useRealtimeSync(() => {
+    setInterestRecords(getStoredCompanyInterest());
+    setWithdrawals(getStoredCompanyWithdrawals());
+    setAccounts(getStoredAccounts());
+  });
+  
+  // Modal State
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [destinationType, setDestinationType] = useState<'COMPANY_BANK_ACCOUNT' | 'MTN_MOMO_MERCHANT' | 'VAULT_CASH'>('COMPANY_BANK_ACCOUNT');
+  const [destinationDetails, setDestinationDetails] = useState('GCB Bank Corporate Account #10129384910');
+  const [withdrawRemarks, setWithdrawRemarks] = useState('');
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Financial Calculations
+  const totalPiledUp = interestRecords.reduce((sum, r) => sum + r.accumulatedAmount, 0);
+  const totalApprovedWithdrawn = withdrawals
+    .filter((w) => w.status === 'APPROVED')
+    .reduce((sum, w) => sum + w.amount, 0);
+  const availableVaultBalance = Math.max(0, totalPiledUp - totalApprovedWithdrawn);
+
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+
+  const handleWithdrawalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const numAmount = Number(withdrawAmount);
+    if (!numAmount || numAmount <= 0) {
+      alert('Please enter a valid withdrawal amount.');
+      return;
+    }
+
+    if (numAmount > availableVaultBalance) {
+      alert(`Withdrawal amount (GHS ${numAmount.toFixed(2)}) exceeds available interest vault balance (GHS ${availableVaultBalance.toFixed(2)}).`);
+      return;
+    }
+
+    if (!currentUser) return;
+
+    const newWd = requestCompanyInterestWithdrawal(
+      numAmount,
+      destinationType,
+      destinationDetails,
+      currentUser,
+      withdrawRemarks
+    );
+
+    setWithdrawals(getStoredCompanyWithdrawals());
+    setIsWithdrawModalOpen(false);
+    setWithdrawAmount('');
+    setWithdrawRemarks('');
+
+    setSuccessMsg(
+      `🎉 Withdrawal Request for GHS ${numAmount.toFixed(2)} submitted! Reference #${newWd.referenceNo} was sent to Super Admin for clearance approval.`
+    );
+
+    setTimeout(() => {
+      setSuccessMsg(null);
+    }, 5000);
+  };
+
+  const filteredRecords = interestRecords.filter((r) => {
+    const term = searchQuery.toLowerCase();
+    return (
+      r.customerName.toLowerCase().includes(term) ||
+      r.accountNumber.toLowerCase().includes(term) ||
+      r.period.toLowerCase().includes(term)
+    );
+  });
+
+  return (
+    <div className="space-y-6 pb-12">
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <PiggyBank className="w-6 h-6 text-amber-500" />
+            Company Interest Vault & 30-Day Accumulation
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Monitors 30-Day Member Interest Piled Up for E-RIKON & On-Demand Corporate Withdrawals
+          </p>
+        </div>
+
+        {/* Action Button */}
+        <button
+          onClick={() => setIsWithdrawModalOpen(true)}
+          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold text-xs flex items-center space-x-2 transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
+        >
+          <ArrowUpRight className="w-4 h-4" />
+          <span>Withdraw Company Interest</span>
+        </button>
+      </div>
+
+      {/* Success Notification */}
+      {successMsg && (
+        <div className="p-4 rounded-2xl bg-emerald-500 text-white font-bold text-xs flex items-center justify-between shadow-xl animate-fade-in">
+          <div className="flex items-center space-x-2">
+            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+            <span>{successMsg}</span>
+          </div>
+          <button
+            onClick={() => setSuccessMsg(null)}
+            className="text-white hover:text-slate-200 font-mono text-sm px-2 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Summary KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Total 30-Day Interest Piled Up</span>
+            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500">
+              <Coins className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+            GHS {totalPiledUp.toFixed(2)}
+          </div>
+          <div className="text-[11px] text-emerald-500 font-semibold flex items-center gap-1">
+            <Sparkles className="w-3 h-3" /> Accumulated across active cycles
+          </div>
+        </div>
+
+        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Available for Company Withdrawal</span>
+            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500">
+              <Vault className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-emerald-500 font-mono">
+            GHS {availableVaultBalance.toFixed(2)}
+          </div>
+          <div className="text-[11px] text-slate-400 font-mono">
+            Net Liquidity in Company Vault
+          </div>
+        </div>
+
+        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Total Corporate Payouts</span>
+            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
+              <ArrowDownRight className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-blue-500 font-mono">
+            GHS {totalApprovedWithdrawn.toFixed(2)}
+          </div>
+          <div className="text-[11px] text-slate-400 font-mono">
+            Disbursed to Bank / MoMo
+          </div>
+        </div>
+
+        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Contributing Members</span>
+            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-500">
+              <Layers className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-purple-500 font-mono">
+            {accounts.length} Clients
+          </div>
+          <div className="text-[11px] text-slate-400 font-mono">
+            Across Packages GH₵ 5 - 200
+          </div>
+        </div>
+
+      </div>
+
+      {/* Member-by-Member 30-Day Interest Accumulation Table */}
+      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+              Member-by-Member 30-Day Interest Pile-Up
+            </h3>
+            <p className="text-xs text-slate-500">
+              Breakdown of 1-day interest commission earned from each member on 30/31-day cycle completion
+            </p>
+          </div>
+
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search member or account..."
+              className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 uppercase text-[10px] tracking-wider">
+                <th className="py-3 px-3">Member Name</th>
+                <th className="py-3 px-3">Account Number</th>
+                <th className="py-3 px-3">Daily Package</th>
+                <th className="py-3 px-3">Accumulation Period</th>
+                <th className="py-3 px-3 text-right">Interest Piled Up</th>
+                <th className="py-3 px-3 text-center">Status</th>
+                <th className="py-3 px-3">Date Retained</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
+              {filteredRecords.map((rec) => (
+                <tr key={rec.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                  <td className="py-3 px-3 font-bold font-sans text-slate-900 dark:text-white">
+                    {rec.customerName}
+                  </td>
+                  <td className="py-3 px-3 text-slate-500">{rec.accountNumber}</td>
+                  <td className="py-3 px-3">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20">
+                      GH₵ {rec.packageAmount.toFixed(2)}/day
+                    </span>
+                  </td>
+                  <td className="py-3 px-3 text-slate-400 font-sans">{rec.period}</td>
+                  <td className="py-3 px-3 text-right font-black text-emerald-500">
+                    +GHS {rec.accumulatedAmount.toFixed(2)}
+                  </td>
+                  <td className="py-3 px-3 text-center">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      {rec.status}
+                    </span>
+                  </td>
+                  <td className="py-3 px-3 text-slate-400">{rec.createdAt.slice(0, 10)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+      {/* Company Interest Withdrawal History */}
+      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+              Corporate Interest Withdrawal Ledger
+            </h3>
+            <p className="text-xs text-slate-500">
+              Audit trail of all company interest withdrawals requested and approved by Super Admin
+            </p>
+          </div>
+          <span className="text-xs font-mono font-bold text-slate-400">{withdrawals.length} Entries</span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 uppercase text-[10px] tracking-wider">
+                <th className="py-3 px-3">Reference No</th>
+                <th className="py-3 px-3">Destination</th>
+                <th className="py-3 px-3">Requested By</th>
+                <th className="py-3 px-3">Approved By (Super Admin)</th>
+                <th className="py-3 px-3 text-right">Amount (GHS)</th>
+                <th className="py-3 px-3 text-center">Clearance Status</th>
+                <th className="py-3 px-3">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
+              {withdrawals.map((wd) => (
+                <tr key={wd.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                  <td className="py-3 px-3 font-bold text-amber-500">{wd.referenceNo}</td>
+                  <td className="py-3 px-3 font-sans">
+                    <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      {wd.destinationType === 'COMPANY_BANK_ACCOUNT' && <Building2 className="w-3.5 h-3.5 text-blue-400" />}
+                      {wd.destinationType === 'MTN_MOMO_MERCHANT' && <Smartphone className="w-3.5 h-3.5 text-amber-400" />}
+                      {wd.destinationType === 'VAULT_CASH' && <Vault className="w-3.5 h-3.5 text-emerald-400" />}
+                      <span>{wd.destinationType.replace(/_/g, ' ')}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-400">{wd.destinationDetails}</div>
+                  </td>
+                  <td className="py-3 px-3 font-sans text-slate-400">
+                    {wd.requestedBy.name} ({wd.requestedBy.role})
+                  </td>
+                  <td className="py-3 px-3 font-sans text-slate-400">
+                    {wd.approvedBy ? `${wd.approvedBy.name} (SUPER_ADMIN)` : <span className="text-amber-400 italic">Pending Super Admin Review</span>}
+                  </td>
+                  <td className="py-3 px-3 text-right font-black text-slate-900 dark:text-white">
+                    GHS {wd.amount.toFixed(2)}
+                  </td>
+                  <td className="py-3 px-3 text-center">
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                      wd.status === 'APPROVED'
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                        : wd.status === 'REJECTED'
+                        ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                        : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                    }`}>
+                      {wd.status}
+                    </span>
+                  </td>
+                  <td className="py-3 px-3 text-slate-400">{wd.requestedAt.slice(0, 10)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+      {/* Withdrawal Modal */}
+      {isWithdrawModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="max-w-md w-full p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl text-white space-y-4">
+            
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center space-x-2 text-amber-500">
+                <PiggyBank className="w-5 h-5" />
+                <h3 className="font-extrabold text-base text-white">Withdraw Company Interest</h3>
+              </div>
+              <button
+                onClick={() => setIsWithdrawModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 font-mono">
+              Available Vault Balance: <span className="font-extrabold text-white">GHS {availableVaultBalance.toFixed(2)}</span>
+            </div>
+
+            <form onSubmit={handleWithdrawalSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-300">Amount to Withdraw (GHS) *</label>
+                <input
+                  required
+                  type="number"
+                  step="0.01"
+                  max={availableVaultBalance}
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full mt-1 p-3 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono font-black text-lg focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300">Destination Type *</label>
+                <select
+                  value={destinationType}
+                  onChange={(e) => {
+                    const val = e.target.value as any;
+                    setDestinationType(val);
+                    if (val === 'COMPANY_BANK_ACCOUNT') setDestinationDetails('GCB Bank Corporate Account #10129384910');
+                    if (val === 'MTN_MOMO_MERCHANT') setDestinationDetails('MTN Mobile Money Merchant: 0244112233');
+                    if (val === 'VAULT_CASH') setDestinationDetails('Accra Central Vault Physical Cash Allocation');
+                  }}
+                  className="w-full mt-1 p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white"
+                >
+                  <option value="COMPANY_BANK_ACCOUNT">Company Bank Account</option>
+                  <option value="MTN_MOMO_MERCHANT">MTN Mobile Money Merchant</option>
+                  <option value="VAULT_CASH">Branch Vault Cash</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300">Destination Account Details *</label>
+                <input
+                  required
+                  type="text"
+                  value={destinationDetails}
+                  onChange={(e) => setDestinationDetails(e.target.value)}
+                  className="w-full mt-1 p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300">Purpose / Administrative Remarks</label>
+                <textarea
+                  value={withdrawRemarks}
+                  onChange={(e) => setWithdrawRemarks(e.target.value)}
+                  placeholder="e.g. End-of-month management dividend / operational logistics"
+                  rows={2}
+                  className="w-full mt-1 p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 text-[11px] text-slate-400">
+                ⚠️ <span className="font-bold text-slate-300">Super Admin Clearance Notice:</span> This transaction request will be queued in the Super Admin Approvals Hub for authorization before funds are disbursed.
+              </div>
+
+              <div className="flex items-center space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsWithdrawModalOpen(false)}
+                  className="w-1/2 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs shadow-lg shadow-amber-500/20 cursor-pointer"
+                >
+                  Submit Request
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+};

@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { getStoredApprovals } from '../../services/api';
 import { 
   LayoutDashboard, 
   Users, 
@@ -11,6 +12,8 @@ import {
   GitBranch, 
   FileSpreadsheet, 
   ShieldAlert,
+  ShieldCheck,
+  PiggyBank,
   X
 } from 'lucide-react';
 
@@ -24,61 +27,76 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
   if (!currentUser) return null;
 
   const activeRole = currentUser.role;
+  const approvals = getStoredApprovals();
+  const pendingApprovalsCount = approvals.filter((a) => a.status === 'PENDING').length;
 
   const navItems = [
     {
       to: '/',
       label: 'Executive Dashboard',
       icon: LayoutDashboard,
-      roles: ['SUPER_ADMIN', 'BRANCH_ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+      roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+    },
+    {
+      to: '/approvals',
+      label: 'Approvals Hub',
+      icon: ShieldCheck,
+      badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined,
+      roles: ['SUPER_ADMIN', 'ADMIN'],
+    },
+    {
+      to: '/company-interest',
+      label: 'Company Interest Vault',
+      icon: PiggyBank,
+      roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'AUDITOR'],
     },
     {
       to: '/customers',
       label: 'Customer 360',
       icon: Users,
-      roles: ['SUPER_ADMIN', 'BRANCH_ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+      roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
     },
     {
       to: '/accounts',
-      label: 'Savings & Accounts',
+      label: 'Savings & Packages',
       icon: Wallet,
-      roles: ['SUPER_ADMIN', 'BRANCH_ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+      roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
     },
     {
       to: '/teller',
       label: 'Teller Workstation',
       icon: Landmark,
-      roles: ['SUPER_ADMIN', 'BRANCH_ADMIN', 'TELLER'],
+      roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'TELLER'],
     },
     {
       to: '/field-officer',
-      label: 'Field Collections (31-Day)',
+      label: 'Field Collections (Splitter)',
       icon: Smartphone,
-      roles: ['SUPER_ADMIN', 'BRANCH_ADMIN', 'FIELD_OFFICER'],
+      roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'FIELD_OFFICER'],
     },
     {
       to: '/loans',
       label: 'ER-Fast Loans Desk',
       icon: Calculator,
-      roles: ['SUPER_ADMIN', 'BRANCH_ADMIN', 'LOAN_OFFICER', 'AUDITOR'],
+      roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'LOAN_OFFICER', 'AUDITOR'],
     },
     {
       to: '/branches',
       label: 'Branch Operations',
       icon: GitBranch,
-      roles: ['SUPER_ADMIN', 'BRANCH_ADMIN', 'AUDITOR'],
+      roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'AUDITOR'],
     },
     {
       to: '/reports',
-      label: 'Financial Reports',
+      label: 'Financial Statements',
       icon: FileSpreadsheet,
-      roles: ['SUPER_ADMIN', 'BRANCH_ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+      roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
     },
     {
       to: '/audit',
       label: 'Immutable Audit Trail',
       icon: ShieldAlert,
-      roles: ['SUPER_ADMIN', 'BRANCH_ADMIN', 'AUDITOR'],
+      roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'AUDITOR'],
     },
   ];
 
@@ -93,7 +111,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
               Workstation Scopes
             </div>
             <div className="text-xs text-amber-400 font-semibold mt-0.5">
-              Role: {activeRole.replace('_', ' ')}
+              Role: {activeRole.replace(/_/g, ' ')}
             </div>
           </div>
           {onClose && (
@@ -116,15 +134,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
                 to={item.to}
                 onClick={onClose}
                 className={({ isActive }) =>
-                  `flex items-center space-x-3 px-3.5 py-3 sm:py-2.5 rounded-xl font-medium text-xs sm:text-xs transition-all ${
+                  `flex items-center justify-between px-3.5 py-3 sm:py-2.5 rounded-xl font-medium text-xs sm:text-xs transition-all ${
                     isActive
-                      ? 'bg-amber-500 text-white font-bold shadow-lg shadow-amber-500/20'
+                      ? 'bg-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/20'
                       : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
                   }`
                 }
               >
-                <Icon className="w-4.5 h-4.5 sm:w-4 sm:h-4 shrink-0" />
-                <span className="truncate">{item.label}</span>
+                <div className="flex items-center space-x-3 truncate">
+                  <Icon className="w-4.5 h-4.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </div>
+
+                {item.badge !== undefined && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white font-mono shadow-sm">
+                    {item.badge}
+                  </span>
+                )}
               </NavLink>
             );
           })}
@@ -136,7 +162,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
         <div className="font-semibold text-slate-200">E-RIKON GROUP LTD</div>
         <p className="text-[11px] text-slate-400">RBAC Workstation Isolation Active</p>
         <div className="pt-2 text-[10px] text-amber-400/90 font-mono">
-          Policy: 31-Day Savings & Tiered Loans
+          Policy: 30-Day Interest & GH₵ 5-200 Packages
         </div>
       </div>
     </div>
@@ -144,21 +170,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
 
   return (
     <>
-      {/* Desktop Sidebar (Pinned on large screens) */}
+      {/* Desktop Sidebar */}
       <aside className="hidden lg:flex w-64 bg-slate-900 text-slate-300 min-h-[calc(100vh-61px)] border-r border-slate-800 shrink-0">
         {sidebarContent}
       </aside>
 
-      {/* Mobile Sidebar Off-Canvas Drawer (Slide-over on smaller screens) */}
+      {/* Mobile Drawer */}
       {isOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
-          {/* Backdrop Overlay */}
           <div
             className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
             onClick={onClose}
           />
-
-          {/* Drawer Container */}
           <aside className="relative z-10 w-4/5 max-w-xs bg-slate-900 text-slate-300 h-full shadow-2xl flex flex-col border-r border-slate-800">
             {sidebarContent}
           </aside>

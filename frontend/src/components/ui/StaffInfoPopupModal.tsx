@@ -1,6 +1,6 @@
 import React from 'react';
 import { User, RoleName } from '../../types';
-import { MOCK_USERS } from '../../services/api';
+import { getRegisteredUsers } from '../../services/api';
 import { 
   UserCheck, 
   ShieldCheck, 
@@ -11,7 +11,6 @@ import {
   X, 
   CheckCircle2, 
   Clock, 
-  KeyRound,
   ShieldAlert,
   Landmark,
   Smartphone,
@@ -26,13 +25,25 @@ interface StaffInfoPopupModalProps {
 export const StaffInfoPopupModal: React.FC<StaffInfoPopupModalProps> = ({ staffName, onClose }) => {
   if (!staffName) return null;
 
-  // Lookup matched mock staff member by name substring or default to Field Officer/Teller
-  const allStaff = Object.values(MOCK_USERS);
+  // Lookup matched staff member from dynamically registered staff
+  const allStaff = getRegisteredUsers();
   const matchedStaff = allStaff.find(
     (s) =>
       `${s.firstName} ${s.lastName}`.toLowerCase().includes(staffName.toLowerCase()) ||
       staffName.toLowerCase().includes(s.firstName.toLowerCase())
-  ) || MOCK_USERS.FIELD_OFFICER;
+  );
+
+  const fallbackStaff: User = matchedStaff || {
+    id: 'staff-current',
+    employeeId: 'EMP-ECFMS',
+    firstName: staffName.split(' ')[0] || 'Authorized',
+    lastName: staffName.split(' ')[1] || 'Staff',
+    email: `${staffName.toLowerCase().replace(/\s+/g, '.')}@erikon-group.com`,
+    phone: '+233 24 000 0000',
+    role: 'FIELD_OFFICER',
+    branchId: 'br-01',
+    status: 'ACTIVE',
+  };
 
   const getRoleIcon = (role: RoleName) => {
     switch (role) {
@@ -76,7 +87,7 @@ export const StaffInfoPopupModal: React.FC<StaffInfoPopupModalProps> = ({ staffN
 
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -86,23 +97,23 @@ export const StaffInfoPopupModal: React.FC<StaffInfoPopupModalProps> = ({ staffN
         <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 text-white border border-slate-800 space-y-4 shadow-xl">
           <div className="flex items-center space-x-4">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center text-white text-2xl font-extrabold ring-4 ring-amber-500/30 shadow-lg">
-              {matchedStaff.firstName[0]}{matchedStaff.lastName[0]}
+              {fallbackStaff.firstName[0]}{fallbackStaff.lastName[0]}
             </div>
 
             <div>
               <div className="text-[11px] font-mono text-amber-400 font-extrabold flex items-center gap-1">
-                <CreditCard className="w-3.5 h-3.5" /> Employee ID: {matchedStaff.employeeId}
+                <CreditCard className="w-3.5 h-3.5" /> Employee ID: {fallbackStaff.employeeId}
               </div>
               <h4 className="text-xl font-extrabold tracking-tight text-white mt-0.5">
-                {matchedStaff.firstName} {matchedStaff.lastName}
+                {fallbackStaff.firstName} {fallbackStaff.lastName}
               </h4>
               <div className="flex items-center gap-2 mt-1">
                 <span className="px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500 text-slate-950">
-                  {matchedStaff.role.replace('_', ' ')}
+                  {fallbackStaff.role.replace('_', ' ')}
                 </span>
                 <span className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
-                  {getRoleIcon(matchedStaff.role)}
-                  {matchedStaff.branch?.name || 'Accra Main'}
+                  {getRoleIcon(fallbackStaff.role)}
+                  {fallbackStaff.branch?.name || 'Accra Central'}
                 </span>
               </div>
             </div>
@@ -116,41 +127,48 @@ export const StaffInfoPopupModal: React.FC<StaffInfoPopupModalProps> = ({ staffN
               <Mail className="w-3 h-3 text-amber-500" /> Email Address
             </span>
             <div className="font-bold text-slate-800 dark:text-slate-200 truncate">
-              {matchedStaff.email}
+              {fallbackStaff.email}
             </div>
           </div>
 
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 space-y-1">
             <span className="text-[10px] text-slate-400 uppercase flex items-center gap-1">
-              <Phone className="w-3 h-3 text-blue-500" /> Mobile Line
+              <Phone className="w-3 h-3 text-amber-500" /> Mobile Contact
             </span>
             <div className="font-bold text-slate-800 dark:text-slate-200">
-              {matchedStaff.phone}
+              {fallbackStaff.phone}
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 space-y-1">
+            <span className="text-[10px] text-slate-400 uppercase flex items-center gap-1">
+              <Clock className="w-3 h-3 text-amber-500" /> Clearance Status
+            </span>
+            <div className="font-bold text-emerald-500 flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" />
+              <span>ACTIVE</span>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 space-y-1">
+            <span className="text-[10px] text-slate-400 uppercase flex items-center gap-1">
+              <Building2 className="w-3 h-3 text-amber-500" /> Primary Branch
+            </span>
+            <div className="font-bold text-slate-800 dark:text-slate-200 truncate">
+              {fallbackStaff.branch?.name || 'Accra Central Main'}
             </div>
           </div>
         </div>
 
-        {/* Workstation Activity Summary */}
-        <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 text-xs space-y-2 text-white font-sans">
-          <div className="flex items-center justify-between text-[11px] font-bold uppercase text-amber-400 tracking-wider">
-            <span className="flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5" /> Staff Workstation Status & Operations
-            </span>
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-          </div>
-
-          <p className="text-[11px] text-slate-300 leading-relaxed">
-            Staff member <strong>{matchedStaff.firstName} {matchedStaff.lastName}</strong> is currently assigned to <strong>{matchedStaff.branch?.name}</strong> operating as <strong>{matchedStaff.role.replace('_', ' ')}</strong> with verified system clearance.
-          </p>
+        {/* Modal Actions */}
+        <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-extrabold text-xs hover:bg-slate-800 dark:hover:bg-slate-700 transition-all cursor-pointer"
+          >
+            Close Dossier
+          </button>
         </div>
-
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs hover:bg-slate-800 transition-all cursor-pointer"
-        >
-          Close Personnel Dossier
-        </button>
 
       </div>
     </div>

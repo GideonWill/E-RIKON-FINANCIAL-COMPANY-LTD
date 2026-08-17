@@ -11,6 +11,7 @@ import {
 import { LoanApplication, LoanStatus, Transaction } from '../types';
 import { LoanCalculatorWidget } from '../components/ui/LoanCalculatorWidget';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
+import { useRealtimeSync } from '../services/realtimeSync';
 import { 
   Calculator, 
   PlusCircle, 
@@ -20,24 +21,40 @@ import {
   ShieldCheck, 
   FileText, 
   UserCheck, 
-  Sparkles,
-  ArrowRight,
-  DollarSign,
-  Check,
-  X
+  Sparkles, 
+  ArrowRight, 
+  DollarSign, 
+  Check, 
+  X 
 } from 'lucide-react';
 
 export const LoansPage: React.FC = () => {
   const [loans, setLoans] = useState<LoanApplication[]>(getStoredLoans());
-  const [selectedLoan, setSelectedLoan] = useState<LoanApplication>(loans[0] || getStoredLoans()[0]);
+  const [selectedLoan, setSelectedLoan] = useState<LoanApplication | null>(loans[0] || null);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [showRepayModal, setShowRepayModal] = useState(false);
   const [repayAmount, setRepayAmount] = useState<string>('1916.67');
   const [printedTx, setPrintedTx] = useState<Transaction | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const customers = getStoredCustomers();
-  const accounts = getStoredAccounts();
+  const [customers, setCustomers] = useState(getStoredCustomers());
+  const [accounts, setAccounts] = useState(getStoredAccounts());
+
+  // Real-time multi-device subscription
+  useRealtimeSync(() => {
+    const freshLoans = getStoredLoans();
+    const freshCusts = getStoredCustomers();
+    const freshAccs = getStoredAccounts();
+    setLoans(freshLoans);
+    setCustomers(freshCusts);
+    setAccounts(freshAccs);
+    if (!selectedLoan && freshLoans.length > 0) {
+      setSelectedLoan(freshLoans[0]);
+    } else if (selectedLoan) {
+      const updated = freshLoans.find((l) => l.id === selectedLoan.id);
+      if (updated) setSelectedLoan(updated);
+    }
+  });
 
   const [selectedCustId, setSelectedCustId] = useState<string>(customers[0]?.id || '');
   const [amountReq, setAmountReq] = useState<number>(5000);
@@ -330,7 +347,7 @@ export const LoansPage: React.FC = () => {
                   </span>
                 </div>
 
-                <h4 className="font-extrabold text-sm mt-2">
+                <h4 className={`font-extrabold text-sm mt-2 ${isSelected ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
                   {loan.customer?.firstName} {loan.customer?.lastName}
                 </h4>
 

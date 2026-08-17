@@ -1,6 +1,50 @@
-import { User, Customer, Account, Transaction, LoanApplication, AuditLog, Branch, RoleName } from '../types';
+import axios from 'axios';
+import { 
+  User, 
+  Customer, 
+  Account, 
+  Transaction, 
+  LoanApplication, 
+  AuditLog, 
+  Branch, 
+  RoleName, 
+  SavingsPackage,
+  DailyCollectionCycle,
+  DailySplitEntry,
+  CompanyInterestRecord,
+  CompanyInterestWithdrawal,
+  ApprovalRequest
+} from '../types';
+import { broadcastRealtimeEvent } from './realtimeSync';
 
-// Pre-seeded Initial State
+// Financial Precision Helper: Ensures exact 2-decimal arithmetic (no float anomalies)
+export const toDecimal = (val: number | string): number => {
+  const num = typeof val === 'string' ? parseFloat(val) : val;
+  if (isNaN(num)) return 0.00;
+  return Math.round(num * 100) / 100;
+};
+
+// API Base URL (Configurable via environment or defaults to local backend)
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 10000,
+});
+
+// Attach JWT token to requests if available
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('erikon_access_token');
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Core Physical Branches
 export const MOCK_BRANCHES: Branch[] = [
   {
     id: 'br-01',
@@ -37,360 +81,103 @@ export const MOCK_BRANCHES: Branch[] = [
   },
 ];
 
-export const MOCK_USERS: Record<RoleName, User> = {
-  SUPER_ADMIN: {
-    id: 'user-01',
-    employeeId: 'EMP-001',
-    firstName: 'Kwame',
-    lastName: 'Mensah',
-    email: 'admin@erikon-group.com',
-    phone: '+233 24 411 2233',
-    role: 'SUPER_ADMIN',
-    branchId: 'br-01',
-    branch: MOCK_BRANCHES[0],
-  },
-  BRANCH_ADMIN: {
-    id: 'user-02',
-    employeeId: 'EMP-003',
-    firstName: 'Esi',
-    lastName: 'Quansah',
-    email: 'branch.admin@erikon-group.com',
-    phone: '+233 24 333 4455',
-    role: 'BRANCH_ADMIN',
-    branchId: 'br-01',
-    branch: MOCK_BRANCHES[0],
-  },
-  TELLER: {
-    id: 'user-03',
-    employeeId: 'EMP-005',
-    firstName: 'Abena',
-    lastName: 'Osei',
-    email: 'teller@erikon-group.com',
-    phone: '+233 24 555 6677',
-    role: 'TELLER',
-    branchId: 'br-01',
-    branch: MOCK_BRANCHES[0],
-  },
-  FIELD_OFFICER: {
-    id: 'user-04',
-    employeeId: 'EMP-009',
-    firstName: 'Kofi',
-    lastName: 'Appiah',
-    email: 'field.officer@erikon-group.com',
-    phone: '+233 24 999 8877',
-    role: 'FIELD_OFFICER',
-    branchId: 'br-01',
-    branch: MOCK_BRANCHES[0],
-  },
-  LOAN_OFFICER: {
-    id: 'user-05',
-    employeeId: 'EMP-012',
-    firstName: 'Ama',
-    lastName: 'Sarpong',
-    email: 'loan.officer@erikon-group.com',
-    phone: '+233 20 123 4567',
-    role: 'LOAN_OFFICER',
-    branchId: 'br-01',
-    branch: MOCK_BRANCHES[0],
-  },
-  AUDITOR: {
-    id: 'user-06',
-    employeeId: 'EMP-020',
-    firstName: 'Yaw',
-    lastName: 'Boateng',
-    email: 'auditor@erikon-group.com',
-    phone: '+233 50 888 9900',
-    role: 'AUDITOR',
-    branchId: 'br-01',
-    branch: MOCK_BRANCHES[0],
-  },
-};
+// Authorized Staff Identity Directory (Derived strictly from registered staff)
+export const MOCK_USERS: Record<string, User> = {};
 
-export const INITIAL_CUSTOMERS: Customer[] = [
-  {
-    id: 'cust-01',
-    customerNumber: 'CUST-2026-001',
-    firstName: 'Kwadwo',
-    lastName: 'Adjei',
-    otherNames: 'Bernard',
-    dateOfBirth: '1988-05-14',
-    gender: 'Male',
-    phone: '+233 24 100 2030',
-    email: 'kwadwo.adjei@example.com',
-    address: 'Plot 12, Osu RE, Accra',
-    ghanaCardNumber: 'GHA-722104918-3',
-    passportPhotoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-    signatureUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=200',
-    ghanaCardFrontUrl: 'https://images.unsplash.com/photo-1628155930542-3c7a64e2c833?auto=format&fit=crop&q=80&w=400',
-    occupation: 'Trader & Retailer',
-    monthlyIncome: 4500.00,
-    branchId: 'br-01',
-    branch: MOCK_BRANCHES[0],
-    status: 'VERIFIED',
-    createdAt: '2026-01-10T08:30:00Z',
-    nextOfKin: {
-      id: 'nok-01',
-      fullName: 'Mercy Adjei',
-      relationship: 'Spouse',
-      phone: '+233 24 100 9988',
-      address: 'Plot 12, Osu RE, Accra',
-      occupation: 'Teacher',
-    },
-    guarantors: [
-      {
-        id: 'gua-01',
-        fullName: 'Samuel Mensah',
-        phone: '+233 20 444 5566',
-        ghanaCardNumber: 'GHA-891048123-9',
-        address: 'Adabraka, Accra',
-        relationship: 'Business Partner',
-        monthlyIncome: 6000.00,
-      },
-    ],
-  },
-  {
-    id: 'cust-02',
-    customerNumber: 'CUST-2026-002',
-    firstName: 'Akosua',
-    lastName: 'Frimpong',
-    otherNames: 'Grace',
-    dateOfBirth: '1992-11-22',
-    gender: 'Female',
-    phone: '+233 27 333 9900',
-    email: 'akosua.frimpong@example.com',
-    address: 'House 8, East Legon, Accra',
-    ghanaCardNumber: 'GHA-109283748-5',
-    passportPhotoUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200',
-    occupation: 'Fashion Designer',
-    monthlyIncome: 8200.00,
-    branchId: 'br-01',
-    branch: MOCK_BRANCHES[0],
-    status: 'VERIFIED',
-    createdAt: '2026-02-01T10:15:00Z',
-    nextOfKin: {
-      id: 'nok-02',
-      fullName: 'Francis Frimpong',
-      relationship: 'Brother',
-      phone: '+233 27 444 8811',
-      address: 'East Legon, Accra',
-    },
-  },
-];
+// CLEAN PRODUCTION INITIAL STATES (All dummy placeholder records removed)
+export const INITIAL_CUSTOMERS: Customer[] = [];
+export const INITIAL_ACCOUNTS: Account[] = [];
+export const INITIAL_TRANSACTIONS: Transaction[] = [];
+export const INITIAL_LOANS: LoanApplication[] = [];
+export const INITIAL_COMPANY_INTEREST: CompanyInterestRecord[] = [];
+export const INITIAL_COMPANY_WITHDRAWALS: CompanyInterestWithdrawal[] = [];
+export const INITIAL_APPROVALS: ApprovalRequest[] = [];
+export const INITIAL_AUDIT_LOGS: AuditLog[] = [];
 
-export const INITIAL_ACCOUNTS: Account[] = [
-  {
-    id: 'acc-01',
-    accountNumber: 'ACC-1001-0891',
-    customerId: 'cust-01',
-    customer: INITIAL_CUSTOMERS[0],
-    branchId: 'br-01',
-    branch: MOCK_BRANCHES[0],
-    type: 'SAVINGS',
-    currentBalance: 3100.00,
-    availableBalance: 3000.00, // 30 days available, 1 day company fee deducted (31-day policy)
-    interestRate: 0.00,
-    status: 'ACTIVE',
-    openingDate: '2026-01-10T09:00:00Z',
-    dailyCycles: [
-      {
-        id: 'cyc-01',
-        cycleNumber: 1,
-        currentDayCount: 31,
-        dailyTargetAmount: 100.00,
-        totalDeposited: 3100.00,
-        feeDeducted: true,
-        companyFeeAmount: 100.00,
-        isCompleted: true,
-      },
-    ],
-  },
-  {
-    id: 'acc-02',
-    accountNumber: 'ACC-1001-4432',
-    customerId: 'cust-02',
-    customer: INITIAL_CUSTOMERS[1],
-    branchId: 'br-01',
-    branch: MOCK_BRANCHES[0],
-    type: 'SAVINGS',
-    currentBalance: 1850.00,
-    availableBalance: 1850.00,
-    interestRate: 0.00,
-    status: 'ACTIVE',
-    openingDate: '2026-02-01T11:00:00Z',
-    dailyCycles: [
-      {
-        id: 'cyc-02',
-        cycleNumber: 1,
-        currentDayCount: 18,
-        dailyTargetAmount: 100.00,
-        totalDeposited: 1850.00,
-        feeDeducted: false,
-        companyFeeAmount: 0.00,
-        isCompleted: false,
-      },
-    ],
-  },
-];
-
-export const INITIAL_LOANS: LoanApplication[] = [
-  {
-    id: 'loan-01',
-    applicationNo: 'LN-APP-2026-901',
-    customerId: 'cust-01',
-    customer: INITIAL_CUSTOMERS[0],
-    accountId: 'acc-01',
-    productId: 'lp-01',
-    amountRequested: 5000.00,
-    amountApproved: 5000.00,
-    tenorCategory: '1_MONTH_TO_3_MONTHS',
-    tenorValueDays: 90,
-    interestRate: 15,
-    totalInterest: 750.00,
-    totalRepayable: 5750.00,
-    outstandingBal: 3833.33,
-    purpose: 'Shop Inventory Expansion',
-    status: 'DISBURSED',
-    disbursedAt: '2026-05-01T10:00:00Z',
-    dueDate: '2026-08-01T10:00:00Z',
-    createdAt: '2026-04-28T09:00:00Z',
-    schedules: [
-      { id: 'sch-01', installmentNo: 1, dueDate: '2026-06-01', principalDue: 1666.67, interestDue: 250.00, totalDue: 1916.67, principalPaid: 1666.67, interestPaid: 250.00, isPaid: true },
-      { id: 'sch-02', installmentNo: 2, dueDate: '2026-07-01', principalDue: 1666.67, interestDue: 250.00, totalDue: 1916.67, principalPaid: 0.00, interestPaid: 0.00, isPaid: false },
-      { id: 'sch-03', installmentNo: 3, dueDate: '2026-08-01', principalDue: 1666.66, interestDue: 250.00, totalDue: 1916.66, principalPaid: 0.00, interestPaid: 0.00, isPaid: false },
-    ],
-  },
-];
-
-export const INITIAL_TRANSACTIONS: Transaction[] = [
-  {
-    id: 'tx-01',
-    referenceNo: 'TX-DEP-20260721-001',
-    receiptNo: 'RCP-20260721-8891',
-    accountId: 'acc-01',
-    account: INITIAL_ACCOUNTS[0],
-    type: 'DEPOSIT',
-    paymentMode: 'PHYSICAL_CASH',
-    amount: 100.00,
-    previousBal: 3000.00,
-    newBal: 3100.00,
-    recordedBy: MOCK_USERS.FIELD_OFFICER,
-    remarks: 'Daily 31-day collection contribution (Day 31)',
-    createdAt: '2026-07-21T14:20:00Z',
-  },
-  {
-    id: 'tx-02',
-    referenceNo: 'TX-FEE-20260721-002',
-    receiptNo: 'RCP-FEE-20260721-002',
-    accountId: 'acc-01',
-    account: INITIAL_ACCOUNTS[0],
-    type: 'COMPANY_FEE_DEDUCTION',
-    paymentMode: 'PHYSICAL_CASH',
-    amount: 100.00,
-    previousBal: 3100.00,
-    newBal: 3000.00,
-    recordedBy: MOCK_USERS.SUPER_ADMIN,
-    remarks: 'E-RIKON 31-Day Policy management fee retention',
-    createdAt: '2026-07-21T14:21:00Z',
-  },
-];
-
-export const MOCK_AUDIT_LOGS: AuditLog[] = [
-  {
-    id: 'aud-01',
-    userId: 'user-04',
-    userEmail: 'field.officer@erikon-group.com',
-    userRole: 'FIELD_OFFICER',
-    branchName: 'Accra Central Main Branch',
-    action: 'PHYSICAL_DEPOSIT_RECORDED',
-    resource: 'TRANSACTION',
-    previousValue: 'Balance GHS 3000.00',
-    newValue: 'Balance GHS 3100.00 (Tx: TX-DEP-20260721-001)',
-    ipAddress: '192.168.1.45',
-    createdAt: '2026-07-21T14:20:05Z',
-  },
-  {
-    id: 'aud-02',
-    userId: 'user-01',
-    userEmail: 'admin@erikon-group.com',
-    userRole: 'SUPER_ADMIN',
-    branchName: 'Accra Central Main Branch',
-    action: 'COMPANY_FEE_RETENTION_31DAY_POLICY',
-    resource: 'ACCOUNT',
-    previousValue: 'Available GHS 3100.00',
-    newValue: 'Available GHS 3000.00 (Fee: GHS 100.00 Retained)',
-    ipAddress: '192.168.1.10',
-    createdAt: '2026-07-21T14:21:05Z',
-  },
-];
-
-// --- LOCALSTORAGE PERSISTENCE HELPERS ---
+// --- PERSISTENCE & REAL-TIME REPOSITORY ---
 
 export const getStoredCustomers = (): Customer[] => {
   const data = localStorage.getItem('erikon_customers');
-  if (!data) {
-    localStorage.setItem('erikon_customers', JSON.stringify(INITIAL_CUSTOMERS));
-    return INITIAL_CUSTOMERS;
-  }
+  if (!data) return [];
   try {
     return JSON.parse(data);
   } catch {
-    return INITIAL_CUSTOMERS;
+    return [];
   }
 };
 
 export const saveStoredCustomers = (customers: Customer[]) => {
-  localStorage.setItem('erikon_customers', JSON.stringify(customers));
+  const sanitized = customers.map((c) => {
+    const { accounts: _, ...rest } = c;
+    return rest as Customer;
+  });
+  localStorage.setItem('erikon_customers', JSON.stringify(sanitized));
+  broadcastRealtimeEvent('CUSTOMER_REGISTERED', sanitized);
 };
 
 export const getStoredAccounts = (): Account[] => {
   const data = localStorage.getItem('erikon_accounts');
-  if (!data) {
-    localStorage.setItem('erikon_accounts', JSON.stringify(INITIAL_ACCOUNTS));
-    return INITIAL_ACCOUNTS;
-  }
+  if (!data) return [];
   try {
     return JSON.parse(data);
   } catch {
-    return INITIAL_ACCOUNTS;
+    return [];
   }
 };
 
 export const saveStoredAccounts = (accounts: Account[]) => {
-  localStorage.setItem('erikon_accounts', JSON.stringify(accounts));
+  const sanitized = accounts.map((a) => {
+    if (a.customer) {
+      const { accounts: _, ...cleanCust } = a.customer;
+      return { ...a, customer: cleanCust as Customer };
+    }
+    return a;
+  });
+  localStorage.setItem('erikon_accounts', JSON.stringify(sanitized));
+  broadcastRealtimeEvent('ACCOUNT_OPENED', sanitized);
 };
 
 export const getStoredLoans = (): LoanApplication[] => {
   const data = localStorage.getItem('erikon_loans');
-  if (!data) {
-    localStorage.setItem('erikon_loans', JSON.stringify(INITIAL_LOANS));
-    return INITIAL_LOANS;
-  }
+  if (!data) return [];
   try {
     return JSON.parse(data);
   } catch {
-    return INITIAL_LOANS;
+    return [];
   }
 };
 
 export const saveStoredLoans = (loans: LoanApplication[]) => {
   localStorage.setItem('erikon_loans', JSON.stringify(loans));
+  broadcastRealtimeEvent('LOAN_CREATED', loans);
 };
 
 export const getStoredTransactions = (): Transaction[] => {
   const data = localStorage.getItem('erikon_transactions');
-  if (!data) {
-    localStorage.setItem('erikon_transactions', JSON.stringify(INITIAL_TRANSACTIONS));
-    return INITIAL_TRANSACTIONS;
-  }
+  if (!data) return [];
   try {
     return JSON.parse(data);
   } catch {
-    return INITIAL_TRANSACTIONS;
+    return [];
   }
 };
 
 export const saveStoredTransactions = (txs: Transaction[]) => {
-  localStorage.setItem('erikon_transactions', JSON.stringify(txs));
+  const sanitized = txs.map((t) => {
+    if (t.account && t.account.customer) {
+      const { accounts: _, ...cleanCust } = t.account.customer;
+      return {
+        ...t,
+        account: {
+          ...t.account,
+          customer: cleanCust as Customer,
+        },
+      };
+    }
+    return t;
+  });
+  localStorage.setItem('erikon_transactions', JSON.stringify(sanitized));
+  broadcastRealtimeEvent('PACKAGE_DEPOSIT_RECORDED', sanitized);
 };
 
 export const getStoredBranches = (): Branch[] => {
@@ -410,9 +197,675 @@ export const saveStoredBranches = (branches: Branch[]) => {
   localStorage.setItem('erikon_branches', JSON.stringify(branches));
 };
 
-// Aliases for initial load compatibility
+export const getStoredCompanyInterest = (): CompanyInterestRecord[] => {
+  const data = localStorage.getItem('erikon_company_interest');
+  if (!data) return [];
+  try {
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+};
+
+export const saveStoredCompanyInterest = (records: CompanyInterestRecord[]) => {
+  localStorage.setItem('erikon_company_interest', JSON.stringify(records));
+  broadcastRealtimeEvent('COMPANY_INTEREST_ACCUMULATED', records);
+};
+
+export const getStoredCompanyWithdrawals = (): CompanyInterestWithdrawal[] => {
+  const data = localStorage.getItem('erikon_company_withdrawals');
+  if (!data) return [];
+  try {
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+};
+
+export const saveStoredCompanyWithdrawals = (withdrawals: CompanyInterestWithdrawal[]) => {
+  localStorage.setItem('erikon_company_withdrawals', JSON.stringify(withdrawals));
+  broadcastRealtimeEvent('INTEREST_WITHDRAWAL_REQUESTED', withdrawals);
+};
+
+export const getStoredApprovals = (): ApprovalRequest[] => {
+  const data = localStorage.getItem('erikon_approvals');
+  if (!data) return [];
+  try {
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+};
+
+export const saveStoredApprovals = (approvals: ApprovalRequest[]) => {
+  localStorage.setItem('erikon_approvals', JSON.stringify(approvals));
+  broadcastRealtimeEvent('APPROVAL_DECISION_MADE', approvals);
+};
+
+export const getStoredAuditLogs = (): AuditLog[] => {
+  const data = localStorage.getItem('erikon_audit_logs');
+  if (!data) return [];
+  try {
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+};
+
+export const saveStoredAuditLogs = (logs: AuditLog[]) => {
+  localStorage.setItem('erikon_audit_logs', JSON.stringify(logs));
+};
+
+export interface RegisteredUserRecord extends User {
+  password?: string;
+  ghanaCard?: string;
+}
+
+export const getRegisteredUsers = (): RegisteredUserRecord[] => {
+  const data = localStorage.getItem('erikon_registered_users');
+  if (!data) return [];
+  try {
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+};
+
+export const saveRegisteredUsers = (users: RegisteredUserRecord[]) => {
+  localStorage.setItem('erikon_registered_users', JSON.stringify(users));
+  broadcastRealtimeEvent('STAFF_REGISTERED', users);
+};
+
+// Aliases for live state
 export const MOCK_CUSTOMERS = getStoredCustomers();
 export const MOCK_ACCOUNTS = getStoredAccounts();
 export const MOCK_LOANS = getStoredLoans();
 export const MOCK_TRANSACTIONS = getStoredTransactions();
 
+/**
+ * Clear all financial receipts, statement history, and daily collection cycle splits
+ * Resets customer account balances to 0.00 GHS while preserving client profiles and their chosen packages
+ */
+export const clearAllFinancialReceipts = () => {
+  localStorage.removeItem('erikon_transactions');
+  localStorage.removeItem('erikon_company_interest');
+  localStorage.removeItem('erikon_company_withdrawals');
+  localStorage.removeItem('erikon_audit_logs');
+
+  // Reset account balances to 0.00 and clear all daily splits & cycle counts
+  const accounts = getStoredAccounts();
+  const resetAccounts = accounts.map((acc) => ({
+    ...acc,
+    currentBalance: 0.00,
+    availableBalance: 0.00,
+    dailyCycles: acc.dailyCycles?.map((cycle) => ({
+      ...cycle,
+      currentDayCount: 0,
+      totalDeposited: 0.00,
+      feeDeducted: false,
+      companyFeeAmount: 0.00,
+      isCompleted: false,
+      dailySplits: [],
+    })) || [],
+  }));
+
+  saveStoredAccounts(resetAccounts);
+  localStorage.setItem('erikon_transactions', JSON.stringify([]));
+  localStorage.setItem('erikon_company_interest', JSON.stringify([]));
+  localStorage.setItem('erikon_company_withdrawals', JSON.stringify([]));
+  localStorage.setItem('erikon_audit_logs', JSON.stringify([]));
+
+  broadcastRealtimeEvent('FINANCIAL_RECEIPTS_CLEARED', { clearedAt: new Date().toISOString() });
+};
+
+/**
+ * Clear and reset all data to a clean slate (All users, customers, and monies wiped)
+ */
+export const resetToCleanLiveState = () => {
+  localStorage.removeItem('erikon_customers');
+  localStorage.removeItem('erikon_accounts');
+  localStorage.removeItem('erikon_transactions');
+  localStorage.removeItem('erikon_loans');
+  localStorage.removeItem('erikon_company_interest');
+  localStorage.removeItem('erikon_company_withdrawals');
+  localStorage.removeItem('erikon_approvals');
+  localStorage.removeItem('erikon_audit_logs');
+  localStorage.removeItem('erikon_registered_users');
+  localStorage.removeItem('erikon_current_user');
+  broadcastRealtimeEvent('DATA_RESET', { resetAt: new Date().toISOString() });
+};
+
+// --- CUSTOMER & ACCOUNT ONBOARDING ---
+
+export const createNewCustomer = (customerData: Omit<Customer, 'id' | 'customerNumber' | 'createdAt' | 'status'> & { initialDeposit?: number; savingsPackage?: SavingsPackage }): { customer: Customer; account: Account } => {
+  const customers = getStoredCustomers();
+  const accounts = getStoredAccounts();
+
+  const customerNumber = `CUST-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const newCustomer: Customer = {
+    ...customerData,
+    id: `cust-${Date.now()}`,
+    customerNumber,
+    status: 'VERIFIED',
+    createdAt: new Date().toISOString(),
+  };
+
+  const packageRate = customerData.savingsPackage || 20;
+  const initialDepositAmount = customerData.initialDeposit || 0;
+  const initialDayCount = initialDepositAmount >= packageRate ? Math.floor(initialDepositAmount / packageRate) : 0;
+
+  const newAccount: Account = {
+    id: `acc-${Date.now()}`,
+    accountNumber: `ACC-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`,
+    customerId: newCustomer.id,
+    customer: newCustomer,
+    branchId: newCustomer.branchId || 'br-01',
+    branch: MOCK_BRANCHES.find((b) => b.id === newCustomer.branchId) || MOCK_BRANCHES[0],
+    type: 'SAVINGS',
+    savingsPackage: packageRate,
+    isPackageLockedForMonth: true,
+    currentBalance: initialDepositAmount,
+    availableBalance: initialDepositAmount,
+    interestRate: 0.00,
+    status: 'ACTIVE',
+    openingDate: new Date().toISOString(),
+    dailyCycles: [
+      {
+        id: `cyc-${Date.now()}`,
+        cycleNumber: 1,
+        currentDayCount: initialDayCount,
+        dailyTargetAmount: packageRate,
+        totalDeposited: initialDepositAmount,
+        feeDeducted: false,
+        companyFeeAmount: 0,
+        isCompleted: false,
+        startDate: new Date().toISOString().split('T')[0],
+        dailySplits: initialDayCount > 0 ? Array.from({ length: initialDayCount }, (_, i) => ({
+          dayNumber: i + 1,
+          date: new Date().toISOString().split('T')[0],
+          amount: packageRate,
+          receiptNo: `RCP-INIT-${Date.now().toString().slice(-4)}-${i + 1}`,
+          isCompanyFee: false,
+        })) : [],
+      },
+    ],
+  };
+
+  saveStoredCustomers([newCustomer, ...customers]);
+  saveStoredAccounts([newAccount, ...accounts]);
+
+  if (initialDepositAmount > 0) {
+    const txs = getStoredTransactions();
+    const newTx: Transaction = {
+      id: `tx-init-${Date.now()}`,
+      referenceNo: `TX-INIT-${Date.now().toString().slice(-8)}`,
+      receiptNo: `RCP-INIT-${Date.now().toString().slice(-8)}`,
+      accountId: newAccount.id,
+      account: newAccount,
+      type: 'DEPOSIT',
+      paymentMode: 'PHYSICAL_CASH',
+      amount: initialDepositAmount,
+      previousBal: 0,
+      newBal: initialDepositAmount,
+      remarks: `Initial account opening deposit on GH₵ ${packageRate} daily savings package`,
+      createdAt: new Date().toISOString(),
+    };
+    saveStoredTransactions([newTx, ...txs]);
+  }
+
+  return { customer: newCustomer, account: newAccount };
+};
+
+/**
+ * Delete / Close Customer Record (When client does not want to save anymore)
+ */
+export const deleteCustomerRecord = (customerId: string): boolean => {
+  // 1. Remove from stored customers
+  const customers = getStoredCustomers();
+  const targetCust = customers.find((c) => c.id === customerId);
+  const updatedCusts = customers.filter((c) => c.id !== customerId);
+  saveStoredCustomers(updatedCusts);
+
+  // 2. Remove associated accounts
+  const accounts = getStoredAccounts();
+  const updatedAccs = accounts.filter((a) => a.customerId !== customerId);
+  saveStoredAccounts(updatedAccs);
+
+  // 3. Remove associated loans
+  const loans = getStoredLoans();
+  const updatedLoans = loans.filter((l) => l.customerId !== customerId);
+  saveStoredLoans(updatedLoans);
+
+  // 4. Record audit log
+  const logs = getStoredAuditLogs();
+  const newLog: AuditLog = {
+    id: `log-del-${Date.now()}`,
+    userId: 'current-user',
+    userEmail: 'staff@erikon-group.com',
+    userRole: 'SUPER_ADMIN',
+    action: 'CUSTOMER_DELETED',
+    resource: 'CUSTOMER',
+    previousValue: targetCust ? `${targetCust.firstName} ${targetCust.lastName} (${targetCust.customerNumber})` : customerId,
+    newValue: 'CLOSED_AND_DELETED',
+    ipAddress: '127.0.0.1',
+    createdAt: new Date().toISOString(),
+  };
+  saveStoredAuditLogs([newLog, ...logs]);
+
+  // 5. Broadcast real-time deletion event across all open windows & mobile devices
+  broadcastRealtimeEvent('CUSTOMER_DELETED', { customerId });
+
+  // 6. Delete from backend Neon database if connected
+  apiClient.delete(`/customers/${customerId}`).catch(() => {});
+
+  return true;
+};
+
+// --- SAVINGS PACKAGES & MULTI-DAY SPLITTING ENGINE ---
+
+export interface PaymentSplitResult {
+  packageAmount: number;
+  totalPaid: number;
+  daysCovered: number;
+  remainder: number;
+  startDay: number;
+  endDay: number;
+  entries: DailySplitEntry[];
+  isDay31Included: boolean;
+  companyFeeIncluded: number;
+}
+
+export const splitPaymentIntoDays = (
+  packageAmount: number,
+  totalPaid: number,
+  startingDay: number = 0,
+  startDateStr?: string
+): PaymentSplitResult => {
+  if (!packageAmount || packageAmount <= 0) {
+    throw new Error('Invalid package amount');
+  }
+
+  const daysCovered = Math.floor(totalPaid / packageAmount);
+  const remainder = totalPaid % packageAmount;
+  const entries: DailySplitEntry[] = [];
+  let isDay31Included = false;
+  let companyFeeIncluded = 0;
+
+  const baseDate = startDateStr ? new Date(startDateStr) : new Date();
+
+  for (let i = 1; i <= daysCovered; i++) {
+    const currentDayNo = startingDay + i;
+    const isDay31 = currentDayNo === 31;
+    if (isDay31) {
+      isDay31Included = true;
+      companyFeeIncluded += packageAmount;
+    }
+
+    const entryDate = new Date(baseDate);
+    entryDate.setDate(entryDate.getDate() + (i - 1));
+
+    entries.push({
+      dayNumber: currentDayNo,
+      date: entryDate.toISOString().split('T')[0],
+      amount: packageAmount,
+      receiptNo: `RCP-SPLIT-${Date.now().toString().slice(-6)}-${i}`,
+      isCompanyFee: isDay31,
+    });
+  }
+
+  return {
+    packageAmount,
+    totalPaid,
+    daysCovered,
+    remainder,
+    startDay: startingDay + 1,
+    endDay: startingDay + daysCovered,
+    entries,
+    isDay31Included,
+    companyFeeIncluded,
+  };
+};
+
+/**
+ * Record a single or multi-day package deposit with automatic splitting across 30/31 days
+ */
+export const recordPackageDeposit = (
+  accountId: string,
+  amountPaid: number,
+  officerUser: User,
+  remarks?: string,
+  customStartDate?: string
+): { updatedAccount: Account; transaction: Transaction; splitResult: PaymentSplitResult } => {
+  const accounts = getStoredAccounts();
+  const accIndex = accounts.findIndex((a) => a.id === accountId);
+  if (accIndex === -1) throw new Error('Account not found');
+
+  const acc = { ...accounts[accIndex] };
+  const packageRate = acc.savingsPackage || 20;
+
+  let cycles = acc.dailyCycles ? [...acc.dailyCycles] : [];
+  let activeCycle = cycles[0];
+
+  if (!activeCycle || activeCycle.isCompleted || activeCycle.currentDayCount >= 31) {
+    const nextCycleNo = activeCycle ? activeCycle.cycleNumber + 1 : 1;
+    activeCycle = {
+      id: `cyc-${Date.now()}`,
+      cycleNumber: nextCycleNo,
+      currentDayCount: 0,
+      dailyTargetAmount: packageRate,
+      totalDeposited: 0,
+      feeDeducted: false,
+      companyFeeAmount: 0,
+      isCompleted: false,
+      startDate: customStartDate || new Date().toISOString().split('T')[0],
+      dailySplits: [],
+    };
+    cycles = [activeCycle, ...cycles];
+  }
+
+  const splitResult = splitPaymentIntoDays(
+    packageRate,
+    amountPaid,
+    activeCycle.currentDayCount,
+    customStartDate || activeCycle.startDate
+  );
+
+  // Update Cycle
+  const newDayCount = Math.min(31, activeCycle.currentDayCount + splitResult.daysCovered);
+  activeCycle.currentDayCount = newDayCount;
+  activeCycle.totalDeposited += amountPaid;
+  activeCycle.dailySplits = [...(activeCycle.dailySplits || []), ...splitResult.entries];
+
+  let addedAvailable = amountPaid;
+  if (splitResult.isDay31Included) {
+    activeCycle.feeDeducted = true;
+    activeCycle.companyFeeAmount += splitResult.companyFeeIncluded;
+    activeCycle.isCompleted = true;
+    addedAvailable -= splitResult.companyFeeIncluded;
+
+    // Pile up company interest
+    accumulateCompanyInterest(acc, activeCycle.cycleNumber, toDecimal(packageRate));
+  }
+
+  acc.dailyCycles = cycles;
+  acc.currentBalance = toDecimal(acc.currentBalance + amountPaid);
+  acc.availableBalance = toDecimal(acc.availableBalance + addedAvailable);
+
+  // Create Transaction
+  const newTx: Transaction = {
+    id: `tx-${Date.now()}`,
+    referenceNo: `TX-DEP-${Date.now().toString().slice(-8)}`,
+    receiptNo: `RCP-${Date.now().toString().slice(-8)}`,
+    accountId: acc.id,
+    account: acc,
+    type: splitResult.isDay31Included ? 'COMPANY_FEE_DEDUCTION' : 'DEPOSIT',
+    paymentMode: 'PHYSICAL_CASH',
+    amount: toDecimal(amountPaid),
+    previousBal: toDecimal(acc.availableBalance - addedAvailable),
+    newBal: toDecimal(acc.availableBalance),
+    recordedBy: officerUser,
+    remarks: remarks || `Package GHS ${packageRate.toFixed(2)} deposit covering ${splitResult.daysCovered} day(s) (Days ${splitResult.startDay}-${splitResult.endDay})`,
+    createdAt: new Date().toISOString(),
+  };
+
+  accounts[accIndex] = acc;
+  saveStoredAccounts(accounts);
+
+  const existingTxs = getStoredTransactions();
+  saveStoredTransactions([newTx, ...existingTxs]);
+
+  return { updatedAccount: acc, transaction: newTx, splitResult };
+};
+
+/**
+ * Accumulate 30-Day Interest for Company
+ */
+export const accumulateCompanyInterest = (
+  account: Account,
+  cycleNumber: number,
+  packageAmount: number
+) => {
+  const currentInterest = getStoredCompanyInterest();
+  const newRecord: CompanyInterestRecord = {
+    id: `int-${Date.now()}`,
+    customerId: account.customerId,
+    customerName: account.customer ? `${account.customer.firstName} ${account.customer.lastName}` : 'Client',
+    accountId: account.id,
+    accountNumber: account.accountNumber,
+    cycleNumber,
+    packageAmount,
+    accumulatedAmount: packageAmount,
+    period: `${new Date().toISOString().slice(0, 7)} (Cycle #${cycleNumber} - 30 Days)`,
+    status: 'ACCUMULATED',
+    createdAt: new Date().toISOString(),
+  };
+
+  saveStoredCompanyInterest([newRecord, ...currentInterest]);
+};
+
+/**
+ * Request Company Interest Withdrawal (Goes to Super Admin for approval)
+ */
+export const requestCompanyInterestWithdrawal = (
+  amount: number,
+  destinationType: 'COMPANY_BANK_ACCOUNT' | 'MTN_MOMO_MERCHANT' | 'VAULT_CASH',
+  destinationDetails: string,
+  user: User,
+  remarks?: string
+): CompanyInterestWithdrawal => {
+  const withdrawals = getStoredCompanyWithdrawals();
+  const approvals = getStoredApprovals();
+
+  const newWithdrawal: CompanyInterestWithdrawal = {
+    id: `wd-int-${Date.now()}`,
+    referenceNo: `WD-INT-${Date.now().toString().slice(-8)}`,
+    amount,
+    destinationType,
+    destinationDetails,
+    requestedBy: {
+      id: user.id,
+      name: `${user.firstName} ${user.lastName}`,
+      role: user.role,
+    },
+    status: 'PENDING_SUPER_ADMIN_APPROVAL',
+    remarks,
+    requestedAt: new Date().toISOString(),
+  };
+
+  const approvalItem: ApprovalRequest = {
+    id: `appr-${Date.now()}`,
+    type: 'COMPANY_INTEREST_WITHDRAWAL',
+    title: `Company Interest Withdrawal Request (GHS ${amount.toFixed(2)})`,
+    description: `Request to disburse GHS ${amount.toFixed(2)} piled up interest to ${destinationType.replace(/_/g, ' ')} (${destinationDetails}).`,
+    targetId: newWithdrawal.id,
+    requestedById: user.id,
+    requestedByName: `${user.firstName} ${user.lastName}`,
+    requestedRole: user.role,
+    amount,
+    details: {
+      destinationType,
+      destinationDetails,
+      remarks,
+    },
+    status: 'PENDING',
+    createdAt: new Date().toISOString(),
+  };
+
+  saveStoredCompanyWithdrawals([newWithdrawal, ...withdrawals]);
+  saveStoredApprovals([approvalItem, ...approvals]);
+
+  return newWithdrawal;
+};
+
+/**
+ * Super Admin Approval Action (STRICTLY RESTRICTED TO SUPER_ADMIN)
+ */
+export const approveRequest = (
+  approvalId: string,
+  reviewerUser: User,
+  remarks?: string
+) => {
+  if (reviewerUser.role !== 'SUPER_ADMIN') {
+    throw new Error('Unauthorized: ONLY the Super Admin has permission to make approvals.');
+  }
+
+  const approvals = getStoredApprovals();
+  const index = approvals.findIndex((a) => a.id === approvalId);
+  if (index === -1) throw new Error('Approval request not found');
+
+  const req = { ...approvals[index] };
+  req.status = 'APPROVED';
+  req.reviewedById = reviewerUser.id;
+  req.reviewedByName = `${reviewerUser.firstName} ${reviewerUser.lastName}`;
+  req.reviewedAt = new Date().toISOString();
+  req.reviewRemarks = remarks || 'Approved by Super Admin';
+
+  if (req.type === 'COMPANY_INTEREST_WITHDRAWAL') {
+    const withdrawals = getStoredCompanyWithdrawals();
+    const wIndex = withdrawals.findIndex((w) => w.id === req.targetId);
+    if (wIndex !== -1) {
+      withdrawals[wIndex].status = 'APPROVED';
+      withdrawals[wIndex].approvedBy = {
+        id: reviewerUser.id,
+        name: `${reviewerUser.firstName} ${reviewerUser.lastName}`,
+        role: reviewerUser.role,
+      };
+      withdrawals[wIndex].approvedAt = new Date().toISOString();
+      saveStoredCompanyWithdrawals(withdrawals);
+
+      const txs = getStoredTransactions();
+      const newTx: Transaction = {
+        id: `tx-wd-${Date.now()}`,
+        referenceNo: `TX-WD-${Date.now().toString().slice(-8)}`,
+        receiptNo: `RCP-WD-${Date.now().toString().slice(-8)}`,
+        accountId: 'acc-company-vault',
+        type: 'COMPANY_INTEREST_WITHDRAWAL',
+        paymentMode: withdrawals[wIndex].destinationType === 'MTN_MOMO_MERCHANT' ? 'MTN_MOBILE_MONEY' : 'BANK_TRANSFER',
+        amount: withdrawals[wIndex].amount,
+        previousBal: 0,
+        newBal: 0,
+        recordedBy: reviewerUser,
+        remarks: `Super Admin Approved Company Interest Payout: ${withdrawals[wIndex].destinationDetails}`,
+        createdAt: new Date().toISOString(),
+      };
+      saveStoredTransactions([newTx, ...txs]);
+    }
+  } else if (req.type === 'LOAN_APPROVAL') {
+    const loans = getStoredLoans();
+    const lIndex = loans.findIndex((l) => l.id === req.targetId);
+    if (lIndex !== -1) {
+      loans[lIndex].status = 'APPROVED';
+      saveStoredLoans(loans);
+    }
+  }
+
+  approvals[index] = req;
+  saveStoredApprovals(approvals);
+  return req;
+};
+
+/**
+ * Super Admin Rejection Action (STRICTLY RESTRICTED TO SUPER_ADMIN)
+ */
+export const rejectRequest = (
+  approvalId: string,
+  reviewerUser: User,
+  remarks?: string
+) => {
+  if (reviewerUser.role !== 'SUPER_ADMIN') {
+    throw new Error('Unauthorized: ONLY the Super Admin has permission to reject approvals.');
+  }
+
+  const approvals = getStoredApprovals();
+  const index = approvals.findIndex((a) => a.id === approvalId);
+  if (index === -1) throw new Error('Approval request not found');
+
+  const req = { ...approvals[index] };
+  req.status = 'REJECTED';
+  req.reviewedById = reviewerUser.id;
+  req.reviewedByName = `${reviewerUser.firstName} ${reviewerUser.lastName}`;
+  req.reviewedAt = new Date().toISOString();
+  req.reviewRemarks = remarks || 'Rejected by Super Admin';
+
+  if (req.type === 'COMPANY_INTEREST_WITHDRAWAL') {
+    const withdrawals = getStoredCompanyWithdrawals();
+    const wIndex = withdrawals.findIndex((w) => w.id === req.targetId);
+    if (wIndex !== -1) {
+      withdrawals[wIndex].status = 'REJECTED';
+      saveStoredCompanyWithdrawals(withdrawals);
+    }
+  } else if (req.type === 'LOAN_APPROVAL') {
+    const loans = getStoredLoans();
+    const lIndex = loans.findIndex((l) => l.id === req.targetId);
+    if (lIndex !== -1) {
+      loans[lIndex].status = 'REJECTED';
+      saveStoredLoans(loans);
+    }
+  }
+
+  approvals[index] = req;
+  saveStoredApprovals(approvals);
+  return req;
+};
+
+/**
+ * Register New Staff Role
+ */
+export const registerNewUserRole = (signupData: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  role: RoleName;
+  ghanaCard: string;
+  employeeId?: string;
+  branchId?: string;
+  password?: string;
+}): { user: User; approval: ApprovalRequest } => {
+  const isAutoApproved = signupData.role === 'SUPER_ADMIN' || getRegisteredUsers().length === 0;
+
+  const newUser: RegisteredUserRecord = {
+    id: `user-${Date.now()}`,
+    employeeId: signupData.employeeId || `EMP-${Date.now().toString().slice(-4)}`,
+    firstName: signupData.firstName,
+    lastName: signupData.lastName,
+    email: signupData.email,
+    phone: signupData.phone,
+    role: signupData.role,
+    password: signupData.password || 'erikon2026',
+    ghanaCard: signupData.ghanaCard,
+    branchId: signupData.branchId || 'br-01',
+    branch: MOCK_BRANCHES[0],
+    createdAt: new Date().toISOString(),
+    status: isAutoApproved ? 'ACTIVE' : 'PENDING_APPROVAL',
+  };
+
+  const existingUsers = getRegisteredUsers();
+  const updatedUsers = [newUser, ...existingUsers.filter((u) => u.email.toLowerCase() !== newUser.email.toLowerCase())];
+  saveRegisteredUsers(updatedUsers);
+
+  const approvalItem: ApprovalRequest = {
+    id: `appr-${Date.now()}`,
+    type: 'STAFF_ROLE_SIGNUP',
+    title: `New ${signupData.role.replace(/_/g, ' ')} Registration: ${signupData.firstName} ${signupData.lastName}`,
+    description: `Application received for ${signupData.role.replace(/_/g, ' ')} position. Contact: ${signupData.phone} | Ghana Card: ${signupData.ghanaCard}`,
+    targetId: newUser.id,
+    requestedById: newUser.id,
+    requestedByName: `${signupData.firstName} ${signupData.lastName}`,
+    requestedRole: signupData.role,
+    details: {
+      email: signupData.email,
+      phone: signupData.phone,
+      ghanaCard: signupData.ghanaCard,
+      role: signupData.role,
+      branch: 'Accra Central Main Branch',
+    },
+    status: isAutoApproved ? 'APPROVED' : 'PENDING',
+    createdAt: new Date().toISOString(),
+  };
+
+  const approvals = getStoredApprovals();
+  saveStoredApprovals([approvalItem, ...approvals]);
+
+  return { user: newUser, approval: approvalItem };
+};

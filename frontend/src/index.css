@@ -14,6 +14,33 @@ body {
   overflow-x: hidden;
 }
 
+/* Input typography: crisp dark font in light mode, bright white font in dark mode */
+input, textarea, select, option {
+  color: #0f172a;
+}
+
+.dark input, .dark textarea, .dark select, .dark option {
+  color: #f8fafc;
+}
+
+/* Dedicated dark input styling (e.g. Workstation login/signup on dark canvas) */
+.auth-dark-input,
+.dark-auth input,
+.dark-auth select,
+.dark-auth textarea {
+  color: #ffffff !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #64748b;
+  opacity: 0.9;
+}
+
+.dark input::placeholder, .dark textarea::placeholder {
+  color: #94a3b8;
+  opacity: 0.85;
+}
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
@@ -33,18 +60,23 @@ body {
   background: rgba(100, 116, 139, 0.7);
 }
 
-/* Print Receipt Styles */
+/* Print Receipt & Statement Styles */
 @media print {
   body * {
     visibility: hidden;
   }
-  #printable-receipt, #printable-receipt * {
+  #printable-receipt, #printable-receipt *,
+  #official-statement-printable, #official-statement-printable * {
     visibility: visible;
   }
-  #printable-receipt {
+  #printable-receipt, #official-statement-printable {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
+    margin: 0;
+    padding: 20px;
+    background: white !important;
+    color: black !important;
   }
 }

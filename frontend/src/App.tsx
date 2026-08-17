@@ -15,6 +15,8 @@ import { LoansPage } from './pages/LoansPage';
 import { BranchesPage } from './pages/BranchesPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { AuditPage } from './pages/AuditPage';
+import { CompanyInterestPage } from './pages/CompanyInterestPage';
+import { ApprovalsPage } from './pages/ApprovalsPage';
 
 const queryClient = new QueryClient();
 
@@ -25,7 +27,7 @@ export const App: React.FC = () => {
         <AuthProvider>
           <BrowserRouter>
             <Routes>
-              {/* Login Route */}
+              {/* Login & Registration Portal */}
               <Route path="/login" element={<LoginPage />} />
 
               {/* Protected Workstation Routes */}
@@ -36,15 +38,34 @@ export const App: React.FC = () => {
                     <MainLayout>
                       <Routes>
                         <Route path="/" element={<DashboardPage />} />
+                        <Route path="/dashboard" element={<DashboardPage />} />
                         
                         <Route path="/customers" element={<CustomersPage />} />
                         
                         <Route path="/accounts" element={<AccountsPage />} />
                         
                         <Route
+                          path="/company-interest"
+                          element={
+                            <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'AUDITOR']}>
+                              <CompanyInterestPage />
+                            </ProtectedRoute>
+                          }
+                        />
+
+                        <Route
+                          path="/approvals"
+                          element={
+                            <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}>
+                              <ApprovalsPage />
+                            </ProtectedRoute>
+                          }
+                        />
+
+                        <Route
                           path="/teller"
                           element={
-                            <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'BRANCH_ADMIN', 'TELLER']}>
+                            <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'TELLER']}>
                               <TellerPage />
                             </ProtectedRoute>
                           }
@@ -53,7 +74,7 @@ export const App: React.FC = () => {
                         <Route
                           path="/field-officer"
                           element={
-                            <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'BRANCH_ADMIN', 'FIELD_OFFICER']}>
+                            <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'FIELD_OFFICER']}>
                               <FieldOfficerPage />
                             </ProtectedRoute>
                           }
@@ -62,7 +83,7 @@ export const App: React.FC = () => {
                         <Route
                           path="/loans"
                           element={
-                            <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'BRANCH_ADMIN', 'LOAN_OFFICER', 'AUDITOR']}>
+                            <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'LOAN_OFFICER', 'AUDITOR']}>
                               <LoansPage />
                             </ProtectedRoute>
                           }
@@ -71,7 +92,7 @@ export const App: React.FC = () => {
                         <Route
                           path="/branches"
                           element={
-                            <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'BRANCH_ADMIN', 'AUDITOR']}>
+                            <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'AUDITOR']}>
                               <BranchesPage />
                             </ProtectedRoute>
                           }
@@ -82,7 +103,7 @@ export const App: React.FC = () => {
                         <Route
                           path="/audit"
                           element={
-                            <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'BRANCH_ADMIN', 'AUDITOR']}>
+                            <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'AUDITOR']}>
                               <AuditPage />
                             </ProtectedRoute>
                           }

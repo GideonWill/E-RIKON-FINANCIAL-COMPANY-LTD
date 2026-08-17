@@ -1,12 +1,22 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, RoleName } from '../types';
-import { MOCK_USERS } from '../services/api';
+import { User, RoleName, ApprovalRequest } from '../types';
+import { MOCK_USERS, registerNewUserRole, getRegisteredUsers, RegisteredUserRecord } from '../services/api';
 
 interface AuthContextType {
   currentUser: User | null;
   isAuthenticated: boolean;
   login: (email?: string, password?: string, role?: RoleName) => boolean;
   loginAsRole: (role: RoleName) => void;
+  signupRole: (data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    role: RoleName;
+    ghanaCard: string;
+    employeeId?: string;
+    password?: string;
+  }) => { user: User; approval: ApprovalRequest };
   logout: () => void;
 }
 
@@ -19,11 +29,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         return JSON.parse(saved);
       } catch {
-        return MOCK_USERS['SUPER_ADMIN'];
+        return null;
       }
     }
-    // Default initial session for workstation access
-    return MOCK_USERS['SUPER_ADMIN'];
+    return null;
   });
 
   useEffect(() => {
@@ -35,20 +44,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentUser]);
 
   const login = (email?: string, password?: string, role?: RoleName): boolean => {
-    const targetRole = role || 'SUPER_ADMIN';
-    if (MOCK_USERS[targetRole]) {
-      const user = MOCK_USERS[targetRole];
-      setCurrentUser(user);
-      localStorage.setItem('erikon_current_user', JSON.stringify(user));
-      return true;
+    const cleanEmail = email?.trim().toLowerCase();
+    const cleanPass = password?.trim();
+
+    if (!cleanEmail || !cleanPass) {
+      return false;
     }
+
+    // Check in dynamically registered users
+    const registered = getRegisteredUsers();
+    const match = registered.find((u) => u.email.toLowerCase() === cleanEmail);
+    if (match) {
+      if (!match.password || match.password === cleanPass) {
+        setCurrentUser(match);
+        localStorage.setItem('erikon_current_user', JSON.stringify(match));
+        return true;
+      }
+    }
+
     return false;
   };
 
   const loginAsRole = (role: RoleName) => {
-    const user = MOCK_USERS[role];
-    setCurrentUser(user);
-    localStorage.setItem('erikon_current_user', JSON.stringify(user));
+    const registered = getRegisteredUsers();
+    const registeredMatch = registered.find((u) => u.role === role);
+    if (registeredMatch) {
+      setCurrentUser(registeredMatch);
+      localStorage.setItem('erikon_current_user', JSON.stringify(registeredMatch));
+    }
+  };
+
+  const signupRole = (data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    role: RoleName;
+    ghanaCard: string;
+    employeeId?: string;
+    password?: string;
+  }) => {
+    const res = registerNewUserRole(data);
+    return res;
   };
 
   const logout = () => {
@@ -63,6 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!currentUser,
         login,
         loginAsRole,
+        signupRole,
         logout,
       }}
     >

@@ -1,8 +1,20 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { StatCard } from '../components/ui/StatCard';
 import { LoanCalculatorWidget } from '../components/ui/LoanCalculatorWidget';
 import { StaffInfoPopupModal } from '../components/ui/StaffInfoPopupModal';
-import { MOCK_CUSTOMERS, MOCK_ACCOUNTS, MOCK_LOANS, MOCK_TRANSACTIONS } from '../services/api';
+import { 
+  getStoredCustomers, 
+  getStoredAccounts, 
+  getStoredLoans, 
+  getStoredTransactions, 
+  getStoredCompanyInterest, 
+  getStoredCompanyWithdrawals, 
+  getStoredApprovals 
+} from '../services/api';
+import { useRealtimeSync } from '../services/realtimeSync';
+import { useAuth } from '../contexts/AuthContext';
+import { SAVINGS_PACKAGES } from '../types';
 import { 
   Users, 
   Wallet, 
@@ -13,7 +25,13 @@ import {
   Building2, 
   TrendingUp, 
   ShieldCheck,
-  CalendarCheck
+  CalendarCheck,
+  PiggyBank,
+  Coins,
+  Shield,
+  Sparkles,
+  Layers,
+  ArrowRight
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -26,17 +44,55 @@ import {
 } from 'recharts';
 
 export const DashboardPage: React.FC = () => {
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [selectedStaffName, setSelectedStaffName] = useState<string | null>(null);
 
+  const [customers, setCustomers] = useState(getStoredCustomers());
+  const [accounts, setAccounts] = useState(getStoredAccounts());
+  const [loans, setLoans] = useState(getStoredLoans());
+  const [transactions, setTransactions] = useState(getStoredTransactions());
+  const [interestRecords, setInterestRecords] = useState(getStoredCompanyInterest());
+  const [withdrawals, setWithdrawals] = useState(getStoredCompanyWithdrawals());
+  const [approvals, setApprovals] = useState(getStoredApprovals());
+
+  // Real-time multi-device subscription
+  useRealtimeSync(() => {
+    setCustomers(getStoredCustomers());
+    setAccounts(getStoredAccounts());
+    setLoans(getStoredLoans());
+    setTransactions(getStoredTransactions());
+    setInterestRecords(getStoredCompanyInterest());
+    setWithdrawals(getStoredCompanyWithdrawals());
+    setApprovals(getStoredApprovals());
+  });
+
+  const pendingApprovalsCount = approvals.filter((a) => a.status === 'PENDING').length;
+  const totalInterestPiledUp = interestRecords.reduce((sum, r) => sum + r.accumulatedAmount, 0);
+  const totalApprovedWithdrawn = withdrawals
+    .filter((w) => w.status === 'APPROVED')
+    .reduce((sum, w) => sum + w.amount, 0);
+  const availableVaultBalance = Math.max(0, totalInterestPiledUp - totalApprovedWithdrawn);
+
+  const totalDepositsSum = transactions
+    .filter((t) => t.type === 'DEPOSIT' || t.type === 'COMPANY_FEE_DEDUCTION')
+    .reduce((sum, t) => sum + t.amount, 0);
+
   const chartData = [
-    { month: 'Jan', deposits: 45000, withdrawals: 12000, loans: 18000 },
-    { month: 'Feb', deposits: 52000, withdrawals: 15000, loans: 22000 },
-    { month: 'Mar', deposits: 61000, withdrawals: 18000, loans: 30000 },
-    { month: 'Apr', deposits: 58000, withdrawals: 14000, loans: 25000 },
-    { month: 'May', deposits: 72000, withdrawals: 21000, loans: 40000 },
-    { month: 'Jun', deposits: 84000, withdrawals: 24000, loans: 48000 },
-    { month: 'Jul', deposits: 96000, withdrawals: 28000, loans: 55000 },
+    { month: 'Jan', deposits: 45000, interest: 1500, loans: 18000 },
+    { month: 'Feb', deposits: 52000, interest: 2200, loans: 22000 },
+    { month: 'Mar', deposits: 61000, interest: 3100, loans: 30000 },
+    { month: 'Apr', deposits: 58000, interest: 2900, loans: 25000 },
+    { month: 'May', deposits: 72000, interest: 4200, loans: 40000 },
+    { month: 'Jun', deposits: 84000, interest: 5400, loans: 48000 },
+    { month: 'Jul', deposits: Math.max(96000, totalDepositsSum), interest: Math.max(6800, totalInterestPiledUp), loans: 55000 },
   ];
+
+  const packagesDistribution = SAVINGS_PACKAGES.map((pkg) => ({
+    rate: pkg,
+    package: `GH₵ ${pkg}`,
+    clients: accounts.filter((a) => (a.savingsPackage || a.dailyCycles?.[0]?.dailyTargetAmount) === pkg).length,
+  }));
 
   return (
     <div className="space-y-8 pb-12">
@@ -45,13 +101,13 @@ export const DashboardPage: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 border border-slate-800 text-white shadow-xl">
         <div className="space-y-1">
           <h2 className="text-2xl font-extrabold tracking-tight flex items-center gap-2">
-            Executive Financial Overview
+            Executive Financial & Governance Overview
             <span className="text-xs bg-amber-500/20 text-amber-300 font-bold px-2.5 py-0.5 rounded-full border border-amber-500/30">
-              PHYSICAL LEDGER MODE
+              ROLE: {currentUser?.role.replace(/_/g, ' ')}
             </span>
           </h2>
           <p className="text-xs text-slate-400">
-            E-RIKON Core Financial Management System • Real-Time Branch Operations
+            E-RIKON Core Financial Management System • Real-Time Branch Operations & 30-Day Interest Vault
           </p>
         </div>
 
@@ -63,11 +119,38 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Pending Approvals Alert for Super Admin & Admin */}
+      {pendingApprovalsCount > 0 && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-500/20 via-amber-500/10 to-slate-900 border border-rose-500/40 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 rounded-xl bg-rose-500 text-white">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-extrabold text-sm text-rose-300">
+                {pendingApprovalsCount} Pending Request(s) Awaiting Super Admin Clearance
+              </div>
+              <p className="text-xs text-slate-400">
+                Staff role signups, corporate interest withdrawals, and loan credit approvals in queue.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => navigate('/approvals')}
+            className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md cursor-pointer whitespace-nowrap"
+          >
+            <span>Open Approvals Hub</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard
           title="Total Customers"
-          value={MOCK_CUSTOMERS.length.toString()}
+          value={customers.length.toString()}
           subtitle="Verified Ghana Card Clients"
           change="+12.5%"
           changeType="positive"
@@ -76,7 +159,7 @@ export const DashboardPage: React.FC = () => {
         />
         <StatCard
           title="Savings Balance"
-          value="GHS 148,500.00"
+          value={`GHS ${accounts.reduce((sum, a) => sum + a.availableBalance, 0).toFixed(2)}`}
           subtitle="31-Day Policy Scheme"
           change="+18.2%"
           changeType="positive"
@@ -84,17 +167,17 @@ export const DashboardPage: React.FC = () => {
           colorScheme="blue"
         />
         <StatCard
-          title="Today's Physical Deposits"
-          value="GHS 14,250.00"
-          subtitle="Teller & Field Collections"
-          change="+8.4%"
+          title="Company Interest Piled Up"
+          value={`GHS ${totalInterestPiledUp.toFixed(2)}`}
+          subtitle="30-Day Member Retention"
+          change="+24.0%"
           changeType="positive"
-          icon={ArrowUpRight}
+          icon={PiggyBank}
           colorScheme="emerald"
         />
         <StatCard
           title="ER-Fast Loan Portfolio"
-          value="GHS 85,000.00"
+          value={`GHS ${loans.reduce((sum, l) => sum + l.amountApproved, 0).toFixed(2)}`}
           subtitle="Tenor Interest Schedule"
           change="+15.0%"
           changeType="positive"
@@ -103,143 +186,103 @@ export const DashboardPage: React.FC = () => {
         />
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Charts & Interactive Modules */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* Main Financial Trend Chart */}
-        <div className="lg:col-span-2 p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        {/* Left: Financial Inflow & Interest Curve */}
+        <div className="lg:col-span-8 p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
-                Monthly Deposits vs Loan Disbursements
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-amber-500" />
+                Deposit Inflows vs. Company 30-Day Interest Accumulation
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Monthly growth in physical collections and credit advances (GHS)
+                Monthly trends for member savings collections and company retained management fees
               </p>
             </div>
-            <div className="flex items-center space-x-4 text-xs font-semibold">
+            <div className="flex items-center space-x-3 text-xs font-mono">
               <span className="flex items-center gap-1 text-amber-500">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Deposits
               </span>
               <span className="flex items-center gap-1 text-emerald-500">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Loans
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Company Interest
               </span>
             </div>
           </div>
 
-          <div className="h-72 w-full">
+          <div className="h-[280px] w-full pt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart data={chartData}>
                 <defs>
-                  <linearGradient id="colorDeposits" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                  <linearGradient id="depositsGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
                   </linearGradient>
-                  <linearGradient id="colorLoans" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  <linearGradient id="interestGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#33415522" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #334155', color: '#fff', fontSize: '12px' }}
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.3} />
+                <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} tickFormatter={(val) => `GHS ${val/1000}k`} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '11px' }}
                 />
-                <Area type="monotone" dataKey="deposits" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorDeposits)" />
-                <Area type="monotone" dataKey="loans" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorLoans)" />
+                <Area type="monotone" dataKey="deposits" stroke="#f59e0b" strokeWidth={2.5} fillOpacity={1} fill="url(#depositsGradient)" name="Deposits (GHS)" />
+                <Area type="monotone" dataKey="interest" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#interestGradient)" name="Company Interest (GHS)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Loan Calculator Sidebar Widget */}
-        <div>
+        {/* Right: Loan Calculator Widget */}
+        <div className="lg:col-span-4">
           <LoanCalculatorWidget />
         </div>
-      </div>
-
-      {/* Recent Physical Transactions & Policy Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Recent Operations Table */}
-        <div className="lg:col-span-2 p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-            <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
-              Recent Physical Financial Operations
-            </h3>
-            <span className="text-xs font-semibold text-amber-500">Live Double-Entry Ledger</span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 uppercase text-[10px] tracking-wider">
-                  <th className="py-2.5 px-3">Receipt / Ref</th>
-                  <th className="py-2.5 px-3">Customer</th>
-                  <th className="py-2.5 px-3">Recorded By (Staff)</th>
-                  <th className="py-2.5 px-3">Type</th>
-                  <th className="py-2.5 px-3 text-right">Amount (GHS)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                {MOCK_TRANSACTIONS.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                    <td className="py-3 px-3 font-mono text-slate-900 dark:text-slate-200 font-bold">
-                      {tx.receiptNo}
-                    </td>
-                    <td className="py-3 px-3 text-slate-800 dark:text-slate-300">
-                      {tx.account?.customer?.firstName} {tx.account?.customer?.lastName}
-                    </td>
-                    <td className="py-3 px-3">
-                      <button
-                        onClick={() => setSelectedStaffName(`${tx.recordedBy?.firstName} ${tx.recordedBy?.lastName}`)}
-                        className="text-amber-500 hover:underline font-bold text-xs cursor-pointer flex items-center gap-1"
-                        title="Click to view staff info popup"
-                      >
-                        {tx.recordedBy?.firstName} {tx.recordedBy?.lastName} ({tx.recordedBy?.role})
-                      </button>
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        tx.type === 'DEPOSIT' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                      }`}>
-                        {tx.type}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right font-extrabold text-slate-900 dark:text-white font-mono">
-                      GHS {tx.amount.toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* E-RIKON Special Policy Info Card */}
-        <div className="p-6 rounded-3xl bg-amber-500/10 border border-amber-500/30 space-y-4 text-slate-800 dark:text-amber-100">
-          <div className="flex items-center space-x-2 text-amber-600 dark:text-amber-400">
-            <CalendarCheck className="w-5 h-5" />
-            <h4 className="font-extrabold text-sm uppercase tracking-wider">31-Day Policy Standard</h4>
-          </div>
-
-          <p className="text-xs leading-relaxed text-slate-700 dark:text-amber-200">
-            Clients contribute daily over a 31-day cycle. <strong>Days 1 to 30</strong> accumulate directly into the client's available savings balance.
-            The <strong>31st day contribution</strong> (1 day worth) is automatically retained by E-RIKON GROUP FINANCIAL COMPANY LTD as the management & interest fee.
-          </p>
-
-          <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-amber-500/20 text-xs space-y-1">
-            <div className="font-bold text-slate-900 dark:text-white">Active Cycle Rule</div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Automatic fee retention triggers on the 31st deposit transaction.
-            </p>
-          </div>
-        </div>
 
       </div>
 
-      {/* Staff Info Popup Modal */}
+      {/* Ghana Cedis Savings Packages Distribution Breakdown */}
+      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div className="flex items-center space-x-2">
+            <Coins className="w-5 h-5 text-amber-500" />
+            <div>
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+                Ghana Cedis (GH₵) Savings Packages Adoption Matrix
+              </h3>
+              <p className="text-xs text-slate-500">
+                Distribution of active clients across the 12 standard packages (GH₵ 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200)
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-mono font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
+            12 Active Tiers
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-2.5">
+          {packagesDistribution.map((p) => (
+            <button
+              key={p.package}
+              type="button"
+              onClick={() => navigate(`/customers?package=${p.rate}`)}
+              className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 text-center space-y-1 hover:border-amber-500 hover:bg-amber-500/5 dark:hover:bg-amber-500/10 hover:shadow-md hover:scale-[1.03] transition-all cursor-pointer group"
+              title={`Click to view clients enrolled in GH₵ ${p.rate} package`}
+            >
+              <div className="text-xs font-black font-mono text-amber-500 group-hover:text-amber-600 dark:group-hover:text-amber-400">{p.package}</div>
+              <div className="text-lg font-black text-slate-900 dark:text-white font-mono">{p.clients}</div>
+              <div className="text-[10px] text-slate-400 group-hover:text-amber-500 font-medium transition-colors">
+                {p.clients === 1 ? '1 Member' : `${p.clients} Members`}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Staff Info Modal */}
       <StaffInfoPopupModal
         staffName={selectedStaffName}
         onClose={() => setSelectedStaffName(null)}

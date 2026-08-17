@@ -3,10 +3,14 @@ import {
   getStoredAccounts, 
   saveStoredAccounts, 
   getStoredTransactions, 
-  saveStoredTransactions 
+  saveStoredTransactions,
+  accumulateCompanyInterest,
+  recordPackageDeposit,
+  splitPaymentIntoDays,
+  toDecimal
 } from '../services/api';
 import { subscribeRealtimeEvents, broadcastRealtimeEvent } from '../services/realtimeSync';
-import { Account, Transaction, PaymentMode } from '../types';
+import { Account, Transaction, PaymentMode, SavingsPackage, SAVINGS_PACKAGES, User } from '../types';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
 import { 
   Landmark, 
@@ -21,7 +25,8 @@ import {
   CalendarCheck,
   Sparkles,
   Check,
-  RotateCcw
+  RotateCcw,
+  Coins
 } from 'lucide-react';
 
 export const TellerPage: React.FC = () => {
@@ -32,9 +37,17 @@ export const TellerPage: React.FC = () => {
   const [amount, setAmount] = useState<string>('100');
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('PHYSICAL_CASH');
   const [remarks, setRemarks] = useState('');
+  const [chosenPackage, setChosenPackage] = useState<SavingsPackage>(selectedAccount?.savingsPackage || 20);
   const [isDailyPolicyTick, setIsDailyPolicyTick] = useState<boolean>(true);
   const [printedTx, setPrintedTx] = useState<Transaction | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Sync package when selected account changes
+  useEffect(() => {
+    if (selectedAccount?.savingsPackage) {
+      setChosenPackage(selectedAccount.savingsPackage);
+    }
+  }, [selectedAccount?.id, selectedAccount?.savingsPackage]);
 
   // Subscribe to real-time events from other devices/tabs
   useEffect(() => {
@@ -56,111 +69,106 @@ export const TellerPage: React.FC = () => {
   const activeCycle = selectedAccount?.dailyCycles?.[0];
   const currentDay = activeCycle ? activeCycle.currentDayCount : 0;
   const isCycleCompleted = currentDay >= 31;
-  const nextDay = isCycleCompleted ? 1 : currentDay + 1;
   const targetCycleNo = isCycleCompleted ? (activeCycle ? activeCycle.cycleNumber + 1 : 1) : (activeCycle ? activeCycle.cycleNumber : 1);
-  const isDay31Next = isDailyPolicyTick && nextDay === 31 && operationType === 'DEPOSIT';
+
+  const numAmount = Number(amount) || 0;
+  const splitPreview = numAmount > 0 ? splitPaymentIntoDays(chosenPackage, numAmount, isCycleCompleted ? 0 : currentDay) : null;
 
   const handleProcessTransaction = (e: React.FormEvent) => {
     e.preventDefault();
-    const numAmount = Number(amount);
     if (!numAmount || numAmount <= 0 || !selectedAccount) return;
 
-    const previousBal = selectedAccount.availableBalance;
-    let newBal = previousBal;
+    const tellerUser: User = {
+      id: 'user-03',
+      employeeId: 'EMP-005',
+      firstName: 'Abena',
+      lastName: 'Osei',
+      email: 'teller@erikon-group.com',
+      phone: '0245556677',
+      role: 'TELLER',
+      branchId: 'br-01',
+    };
 
-    // Handle 31-Day Policy Ticking & Automatic Rollover
-    if (isDailyPolicyTick && operationType === 'DEPOSIT') {
-      if (isCycleCompleted || !activeCycle) {
-        // Start a fresh new cycle at Day 1
-        const brandNewCycle = {
-          id: `cyc-${Date.now()}`,
-          cycleNumber: targetCycleNo,
-          currentDayCount: 1,
-          dailyTargetAmount: numAmount,
-          totalDeposited: numAmount,
-          feeDeducted: false,
-          companyFeeAmount: 0,
-          isCompleted: false,
-        };
-        selectedAccount.dailyCycles = [brandNewCycle, ...(selectedAccount.dailyCycles || [])];
-        newBal = previousBal + numAmount;
-      } else {
-        // Increment existing active cycle
-        activeCycle.currentDayCount = nextDay;
-        activeCycle.totalDeposited += numAmount;
-
-        if (isDay31Next) {
-          activeCycle.feeDeducted = true;
-          activeCycle.companyFeeAmount = numAmount;
-          activeCycle.isCompleted = true; // Mark cycle 31/31 complete
-          newBal = previousBal; // Day 31 retained as fee
-        } else {
-          newBal = previousBal + numAmount;
-        }
+    if (operationType === 'DEPOSIT') {
+      // Ensure account package matches chosen package
+      const allAccs = getStoredAccounts();
+      const currentAccIndex = allAccs.findIndex((a) => a.id === selectedAccount.id);
+      if (currentAccIndex !== -1) {
+        allAccs[currentAccIndex].savingsPackage = chosenPackage;
+        saveStoredAccounts(allAccs);
       }
+
+      const { updatedAccount, transaction, splitResult } = recordPackageDeposit(
+        selectedAccount.id,
+        numAmount,
+        tellerUser,
+        remarks || `Teller deposit on GH₵ ${chosenPackage}/day package`
+      );
+
+      setSelectedAccount(updatedAccount);
+      setAccounts(getStoredAccounts());
+      setPrintedTx(transaction);
+
+      setSuccessMessage(
+        `🎉 Deposit of GHS ${numAmount.toFixed(2)} recorded! Covered ${splitResult.daysCovered} days (Days ${splitResult.startDay} to ${splitResult.endDay}) on GH₵ ${chosenPackage}/day package.`
+      );
     } else {
-      newBal = operationType === 'DEPOSIT' ? previousBal + numAmount : previousBal - numAmount;
+      // Withdrawal
+      if (numAmount > selectedAccount.availableBalance) {
+        alert(`❌ Insufficient available balance. Current available: GHS ${selectedAccount.availableBalance.toFixed(2)}`);
+        return;
+      }
+
+      const previousBal = selectedAccount.availableBalance;
+      const newBal = toDecimal(previousBal - numAmount);
+
+      const updatedAcc = {
+        ...selectedAccount,
+        availableBalance: newBal,
+        currentBalance: toDecimal(selectedAccount.currentBalance - numAmount),
+      };
+
+      const newTx: Transaction = {
+        id: `tx-with-${Date.now()}`,
+        referenceNo: `TX-WITH-${Date.now().toString().slice(-8)}`,
+        receiptNo: `RCP-WITH-${Date.now().toString().slice(-8)}`,
+        accountId: selectedAccount.id,
+        account: updatedAcc,
+        type: 'WITHDRAWAL',
+        paymentMode,
+        amount: numAmount,
+        previousBal,
+        newBal,
+        recordedBy: tellerUser,
+        remarks: remarks || `Physical cash withdrawal across the counter`,
+        createdAt: new Date().toISOString(),
+      };
+
+      const freshAccs = getStoredAccounts();
+      const idx = freshAccs.findIndex((a) => a.id === selectedAccount.id);
+      if (idx !== -1) {
+        freshAccs[idx] = updatedAcc;
+        saveStoredAccounts(freshAccs);
+      }
+
+      const txs = getStoredTransactions();
+      saveStoredTransactions([newTx, ...txs]);
+
+      setSelectedAccount(updatedAcc);
+      setAccounts(freshAccs);
+      setPrintedTx(newTx);
+      broadcastRealtimeEvent('WITHDRAWAL_RECORDED', newTx);
+
+      setSuccessMessage(`✅ Physical withdrawal of GHS ${numAmount.toFixed(2)} completed successfully!`);
     }
 
-    const updatedAcc = {
-      ...selectedAccount,
-      availableBalance: newBal,
-      currentBalance: selectedAccount.currentBalance + (operationType === 'DEPOSIT' ? numAmount : -numAmount),
-    };
-
-    const txType = isDay31Next ? 'COMPANY_FEE_DEDUCTION' : operationType;
-
-    const newTx: Transaction = {
-      id: `tx-${Date.now()}`,
-      referenceNo: `TX-${operationType.slice(0, 3)}-${Date.now().toString().slice(-8)}`,
-      receiptNo: `RCP-${Date.now().toString().slice(-8)}`,
-      accountId: selectedAccount.id,
-      account: updatedAcc,
-      type: txType,
-      paymentMode,
-      amount: numAmount,
-      previousBal,
-      newBal,
-      recordedBy: {
-        id: 'user-03',
-        employeeId: 'EMP-005',
-        firstName: 'Abena',
-        lastName: 'Osei',
-        email: 'teller@erikon-group.com',
-        phone: '+233 24 555 6677',
-        role: 'TELLER',
-        branchId: 'br-01',
-      },
-      remarks: isDay31Next
-        ? `Teller 31-Day Policy fee retention for Day 31 (Cycle #${activeCycle?.cycleNumber || 1} Complete)`
-        : isDailyPolicyTick
-        ? `Teller deposit for Cycle #${targetCycleNo} Day ${nextDay}`
-        : remarks || `Physical teller ${operationType.toLowerCase()} process`,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Update state and LocalStorage permanently
-    const newAccsList = accounts.map((acc) => (acc.id === updatedAcc.id ? updatedAcc : acc));
-    setAccounts(newAccsList);
-    setSelectedAccount(updatedAcc);
-    saveStoredAccounts(newAccsList);
-
-    const existingTxs = getStoredTransactions();
-    saveStoredTransactions([newTx, ...existingTxs]);
-
-    // Real-time multi-device broadcast
-    broadcastRealtimeEvent('DEPOSIT_RECORDED', newTx);
-
-    setPrintedTx(newTx);
     setAmount('100');
     setRemarks('');
   };
 
   const handleConfirmPaid = (tx: Transaction) => {
     setSuccessMessage(
-      `✅ Money Paid Successfully! GHS ${tx.amount.toFixed(2)} recorded for ${tx.account?.customer?.firstName} ${tx.account?.customer?.lastName}${
-        isDailyPolicyTick ? ` (Cycle #${targetCycleNo} Day ${nextDay} of 31 recorded)` : ''
-      }.`
+      `✅ Money Paid Successfully! GHS ${tx.amount.toFixed(2)} recorded for ${tx.account?.customer?.firstName} ${tx.account?.customer?.lastName}.`
     );
     setTimeout(() => {
       setSuccessMessage(null);
@@ -317,45 +325,97 @@ export const TellerPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* 31-Day Policy Day Ticking Card for Teller */}
+              {/* Savings Package Selection for Deposit */}
               {operationType === 'DEPOSIT' && (
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center space-x-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={isDailyPolicyTick}
-                        onChange={(e) => setIsDailyPolicyTick(e.target.checked)}
-                        className="w-4 h-4 rounded accent-amber-500 cursor-pointer"
-                      />
-                      <span className="font-extrabold text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                        <CalendarCheck className="w-4 h-4" />
-                        Tick as 31-Day Policy Daily Contribution
-                      </span>
-                    </label>
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h4 className="font-extrabold text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 uppercase tracking-wider">
+                        <Coins className="w-4 h-4 text-amber-500" />
+                        Choose / Switch Daily Savings Package (Ghana Cedis) *
+                      </h4>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Client savings rate (5 to 200 GHS / day) determines multi-day payment spread
+                      </p>
+                    </div>
 
-                    {isDailyPolicyTick && (
-                      <span className="font-mono font-extrabold text-amber-500 text-xs bg-amber-500/20 px-2.5 py-1 rounded-full border border-amber-500/40">
-                        {isCycleCompleted ? `Starting Cycle #${targetCycleNo} Day 1` : `Cycle #${targetCycleNo} • Day ${nextDay} of 31`}
-                      </span>
-                    )}
+                    <span className="font-mono text-xs font-black text-amber-500 bg-amber-500/20 px-3 py-1 rounded-xl border border-amber-500/40 w-fit">
+                      GH₵ {chosenPackage}.00 / Day
+                    </span>
                   </div>
 
-                  {isDailyPolicyTick && (
-                    <div className="text-[11px] text-slate-600 dark:text-amber-200 leading-relaxed font-sans pt-1 border-t border-amber-500/20">
-                      {isCycleCompleted ? (
-                        <div className="flex items-center gap-1.5 text-emerald-400 font-extrabold">
-                          <RotateCcw className="w-4 h-4" />
-                          Previous Cycle completed! This payment starts fresh **Cycle #{targetCycleNo} at Day 1**.
-                        </div>
-                      ) : (
-                        <span>Ticking this box marks **Day {nextDay}** as paid for {selectedAccount.customer?.firstName}'s Cycle #{targetCycleNo}.</span>
-                      )}
+                  {/* 12 Package Buttons Grid */}
+                  <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-1.5">
+                    {SAVINGS_PACKAGES.map((pkg) => {
+                      const isSelected = chosenPackage === pkg;
+                      return (
+                        <button
+                          type="button"
+                          key={pkg}
+                          onClick={() => {
+                            setChosenPackage(pkg);
+                            // Auto-set amount to 5 days by default if previous amount matches old package
+                            if (amount === '100' || amount === String(chosenPackage * 5)) {
+                              setAmount(String(pkg * 5));
+                            }
+                          }}
+                          className={`py-2 px-1 rounded-xl font-mono text-xs font-extrabold border transition-all cursor-pointer text-center ${
+                            isSelected
+                              ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md ring-2 ring-amber-500/30'
+                              : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-amber-500/50'
+                          }`}
+                        >
+                          GH₵ {pkg}
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                      {isDay31Next && (
-                        <div className="mt-2 p-2.5 rounded-xl bg-amber-500 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md">
-                          <Sparkles className="w-4 h-4 shrink-0" />
-                          DAY 31 NOTICE: This 31st deposit (GHS {amount}) will be retained as E-RIKON management fee. The next payment will automatically start Cycle #{targetCycleNo + 1} (Days 1–30).
+                  {/* Quick-Pay Presets (1 Day, 5 Days, 10 Days, Full 30 Days) */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-amber-500/20">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold">Quick Pay:</span>
+                    {[
+                      { label: '1 Day', days: 1 },
+                      { label: '5 Days', days: 5 },
+                      { label: '10 Days', days: 10 },
+                      { label: '20 Days', days: 20 },
+                      { label: 'Full 30 Days', days: 30 },
+                    ].map((preset) => (
+                      <button
+                        type="button"
+                        key={preset.days}
+                        onClick={() => setAmount(String(chosenPackage * preset.days))}
+                        className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 hover:border-amber-500 text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 hover:text-amber-500 transition-all cursor-pointer"
+                      >
+                        {preset.label} (GH₵ {chosenPackage * preset.days})
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Dynamic Multi-Day Splitting Preview Banner */}
+                  {splitPreview && splitPreview.daysCovered > 0 && (
+                    <div className="p-3 rounded-xl bg-slate-900 text-white border border-amber-500/40 space-y-1.5 text-xs shadow-inner">
+                      <div className="flex items-center justify-between text-amber-400 font-bold">
+                        <span className="flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-amber-500" />
+                          Multi-Day Automatic Spread
+                        </span>
+                        <span className="font-mono text-[11px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded">
+                          {splitPreview.daysCovered} Days Total
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300">
+                        Paying <b>GH₵ {splitPreview.totalPaid}.00</b> on the <b>GH₵ {chosenPackage}.00/day</b> package will spread across <b>Days {splitPreview.startDay} to {splitPreview.endDay}</b> of Cycle #{targetCycleNo}.
+                      </p>
+                      {splitPreview.remainder > 0 && (
+                        <p className="text-[10px] text-amber-300 font-mono">
+                          ⚠️ Remainder: GH₵ {splitPreview.remainder}.00 will remain as surplus balance.
+                        </p>
+                      )}
+                      {splitPreview.isDay31Included && (
+                        <div className="mt-1 p-2 rounded-lg bg-amber-500 text-slate-950 font-extrabold text-[11px] flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                          <span>Day 31 Reached: GH₵ {chosenPackage}.00 will be retained as E-RIKON management fee. Cycle #{targetCycleNo} marked 31/31 complete!</span>
                         </div>
                       )}
                     </div>
@@ -374,10 +434,11 @@ export const TellerPage: React.FC = () => {
                       <input
                         required
                         type="number"
-                        step="0.01"
+                        step="1"
+                        min="1"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
-                        className="w-full pl-12 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-mono font-extrabold text-base focus:outline-none"
+                        className="w-full pl-12 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white font-mono font-extrabold text-base focus:outline-none focus:border-amber-500"
                       />
                     </div>
                   </div>
@@ -387,7 +448,7 @@ export const TellerPage: React.FC = () => {
                     <select
                       value={paymentMode}
                       onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
-                      className="w-full mt-1 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-semibold focus:outline-none"
+                      className="w-full mt-1 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-amber-500"
                     >
                       <option value="PHYSICAL_CASH">Physical Cash</option>
                       <option value="MTN_MOBILE_MONEY">MTN Mobile Money (Staff Log)</option>
@@ -403,7 +464,7 @@ export const TellerPage: React.FC = () => {
                     value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
                     placeholder="Over the counter physical cash transaction notes..."
-                    className="w-full mt-1 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
+                    className="w-full mt-1 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 font-medium focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
@@ -417,9 +478,9 @@ export const TellerPage: React.FC = () => {
                 >
                   <CheckCircle2 className="w-5 h-5" />
                   <span>
-                    {isDailyPolicyTick && operationType === 'DEPOSIT'
-                      ? `Confirm & Record Cycle #${targetCycleNo} Day ${nextDay} (GHS ${amount})`
-                      : `Confirm & Execute ${operationType}`}
+                    {operationType === 'DEPOSIT'
+                      ? `Confirm & Record Deposit (GH₵ ${amount} • Spread ${splitPreview?.daysCovered || 1} Days)`
+                      : `Confirm & Execute Withdrawal (GH₵ ${amount})`}
                   </span>
                 </button>
 

@@ -156,4 +156,45 @@ export class CustomersService {
       take: 25,
     });
   }
+
+  async deleteCustomer(customerId: string) {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+      include: { accounts: true },
+    });
+
+    if (!customer) throw new NotFoundException('Customer record not found.');
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Delete daily cycles
+      await tx.dailyCollectionCycle.deleteMany({
+        where: { customerId },
+      });
+
+      // 2. Delete transactions for customer accounts
+      const accountIds = customer.accounts.map((a) => a.id);
+      if (accountIds.length > 0) {
+        await tx.transaction.deleteMany({
+          where: { accountId: { in: accountIds } },
+        });
+      }
+
+      // 3. Delete accounts
+      await tx.account.deleteMany({
+        where: { customerId },
+      });
+
+      // 4. Delete next of kin
+      await tx.nextOfKin.deleteMany({
+        where: { customerId },
+      });
+
+      // 5. Delete customer record
+      await tx.customer.delete({
+        where: { id: customerId },
+      });
+
+      return { success: true, message: `Customer record for ${customer.firstName} ${customer.lastName} deleted successfully.` };
+    });
+  }
 }

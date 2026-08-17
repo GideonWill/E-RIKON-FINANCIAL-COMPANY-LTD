@@ -1,6 +1,6 @@
 import React from 'react';
 import { Customer } from '../../types';
-import { ShieldCheck, X, CreditCard, User, CheckCircle } from 'lucide-react';
+import { ShieldCheck, X, CreditCard, User, CheckCircle, Award } from 'lucide-react';
 
 interface GhanaCardModalProps {
   customer: Customer | null;
@@ -11,8 +11,8 @@ export const GhanaCardModal: React.FC<GhanaCardModalProps> = ({ customer, onClos
   if (!customer) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-6">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl space-y-4 my-auto max-h-[94vh] overflow-y-auto">
         
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
@@ -28,13 +28,13 @@ export const GhanaCardModal: React.FC<GhanaCardModalProps> = ({ customer, onClos
                 </span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                National Identity Authority (NIA) Ghana Card Inspection
+                National Identification Authority (NIA) Digital Record Inspection
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -48,11 +48,11 @@ export const GhanaCardModal: React.FC<GhanaCardModalProps> = ({ customer, onClos
 
           <div className="flex items-center justify-between border-b border-amber-500/20 pb-4">
             <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center font-bold text-xs text-slate-900">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center font-black text-xs text-slate-950 shadow-sm">
                 GH
               </div>
-              <span className="font-extrabold text-sm tracking-wide text-amber-400">
-                REPUBLIC OF GHANA • NATIONAL IDENTITY CARD
+              <span className="font-extrabold text-xs sm:text-sm tracking-wide text-amber-400">
+                REPUBLIC OF GHANA • NATIONAL IDENTITY AUTHORITY
               </span>
             </div>
             <span className="text-xs font-mono font-bold bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30">
@@ -62,15 +62,16 @@ export const GhanaCardModal: React.FC<GhanaCardModalProps> = ({ customer, onClos
 
           {/* Card Body */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
-            {/* Passport Photo */}
-            <div className="flex flex-col items-center space-y-2">
-              <img
-                src={customer.passportPhotoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200'}
-                alt="Passport"
-                className="w-28 h-32 object-cover rounded-xl border-2 border-amber-500/50 shadow-md"
-              />
-              <span className="text-[10px] text-amber-400 font-semibold flex items-center gap-1">
-                <CheckCircle className="w-3 h-3 text-emerald-400" /> Photo Verified
+            {/* Verified Digital Seal & Initials */}
+            <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-800/80 border border-slate-700/80 text-center space-y-2">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-emerald-500 p-0.5 shadow-lg">
+                <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center font-mono font-black text-amber-400 text-xl">
+                  {customer.firstName[0]}{customer.lastName[0]}
+                </div>
+              </div>
+              <div className="font-mono font-bold text-xs text-slate-200">{customer.customerNumber}</div>
+              <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                <CheckCircle className="w-3 h-3 text-emerald-400" /> NIA Verified
               </span>
             </div>
 
@@ -100,8 +101,8 @@ export const GhanaCardModal: React.FC<GhanaCardModalProps> = ({ customer, onClos
                   <div className="font-bold text-slate-200">{customer.occupation}</div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-slate-400 uppercase tracking-wider">Mobile Number</div>
-                  <div className="font-bold text-amber-400">{customer.phone}</div>
+                  <div className="text-[10px] text-slate-400 uppercase tracking-wider">Phone Contact</div>
+                  <div className="font-bold text-amber-400 font-mono">{customer.phone}</div>
                 </div>
               </div>
 
@@ -117,13 +118,13 @@ export const GhanaCardModal: React.FC<GhanaCardModalProps> = ({ customer, onClos
         <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
           <div className="flex items-center space-x-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
             <CheckCircle className="w-4 h-4" />
-            <span>Identity matched against E-RIKON Central Vault</span>
+            <span>Digital Ghana Card Verification Active</span>
           </div>
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold hover:bg-slate-800 transition-all"
+            className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold transition-all cursor-pointer"
           >
-            Done
+            Close
           </button>
         </div>
 
