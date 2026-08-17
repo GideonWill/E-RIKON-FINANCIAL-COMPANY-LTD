@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { resetToCleanLiveState } from '../services/api';
@@ -76,6 +76,28 @@ export const LoginPage: React.FC = () => {
   const [signupPassword, setSignupPassword] = useState('');
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [signupSuccessMsg, setSignupSuccessMsg] = useState<string | null>(null);
+
+  // Auto-dismiss error & alert messages after 4 seconds
+  useEffect(() => {
+    if (errorMsg) {
+      const timer = setTimeout(() => setErrorMsg(''), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [errorMsg]);
+
+  useEffect(() => {
+    if (resetSuccessMsg) {
+      const timer = setTimeout(() => setResetSuccessMsg(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [resetSuccessMsg]);
+
+  useEffect(() => {
+    if (syncStatusMsg) {
+      const timer = setTimeout(() => setSyncStatusMsg(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [syncStatusMsg]);
 
   const rolesList: { role: RoleName; label: string; icon: any; color: string; desc: string; badgeColor: string }[] = [
     {
@@ -456,8 +478,16 @@ export const LoginPage: React.FC = () => {
                   </div>
 
                   {errorMsg && (
-                    <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold">
-                      {errorMsg}
+                    <div className="p-3.5 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs flex items-center justify-between gap-3 shadow-lg animate-pulse">
+                      <span className="flex-1 leading-relaxed">{errorMsg}</span>
+                      <button
+                        type="button"
+                        onClick={() => setErrorMsg('')}
+                        className="text-rose-300 hover:text-white p-1 font-mono text-sm leading-none shrink-0 cursor-pointer"
+                        title="Dismiss"
+                      >
+                        ✕
+                      </button>
                     </div>
                   )}
 
@@ -562,8 +592,16 @@ export const LoginPage: React.FC = () => {
                 )}
 
                 {errorMsg && (
-                  <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold">
-                    {errorMsg}
+                  <div className="p-3.5 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs flex items-center justify-between gap-3 shadow-lg animate-pulse">
+                    <span className="flex-1 leading-relaxed">{errorMsg}</span>
+                    <button
+                      type="button"
+                      onClick={() => setErrorMsg('')}
+                      className="text-rose-300 hover:text-white p-1 font-mono text-sm leading-none shrink-0 cursor-pointer"
+                      title="Dismiss"
+                    >
+                      ✕
+                    </button>
                   </div>
                 )}
 
