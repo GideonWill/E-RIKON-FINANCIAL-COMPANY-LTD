@@ -24,8 +24,12 @@ export const toDecimal = (val: number | string): number => {
   return Math.round(num * 100) / 100;
 };
 
-// API Base URL (Configurable via environment or defaults to local backend)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+// API Base URL (Defaults to live Render backend in production and localhost in dev)
+const API_BASE_URL = 
+  import.meta.env.VITE_API_URL || 
+  (typeof window !== 'undefined' && window.location.hostname === 'localhost' 
+    ? 'http://localhost:4000/api' 
+    : 'https://e-rikon-ecfms-backend.onrender.com/api');
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
