@@ -25,15 +25,62 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 
+import { apiClient } from '../services/api';
+
 export const ApprovalsPage: React.FC = () => {
   const { currentUser } = useAuth();
   const [approvals, setApprovals] = useState<ApprovalRequest[]>(getStoredApprovals());
   const [selectedFilter, setSelectedFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Sync pending staff accounts from backend
+  const syncPendingFromBackend = async () => {
+    try {
+      const { data } = await apiClient.get('/auth/pending');
+      if (Array.isArray(data)) {
+        const localApprovals = getStoredApprovals();
+        const merged = [...localApprovals];
+
+        data.forEach((user: any) => {
+          const exists = merged.some((a) => a.targetId === user.id || a.details?.email === user.email);
+          if (!exists) {
+            merged.unshift({
+              id: `appr-${user.id}`,
+              type: 'STAFF_ROLE_SIGNUP',
+              title: `New ${user.role?.replace(/_/g, ' ')} Registration: ${user.firstName} ${user.lastName}`,
+              description: `Application received for ${user.role?.replace(/_/g, ' ')} position. Contact: ${user.phone || 'N/A'} | Ghana Card: ${user.ghanaCard || 'N/A'}`,
+              targetId: user.id,
+              requestedById: user.id,
+              requestedByName: `${user.firstName} ${user.lastName}`,
+              requestedRole: user.role,
+              details: {
+                email: user.email,
+                phone: user.phone,
+                ghanaCard: user.ghanaCard,
+                role: user.role,
+                branch: user.branch?.name || 'Accra Central Main Branch',
+              },
+              status: 'PENDING',
+              createdAt: user.createdAt || new Date().toISOString(),
+            });
+          }
+        });
+
+        saveStoredApprovals(merged);
+        setApprovals(merged);
+      }
+    } catch {
+      setApprovals(getStoredApprovals());
+    }
+  };
+
+  React.useEffect(() => {
+    syncPendingFromBackend();
+  }, []);
+
   // Real-time multi-device subscription
   useRealtimeSync(() => {
-    setApprovals(getStoredApprovals());
+    syncPendingFromBackend();
   });
   
   // Selected Action Modal

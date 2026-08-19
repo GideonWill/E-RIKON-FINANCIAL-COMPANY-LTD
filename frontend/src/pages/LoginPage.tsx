@@ -188,7 +188,7 @@ export const LoginPage: React.FC = () => {
 
 
 
-  const handleSignupSubmit = (e: React.FormEvent) => {
+  const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!signupFirstName || !signupLastName || !signupEmail || !signupPhone || !signupGhanaCard || !signupPassword) {
       setErrorMsg('Please fill in all required registration fields.');
