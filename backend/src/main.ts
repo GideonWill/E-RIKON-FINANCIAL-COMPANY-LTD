@@ -11,6 +11,9 @@ async function bootstrap() {
     credentials: true,
   });
 
+  // Set global route prefix so /api/auth/login, /api/events, etc. resolve properly
+  app.setGlobalPrefix('api');
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: false,
@@ -21,6 +24,6 @@ async function bootstrap() {
 
   const port = process.env.PORT || 4000;
   await app.listen(port, '0.0.0.0');
-  console.log(`🚀 E-RIKON Core Financial Management System API running on http://0.0.0.0:${port}`);
+  console.log(`🚀 E-RIKON Core Financial Management System API running on http://0.0.0.0:${port}/api`);
 }
 bootstrap();
