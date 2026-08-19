@@ -304,17 +304,7 @@ export const LoginPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Live SSE Status Indicator */}
-        <div className="max-w-7xl w-full mx-auto my-2 flex items-center gap-2.5 p-2.5 sm:p-3 rounded-2xl bg-slate-900/90 border border-slate-800 text-xs">
-          <span className="flex h-2.5 w-2.5 relative shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-          </span>
-          <span className="font-bold text-slate-300">Real-Time Sync:</span>
-          <span className="text-[11px] text-emerald-400 font-mono">
-            All logged-in devices update instantly — no pairing required
-          </span>
-        </div>
+
 
         {/* Global Reset Notification */}
         {resetSuccessMsg && (
