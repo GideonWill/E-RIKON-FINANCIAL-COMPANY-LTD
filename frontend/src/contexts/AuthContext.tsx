@@ -13,7 +13,7 @@ import { connectSSE, disconnectSSE, useRealtimeSync } from '../services/realtime
 interface AuthContextType {
   currentUser: User | null;
   isAuthenticated: boolean;
-  login: (email?: string, password?: string, role?: RoleName) => Promise<boolean>;
+  login: (email?: string, password?: string, role?: RoleName) => Promise<{ success: boolean; error?: string }>;
   loginAsRole: (role: RoleName) => void;
   signupRole: (data: {
     firstName: string;
@@ -89,12 +89,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const login = async (email?: string, password?: string, _role?: RoleName): Promise<boolean> => {
+  const login = async (email?: string, password?: string, _role?: RoleName): Promise<{ success: boolean; error?: string }> => {
     const cleanEmail = email?.trim().toLowerCase();
     const cleanPass = password?.trim();
 
     if (!cleanEmail || !cleanPass) {
-      return false;
+      return { success: false, error: 'Please enter both email and password.' };
     }
 
     // Authenticate against the Live Render API Backend (PostgreSQL)
@@ -132,13 +132,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         setCurrentUser(backendUser);
         localStorage.setItem('erikon_current_user', JSON.stringify(backendUser));
-        return true;
+        return { success: true };
       }
-    } catch (apiErr) {
-      console.warn('Render backend login failed:', apiErr);
+      return { success: false, error: 'Invalid response from server.' };
+    } catch (apiErr: any) {
+      console.warn('Render backend login notice:', apiErr);
+      const serverMsg = apiErr?.response?.data?.message;
+      if (typeof serverMsg === 'string') {
+        return { success: false, error: serverMsg };
+      }
+      if (apiErr?.code === 'ERR_NETWORK' || !apiErr?.response) {
+        return { 
+          success: false, 
+          error: 'Connecting to server... If the backend was sleeping, please wait ~15 seconds and try again.' 
+        };
+      }
+      return { success: false, error: 'Invalid email or password.' };
     }
-
-    return false;
   };
 
   const loginAsRole = (role: RoleName) => {

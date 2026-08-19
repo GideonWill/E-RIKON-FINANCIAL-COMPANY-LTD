@@ -143,10 +143,10 @@ export const LoginPage: React.FC = () => {
     setErrorMsg('');
     setIsLoading(true);
 
-    const success = await login(email, password, selectedRole);
+    const result = await login(email, password, selectedRole);
     setIsLoading(false);
 
-    if (success) {
+    if (result.success) {
       let targetRole = selectedRole;
       try {
         const stored = localStorage.getItem('erikon_current_user');
@@ -182,7 +182,7 @@ export const LoginPage: React.FC = () => {
           navigate('/dashboard');
       }
     } else {
-      setErrorMsg('Invalid email or password. Please check your credentials and try again.');
+      setErrorMsg(result.error || 'Invalid email or password. Please check your credentials and try again.');
     }
   };
 
