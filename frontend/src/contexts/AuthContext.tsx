@@ -79,18 +79,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
-    // 1. Authenticate against Live Render API Backend
+    // Authenticate against the Live Render API Backend (PostgreSQL)
     try {
       const { data } = await apiClient.post('/auth/login', {
         email: cleanEmail,
         password: cleanPass,
       });
+
       if (data && data.user) {
         if (data.accessToken) {
           localStorage.setItem('erikon_access_token', data.accessToken);
-          // Connect SSE stream for real-time cross-device sync
+          // Connect SSE stream — real-time events from Render backend to this browser
           connectSSE(data.accessToken);
         }
+
         const backendUser: RegisteredUserRecord = {
           id: data.user.id,
           employeeId: data.user.employeeId || `EMP-${Date.now().toString().slice(-4)}`,
@@ -107,37 +109,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           status: 'ACTIVE',
         };
 
-        const localUsers = getRegisteredUsers();
-        saveRegisteredUsers([
-          backendUser,
-          ...localUsers.filter((u) => u.email.toLowerCase() !== cleanEmail),
-        ]);
-
         setCurrentUser(backendUser);
         localStorage.setItem('erikon_current_user', JSON.stringify(backendUser));
-        pushLocalToCloud().catch(() => {});
         return true;
       }
     } catch (apiErr) {
-      console.warn('Live Render backend login unavailable, verifying via cloud relay...', apiErr);
-    }
-
-    // 2. Fallback: Check in local registered users & cloud sync relay
-    let registered = getRegisteredUsers();
-    let match = registered.find((u) => u.email.toLowerCase() === cleanEmail);
-
-    if (!match) {
-      await pullCloudToLocal().catch(() => {});
-      registered = getRegisteredUsers();
-      match = registered.find((u) => u.email.toLowerCase() === cleanEmail);
-    }
-
-    if (match) {
-      if (!match.password || match.password === cleanPass) {
-        setCurrentUser(match);
-        localStorage.setItem('erikon_current_user', JSON.stringify(match));
-        return true;
-      }
+      console.warn('Render backend login failed:', apiErr);
     }
 
     return false;
