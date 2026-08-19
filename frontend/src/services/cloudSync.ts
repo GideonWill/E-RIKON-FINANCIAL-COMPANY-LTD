@@ -185,7 +185,10 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
 };
 
 /**
- * Initializes automatic background cloud synchronization
+ * Initializes background cloud synchronization.
+ * - Pulls latest state from cloud on app launch (data hydration fallback)
+ * - Pushes to cloud whenever a write event occurs (customers, deposits, loans, etc.)
+ * - SSE (EventSource) now handles the real-time cross-device push — no polling needed
  */
 export const initCloudSync = () => {
   // Initial pull on app launch
@@ -198,14 +201,8 @@ export const initCloudSync = () => {
     }
   });
 
-  // Periodic heartbeat sync every 4 seconds to pull updates from other devices
-  const intervalId = setInterval(() => {
-    pullCloudToLocal().catch(() => {});
-  }, 4000);
-
   return () => {
     unsubscribeEvents();
-    clearInterval(intervalId);
   };
 };
 

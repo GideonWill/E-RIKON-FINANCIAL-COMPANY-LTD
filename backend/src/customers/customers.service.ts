@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { CustomerStatus, AccountType } from '@prisma/client';
+import { EventsService } from '../events/events.service';
 
 export interface RegisterCustomerDto {
   firstName: string;
@@ -32,7 +33,10 @@ export interface RegisterCustomerDto {
 
 @Injectable()
 export class CustomersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventsService: EventsService,
+  ) {}
 
   async registerCustomer(dto: RegisterCustomerDto) {
     // Check unique Ghana Card & Phone
@@ -52,7 +56,7 @@ export class CustomersService {
 
     const customerNumber = `CUST-2026-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // 1. Create Customer record
       const customer = await tx.customer.create({
         data: {
@@ -120,6 +124,15 @@ export class CustomersService {
 
       return { customer, account };
     });
+
+    // Broadcast to all connected SSE clients (fires AFTER the DB transaction commits)
+    this.eventsService.broadcast('CUSTOMER_REGISTERED', {
+      customerId: result.customer.id,
+      customerNumber: result.customer.customerNumber,
+      name: `${result.customer.firstName} ${result.customer.lastName}`,
+    });
+
+    return result;
   }
 
   async getCustomer360(customerId: string) {
@@ -165,7 +178,7 @@ export class CustomersService {
 
     if (!customer) throw new NotFoundException('Customer record not found.');
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // 1. Delete daily cycles
       await tx.dailyCollectionCycle.deleteMany({
         where: { customerId },
@@ -196,5 +209,10 @@ export class CustomersService {
 
       return { success: true, message: `Customer record for ${customer.firstName} ${customer.lastName} deleted successfully.` };
     });
+
+    // Broadcast to all connected SSE clients (fires AFTER the DB transaction commits)
+    this.eventsService.broadcast('CUSTOMER_DELETED', { customerId });
+
+    return result;
   }
 }

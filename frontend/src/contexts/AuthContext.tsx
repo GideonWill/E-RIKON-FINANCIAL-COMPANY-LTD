@@ -10,6 +10,7 @@ import {
   MOCK_BRANCHES 
 } from '../services/api';
 import { initCloudSync, pushLocalToCloud, pullCloudToLocal } from '../services/cloudSync';
+import { connectSSE, disconnectSSE } from '../services/realtimeSync';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -58,6 +59,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => cleanup();
   }, []);
 
+  // Reconnect SSE stream on page refresh if user is already logged in
+  useEffect(() => {
+    const existingToken = localStorage.getItem('erikon_access_token');
+    if (existingToken && currentUser) {
+      connectSSE(existingToken);
+    }
+    return () => {
+      disconnectSSE();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const login = async (email?: string, password?: string, _role?: RoleName): Promise<boolean> => {
     const cleanEmail = email?.trim().toLowerCase();
     const cleanPass = password?.trim();
@@ -75,6 +88,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data && data.user) {
         if (data.accessToken) {
           localStorage.setItem('erikon_access_token', data.accessToken);
+          // Connect SSE stream for real-time cross-device sync
+          connectSSE(data.accessToken);
         }
         const backendUser: RegisteredUserRecord = {
           id: data.user.id,
@@ -153,8 +168,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    // Disconnect SSE stream cleanly
+    disconnectSSE();
     setCurrentUser(null);
     localStorage.removeItem('erikon_current_user');
+    localStorage.removeItem('erikon_access_token');
   };
 
   return (

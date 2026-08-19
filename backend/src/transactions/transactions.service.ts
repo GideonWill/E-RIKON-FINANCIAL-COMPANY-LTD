@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { TransactionType, PaymentMode, TransactionStatus, EntryType } from '@prisma/client';
+import { EventsService } from '../events/events.service';
 
 export interface CreateTransactionDto {
   accountId: string;
@@ -17,7 +18,10 @@ export interface CreateTransactionDto {
 
 @Injectable()
 export class TransactionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventsService: EventsService,
+  ) {}
 
   /**
    * Execute financial transaction with ACID PostgreSQL Transaction
@@ -31,7 +35,7 @@ export class TransactionsService {
       throw new BadRequestException('Transaction amount must be greater than GHS 0.00.');
     }
 
-    return await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // 1. Fetch target account
       const account = await tx.account.findUnique({
         where: { id: dto.accountId },
@@ -170,8 +174,25 @@ export class TransactionsService {
         account: updatedAccount,
         receiptNo,
         referenceNo,
+        customerId: account.customer?.id,
+        accountNumber: account.accountNumber,
+        customerName: account.customer ? `${account.customer.firstName} ${account.customer.lastName}` : '',
       };
     });
+
+    // Broadcast to all connected SSE clients (fires AFTER the DB transaction commits)
+    this.eventsService.broadcast('DEPOSIT_RECORDED', {
+      transactionType: dto.type,
+      amount: dto.amount,
+      accountId: dto.accountId,
+      receiptNo: result.receiptNo,
+      referenceNo: result.referenceNo,
+      customerId: result.customerId,
+      customerName: result.customerName,
+      accountNumber: result.accountNumber,
+    });
+
+    return result;
   }
 
   async getAccountTransactions(accountId: string) {

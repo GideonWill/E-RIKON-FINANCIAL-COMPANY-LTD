@@ -3,6 +3,7 @@ import { PrismaService } from '../common/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { RoleName } from '@prisma/client';
+import { EventsService } from '../events/events.service';
 
 export interface LoginDto {
   email: string;
@@ -24,7 +25,8 @@ export interface RegisterDto {
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly eventsService: EventsService,
   ) {}
 
   async validateUser(dto: LoginDto) {
@@ -149,6 +151,13 @@ export class AuthService {
       branchId: user.branchId,
       branchName: user.branch.name,
     };
+
+    // Broadcast new staff registration to all connected SSE clients
+    this.eventsService.broadcast('STAFF_REGISTERED', {
+      userId: user.id,
+      name: `${user.firstName} ${user.lastName}`,
+      role: user.role,
+    });
 
     return {
       accessToken: this.jwtService.sign(payload),

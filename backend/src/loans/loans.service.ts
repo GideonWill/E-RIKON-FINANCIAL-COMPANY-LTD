@@ -3,6 +3,7 @@ import { PrismaService } from '../common/prisma.service';
 import { FinancialCalculatorService } from '../common/financial-calculator.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { LoanStatus, TransactionType, PaymentMode } from '@prisma/client';
+import { EventsService } from '../events/events.service';
 
 export interface ApplyLoanDto {
   customerId: string;
@@ -20,7 +21,8 @@ export class LoansService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly calculator: FinancialCalculatorService,
-    private readonly transactionsService: TransactionsService
+    private readonly transactionsService: TransactionsService,
+    private readonly eventsService: EventsService,
   ) {}
 
   async calculateLoanQuote(amount: number, tenorDays: number) {
@@ -29,10 +31,9 @@ export class LoansService {
 
   async applyForLoan(dto: ApplyLoanDto, officerId: string) {
     const calc = this.calculator.calculateErFastLoan(dto.amountRequested, dto.tenorDays);
-
     const appNo = `LN-APP-${Date.now().toString().slice(-6)}`;
 
-    return this.prisma.loanApplication.create({
+    const loan = await this.prisma.loanApplication.create({
       data: {
         applicationNo: appNo,
         customerId: dto.customerId,
@@ -42,18 +43,14 @@ export class LoansService {
         amountApproved: dto.amountRequested,
         tenorCategory: calc.tenorCategory,
         tenorValueDays: dto.tenorDays,
-        interestRate: calc.interestRate * 100, // percentage e.g. 10, 15, 25, 30
+        interestRate: calc.interestRate * 100,
         totalInterest: calc.interestAmount,
         totalRepayable: calc.totalRepayable,
         outstandingBal: calc.totalRepayable,
         purpose: dto.purpose,
         status: LoanStatus.PENDING_REVIEW,
-        collaterals: {
-          create: dto.collaterals || [],
-        },
-        loanGuarantors: {
-          create: dto.guarantors || [],
-        },
+        collaterals: { create: dto.collaterals || [] },
+        loanGuarantors: { create: dto.guarantors || [] },
         schedules: {
           create: calc.installments.map((inst) => ({
             installmentNo: inst.installmentNo,
@@ -71,6 +68,15 @@ export class LoansService {
         loanGuarantors: true,
       },
     });
+
+    // Broadcast to all connected SSE clients
+    this.eventsService.broadcast('LOAN_CREATED', {
+      applicationNo: appNo,
+      customerId: dto.customerId,
+      amountRequested: dto.amountRequested,
+    });
+
+    return loan;
   }
 
   async approveLoan(loanId: string, approverId: string) {
@@ -81,13 +87,18 @@ export class LoansService {
       throw new BadRequestException(`Loan is in status ${loan.status} and cannot be approved.`);
     }
 
-    return this.prisma.loanApplication.update({
+    const approvedLoan = await this.prisma.loanApplication.update({
       where: { id: loanId },
       data: {
         status: LoanStatus.APPROVED,
         approvedById: approverId,
       },
     });
+
+    // Broadcast to all connected SSE clients
+    this.eventsService.broadcast('LOAN_APPROVED', { loanId, approverId });
+
+    return approvedLoan;
   }
 
   async disburseLoan(loanId: string, disburserId: string, branchId: string) {
@@ -115,7 +126,7 @@ export class LoansService {
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + loan.tenorValueDays);
 
-    return this.prisma.loanApplication.update({
+    const disbursedLoan = await this.prisma.loanApplication.update({
       where: { id: loanId },
       data: {
         status: LoanStatus.DISBURSED,
@@ -123,6 +134,11 @@ export class LoansService {
         dueDate,
       },
     });
+
+    // Broadcast to all connected SSE clients
+    this.eventsService.broadcast('LOAN_DISBURSED', { loanId, amount: Number(loan.amountRequested) });
+
+    return disbursedLoan;
   }
 
   async recordRepayment(loanId: string, amount: number, recorderId: string, branchId: string) {
@@ -180,13 +196,18 @@ export class LoansService {
       }
     }
 
-    return this.prisma.loanApplication.update({
+    const repaidLoan = await this.prisma.loanApplication.update({
       where: { id: loanId },
       data: {
         outstandingBal: newOutstanding,
         status: isFullyPaid ? LoanStatus.FULLY_PAID : LoanStatus.ACTIVE,
       },
     });
+
+    // Broadcast to all connected SSE clients
+    this.eventsService.broadcast('LOAN_REPAYMENT_RECORDED', { loanId, amount, isFullyPaid });
+
+    return repaidLoan;
   }
 
   async getLoanPortfolioSummary() {

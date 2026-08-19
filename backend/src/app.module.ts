@@ -16,6 +16,7 @@ import { AuditService } from './audit/audit.service';
 import { AuditController } from './audit/audit.controller';
 import { BranchesService } from './branches/branches.service';
 import { BranchesController } from './branches/branches.controller';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { BranchesController } from './branches/branches.controller';
       secret: process.env.JWT_SECRET || 'ERIKON_CORE_FINANCIAL_SUPER_SECRET_KEY_2026',
       signOptions: { expiresIn: '12h' },
     }),
+    EventsModule,
   ],
   controllers: [
     AuthController,

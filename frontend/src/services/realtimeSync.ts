@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-// Create a BroadcastChannel for multi-device / multi-tab real-time communication
+// ─── BroadcastChannel (same-tab / same-browser sync) ──────────────────────────
 const SYNC_CHANNEL_NAME = 'erikon_ecfms_realtime_sync';
 let syncChannel: BroadcastChannel | null = null;
 
@@ -12,7 +12,19 @@ if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
   }
 }
 
-export type SyncEventType = 
+// ─── SSE (Server-Sent Events — cross-device real-time) ────────────────────────
+let sseSource: EventSource | null = null;
+let sseReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let sseReconnectDelay = 1000; // Start at 1s, backs off exponentially up to 30s
+const SSE_MAX_DELAY = 30_000;
+
+const SSE_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  (typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    ? 'http://localhost:4000/api'
+    : 'https://e-rikon-ecfms-backend.onrender.com/api');
+
+export type SyncEventType =
   | 'CUSTOMER_REGISTERED'
   | 'CUSTOMER_CREATED'
   | 'CUSTOMER_DELETED'
@@ -39,21 +51,116 @@ export interface RealtimeSyncPayload {
   data?: any;
 }
 
-// Subscribe to real-time events across tabs and devices
-export const subscribeRealtimeEvents = (callback: (payload: RealtimeSyncPayload) => void): (() => void) => {
+// ─── Subscriber registry ───────────────────────────────────────────────────────
+const subscribers = new Set<(payload: RealtimeSyncPayload) => void>();
+
+const notifyAllSubscribers = (payload: RealtimeSyncPayload) => {
+  subscribers.forEach((cb) => {
+    try {
+      cb(payload);
+    } catch {}
+  });
+};
+
+// ─── SSE Connection ────────────────────────────────────────────────────────────
+
+/**
+ * Connect to the Render backend SSE endpoint.
+ * Called once after successful login.
+ */
+export const connectSSE = (token: string): void => {
+  if (sseSource) {
+    // Already connected
+    return;
+  }
+
+  const url = `${SSE_BASE_URL}/events?token=${encodeURIComponent(token)}`;
+
+  console.log('[SSE] Connecting to real-time event stream...');
+  sseSource = new EventSource(url);
+
+  sseSource.onopen = () => {
+    console.log('[SSE] ✅ Connected to E-RIKON real-time event stream');
+    sseReconnectDelay = 1000; // Reset backoff on successful connection
+  };
+
+  sseSource.onmessage = (event) => {
+    try {
+      const payload = JSON.parse(event.data) as RealtimeSyncPayload;
+      // Broadcast to all same-tab subscribers
+      notifyAllSubscribers(payload);
+      // Also relay to other browser tabs via BroadcastChannel
+      if (syncChannel) {
+        try {
+          syncChannel.postMessage(payload);
+        } catch {}
+      }
+      // Dispatch window custom event for legacy same-tab subscribers
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('erikon_realtime_update', { detail: payload }));
+      }
+    } catch (e) {
+      // Server heartbeat comment lines (": heartbeat\n\n") will fail JSON parse — ignore them
+    }
+  };
+
+  sseSource.onerror = () => {
+    console.warn(`[SSE] Connection lost. Reconnecting in ${sseReconnectDelay / 1000}s...`);
+    disconnectSSE(false); // Close the broken connection without clearing the token
+
+    // Exponential backoff reconnect
+    sseReconnectTimer = setTimeout(() => {
+      sseReconnectDelay = Math.min(sseReconnectDelay * 2, SSE_MAX_DELAY);
+      connectSSE(token);
+    }, sseReconnectDelay);
+  };
+};
+
+/**
+ * Disconnect SSE stream. Call on logout.
+ * @param clearToken - If true (default), prevents auto-reconnect.
+ */
+export const disconnectSSE = (clearToken = true): void => {
+  if (sseReconnectTimer) {
+    clearTimeout(sseReconnectTimer);
+    sseReconnectTimer = null;
+  }
+  if (sseSource) {
+    sseSource.onopen = null;
+    sseSource.onmessage = null;
+    sseSource.onerror = null;
+    sseSource.close();
+    sseSource = null;
+    if (clearToken) {
+      console.log('[SSE] Disconnected from real-time event stream');
+    }
+  }
+};
+
+// ─── Subscribe to real-time events ────────────────────────────────────────────
+
+/**
+ * Subscribe to real-time events from both SSE (cross-device) and BroadcastChannel (same-browser).
+ * Returns an unsubscribe function.
+ */
+export const subscribeRealtimeEvents = (
+  callback: (payload: RealtimeSyncPayload) => void
+): (() => void) => {
+  // Add to internal subscriber registry (receives SSE events relayed above)
+  subscribers.add(callback);
+
+  // Also handle BroadcastChannel messages (from other tabs on the same browser)
+  const handleBroadcastMessage = (event: MessageEvent<RealtimeSyncPayload>) => {
+    if (event.data) callback(event.data);
+  };
+
+  // Handle same-tab custom events (dispatched by local write operations in api.ts)
   const handleCustomEvent = (event: Event) => {
     const customEvt = event as CustomEvent<RealtimeSyncPayload>;
-    if (customEvt.detail) {
-      callback(customEvt.detail);
-    }
+    if (customEvt.detail) callback(customEvt.detail);
   };
 
-  const handleBroadcastMessage = (event: MessageEvent<RealtimeSyncPayload>) => {
-    if (event.data) {
-      callback(event.data);
-    }
-  };
-
+  // Handle localStorage changes from other tabs
   const handleStorageEvent = (event: StorageEvent) => {
     if (event.key && event.key.startsWith('erikon_')) {
       callback({
@@ -73,15 +180,8 @@ export const subscribeRealtimeEvents = (callback: (payload: RealtimeSyncPayload)
     window.addEventListener('storage', handleStorageEvent);
   }
 
-  // Periodic heartbeat sync (every 3 seconds) for multi-device network consistency
-  const heartbeatInterval = setInterval(() => {
-    callback({
-      type: 'MANUAL_SYNC',
-      timestamp: new Date().toISOString(),
-    });
-  }, 3000);
-
   return () => {
+    subscribers.delete(callback);
     if (syncChannel) {
       syncChannel.removeEventListener('message', handleBroadcastMessage);
     }
@@ -89,11 +189,11 @@ export const subscribeRealtimeEvents = (callback: (payload: RealtimeSyncPayload)
       window.removeEventListener('erikon_realtime_update', handleCustomEvent);
       window.removeEventListener('storage', handleStorageEvent);
     }
-    clearInterval(heartbeatInterval);
   };
 };
 
-// Broadcast a real-time event
+// ─── Broadcast a local real-time event (same-device operations) ───────────────
+
 export const broadcastRealtimeEvent = (type: SyncEventType, data?: any) => {
   const payload: RealtimeSyncPayload = {
     type,
@@ -101,6 +201,7 @@ export const broadcastRealtimeEvent = (type: SyncEventType, data?: any) => {
     data,
   };
 
+  // Relay to BroadcastChannel (other tabs)
   if (syncChannel) {
     try {
       syncChannel.postMessage(payload);
@@ -109,13 +210,17 @@ export const broadcastRealtimeEvent = (type: SyncEventType, data?: any) => {
     }
   }
 
-  // Also trigger window custom event for same-tab subscribers
+  // Dispatch custom event for same-tab subscribers
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('erikon_realtime_update', { detail: payload }));
   }
+
+  // Also notify all direct subscribers
+  notifyAllSubscribers(payload);
 };
 
-// React Hook to subscribe a component to real-time events
+// ─── React Hook ───────────────────────────────────────────────────────────────
+
 export const useRealtimeSync = (onUpdate: (payload: RealtimeSyncPayload) => void) => {
   useEffect(() => {
     const unsubscribe = subscribeRealtimeEvents(onUpdate);
