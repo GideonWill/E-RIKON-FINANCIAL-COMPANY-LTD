@@ -1,16 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, RoleName, ApprovalRequest } from '../types';
 import { 
-  MOCK_USERS, 
   registerNewUserRole, 
   getRegisteredUsers, 
-  saveRegisteredUsers,
   RegisteredUserRecord,
   apiClient,
   MOCK_BRANCHES 
 } from '../services/api';
-import { initCloudSync, pushLocalToCloud, pullCloudToLocal } from '../services/cloudSync';
-import { connectSSE, disconnectSSE } from '../services/realtimeSync';
+import { initCloudSync, pushLocalToCloud } from '../services/cloudSync';
+import { connectSSE, disconnectSSE, useRealtimeSync } from '../services/realtimeSync';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -26,7 +24,7 @@ interface AuthContextType {
     ghanaCard: string;
     employeeId?: string;
     password?: string;
-  }) => { user: User; approval: ApprovalRequest };
+  }) => Promise<{ user: User; approval: ApprovalRequest; isApproved: boolean }>;
   logout: () => void;
 }
 
@@ -53,7 +51,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentUser]);
 
-  // Launch background cloud sync to keep laptop and phone aligned in real-time
+  // Real-time listener: when Super Admin approves this account, unlock immediately
+  useRealtimeSync((payload) => {
+    if (payload.type === 'APPROVAL_DECISION_MADE' && currentUser) {
+      if (payload.data?.userId === currentUser.id) {
+        if (payload.data?.action === 'APPROVED') {
+          const updated: User = {
+            ...currentUser,
+            isApproved: true,
+            status: 'ACTIVE',
+          };
+          setCurrentUser(updated);
+          localStorage.setItem('erikon_current_user', JSON.stringify(updated));
+        } else if (payload.data?.action === 'REJECTED') {
+          logout();
+          alert('Your registration was declined by the Super Admin.');
+        }
+      }
+    }
+  });
+
+  // Launch background cloud sync
   useEffect(() => {
     const cleanup = initCloudSync();
     return () => cleanup();
@@ -93,6 +111,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           connectSSE(data.accessToken);
         }
 
+        const isUserApproved = data.user.isApproved ?? (data.user.role === 'SUPER_ADMIN');
+
         const backendUser: RegisteredUserRecord = {
           id: data.user.id,
           employeeId: data.user.employeeId || `EMP-${Date.now().toString().slice(-4)}`,
@@ -105,8 +125,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ghanaCard: data.user.ghanaCard || 'GHA-000000000-0',
           branchId: data.user.branchId || 'br-01',
           branch: data.user.branch || MOCK_BRANCHES[0],
+          isApproved: isUserApproved,
           createdAt: new Date().toISOString(),
-          status: 'ACTIVE',
+          status: isUserApproved ? 'ACTIVE' : 'PENDING_APPROVAL',
         };
 
         setCurrentUser(backendUser);
@@ -129,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signupRole = (data: {
+  const signupRole = async (data: {
     firstName: string;
     lastName: string;
     email: string;
@@ -139,7 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     employeeId?: string;
     password?: string;
   }) => {
-    const res = registerNewUserRole(data);
+    const res = await registerNewUserRole(data);
     pushLocalToCloud().catch(() => {});
     return res;
   };

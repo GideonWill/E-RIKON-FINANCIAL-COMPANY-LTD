@@ -112,6 +112,8 @@ model User {
   role         RoleName
   branchId     String
   isActive     Boolean  @default(true)
+  isApproved   Boolean  @default(false)
+  ghanaCard    String?
   lastLoginAt  DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

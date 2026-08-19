@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService, LoginDto, RegisterDto } from './auth.service';
 
 @Controller('auth')
@@ -15,6 +15,21 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() dto: RegisterDto) {
     return this.authService.registerUser(dto);
+  }
+
+  @Get('pending')
+  async getPendingUsers() {
+    return this.authService.getPendingUsers();
+  }
+
+  @Patch('approve/:id')
+  async approveUser(@Param('id') id: string) {
+    return this.authService.approveUser(id);
+  }
+
+  @Delete('reject/:id')
+  async rejectUser(@Param('id') id: string) {
+    return this.authService.rejectUser(id);
   }
 
   @Get('users')

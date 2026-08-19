@@ -61,6 +61,8 @@ export interface User {
   role: RoleName;
   branchId: string;
   branch?: Branch;
+  ghanaCard?: string;
+  isApproved?: boolean;
   createdAt?: string;
   status?: 'ACTIVE' | 'PENDING_APPROVAL' | 'REJECTED';
 }

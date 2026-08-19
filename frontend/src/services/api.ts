@@ -761,6 +761,16 @@ export const approveRequest = (
       loans[lIndex].status = 'APPROVED';
       saveStoredLoans(loans);
     }
+  } else if (req.type === 'STAFF_ROLE_SIGNUP') {
+    const users = getRegisteredUsers();
+    const uIndex = users.findIndex((u) => u.id === req.targetId || u.email === req.details?.email);
+    if (uIndex !== -1) {
+      users[uIndex].isApproved = true;
+      users[uIndex].status = 'ACTIVE';
+      saveRegisteredUsers(users);
+    }
+    // Sync approval to live backend
+    apiClient.patch(`/auth/approve/${req.targetId}`).catch(() => {});
   }
 
   approvals[index] = req;
@@ -805,6 +815,12 @@ export const rejectRequest = (
       loans[lIndex].status = 'REJECTED';
       saveStoredLoans(loans);
     }
+  } else if (req.type === 'STAFF_ROLE_SIGNUP') {
+    const users = getRegisteredUsers();
+    const updated = users.filter((u) => u.id !== req.targetId && u.email !== req.details?.email);
+    saveRegisteredUsers(updated);
+    // Sync rejection to live backend
+    apiClient.delete(`/auth/reject/${req.targetId}`).catch(() => {});
   }
 
   approvals[index] = req;
@@ -813,9 +829,9 @@ export const rejectRequest = (
 };
 
 /**
- * Register New Staff Role
+ * Register New Staff Role (Directly to Render PostgreSQL Backend)
  */
-export const registerNewUserRole = (signupData: {
+export const registerNewUserRole = async (signupData: {
   firstName: string;
   lastName: string;
   email: string;
@@ -825,12 +841,35 @@ export const registerNewUserRole = (signupData: {
   employeeId?: string;
   branchId?: string;
   password?: string;
-}): { user: User; approval: ApprovalRequest } => {
-  const isAutoApproved = signupData.role === 'SUPER_ADMIN' || getRegisteredUsers().length === 0;
+}): Promise<{ user: User; approval: ApprovalRequest; isApproved: boolean }> => {
+  const isAutoApproved = signupData.role === 'SUPER_ADMIN';
+
+  let backendUserId = `user-${Date.now()}`;
+  let backendEmployeeId = signupData.employeeId || `EMP-${Date.now().toString().slice(-4)}`;
+
+  try {
+    const { data } = await apiClient.post('/auth/register', {
+      firstName: signupData.firstName,
+      lastName: signupData.lastName,
+      email: signupData.email,
+      phone: signupData.phone,
+      ghanaCard: signupData.ghanaCard,
+      role: signupData.role,
+      password: signupData.password || 'erikon2026',
+      employeeId: backendEmployeeId,
+      branchId: signupData.branchId,
+    });
+    if (data?.user?.id) {
+      backendUserId = data.user.id;
+      backendEmployeeId = data.user.employeeId || backendEmployeeId;
+    }
+  } catch (err: any) {
+    console.warn('Backend registration notice:', err?.response?.data || err.message);
+  }
 
   const newUser: RegisteredUserRecord = {
-    id: `user-${Date.now()}`,
-    employeeId: signupData.employeeId || `EMP-${Date.now().toString().slice(-4)}`,
+    id: backendUserId,
+    employeeId: backendEmployeeId,
     firstName: signupData.firstName,
     lastName: signupData.lastName,
     email: signupData.email,
@@ -840,26 +879,14 @@ export const registerNewUserRole = (signupData: {
     ghanaCard: signupData.ghanaCard,
     branchId: signupData.branchId || 'br-01',
     branch: MOCK_BRANCHES[0],
+    isApproved: isAutoApproved,
     createdAt: new Date().toISOString(),
-    status: 'ACTIVE',
+    status: isAutoApproved ? 'ACTIVE' : 'PENDING_APPROVAL',
   };
 
   const existingUsers = getRegisteredUsers();
   const updatedUsers = [newUser, ...existingUsers.filter((u) => u.email.toLowerCase() !== newUser.email.toLowerCase())];
   saveRegisteredUsers(updatedUsers);
-
-  // Sync new user to Render PostgreSQL Database backend
-  apiClient.post('/auth/register', {
-    firstName: signupData.firstName,
-    lastName: signupData.lastName,
-    email: signupData.email,
-    phone: signupData.phone,
-    role: signupData.role,
-    password: signupData.password || 'erikon2026',
-    employeeId: newUser.employeeId,
-  }).catch((err) => {
-    console.warn('Render database sync note:', err);
-  });
 
   const approvalItem: ApprovalRequest = {
     id: `appr-${Date.now()}`,
@@ -884,5 +911,5 @@ export const registerNewUserRole = (signupData: {
   const approvals = getStoredApprovals();
   saveStoredApprovals([approvalItem, ...approvals]);
 
-  return { user: newUser, approval: approvalItem };
+  return { user: newUser, approval: approvalItem, isApproved: isAutoApproved };
 };

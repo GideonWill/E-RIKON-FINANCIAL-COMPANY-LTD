@@ -200,33 +200,46 @@ export const LoginPage: React.FC = () => {
       return;
     }
 
-    const { user } = signupRole({
-      firstName: signupFirstName,
-      lastName: signupLastName,
-      email: signupEmail,
-      phone: signupPhone,
-      role: signupRoleType,
-      ghanaCard: signupGhanaCard,
-      employeeId: signupEmployeeId,
-      password: signupPassword,
-    });
+    setIsLoading(true);
+    try {
+      const { user, isApproved } = await signupRole({
+        firstName: signupFirstName,
+        lastName: signupLastName,
+        email: signupEmail,
+        phone: signupPhone,
+        role: signupRoleType,
+        ghanaCard: signupGhanaCard,
+        employeeId: signupEmployeeId,
+        password: signupPassword,
+      });
 
-    // Auto populate signin form with registered credentials
-    setSelectedRole(signupRoleType);
-    setEmail(signupEmail);
-    setPassword(signupPassword);
+      // Auto populate signin form with registered credentials
+      setSelectedRole(signupRoleType);
+      setEmail(signupEmail);
+      setPassword(signupPassword);
 
-    setSignupSuccessMsg(
-      `🎉 User account registered successfully for ${signupRoleType.replace(/_/g, ' ')} (${user.firstName} ${user.lastName}) with email: ${signupEmail}! You can now sign in immediately.`
-    );
+      if (isApproved) {
+        setSignupSuccessMsg(
+          `🎉 Super Admin account registered and authorized for ${user.firstName} ${user.lastName} (${signupEmail})! You can sign in immediately.`
+        );
+      } else {
+        setSignupSuccessMsg(
+          `✅ Registration submitted for ${signupRoleType.replace(/_/g, ' ')} (${user.firstName} ${user.lastName}). Your account requires executive approval by the Super Admin before full workstation access is active. You can sign in now to check your live approval status.`
+        );
+      }
 
-    // Clear form
-    setSignupFirstName('');
-    setSignupLastName('');
-    setSignupEmail('');
-    setSignupPhone('');
-    setSignupGhanaCard('');
-    setSignupEmployeeId('');
+      // Clear form
+      setSignupFirstName('');
+      setSignupLastName('');
+      setSignupEmail('');
+      setSignupPhone('');
+      setSignupGhanaCard('');
+      setSignupEmployeeId('');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleResetData = () => {
