@@ -30,20 +30,10 @@ export const LoginPage: React.FC = () => {
   // Tab State: 'signin' | 'signup'
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
 
-  const DEFAULT_ROLE_CREDENTIALS: Record<RoleName, { email: string; pass: string }> = {
-    SUPER_ADMIN: { email: 'admin@erikon-group.com', pass: 'admin123' },
-    ADMIN: { email: 'operations@erikon-group.com', pass: 'admin123' },
-    BRANCH_ADMIN: { email: 'branch.accra@erikon-group.com', pass: 'admin123' },
-    TELLER: { email: 'teller.accra@erikon-group.com', pass: 'teller123' },
-    FIELD_OFFICER: { email: 'field.officer@erikon-group.com', pass: 'field123' },
-    LOAN_OFFICER: { email: 'loan.officer@erikon-group.com', pass: 'loan123' },
-    AUDITOR: { email: 'auditor@erikon-group.com', pass: 'audit123' },
-  };
-
-  // Sign In State
+  // Sign In State (Clean Empty Inputs for Real Production Data)
   const [selectedRole, setSelectedRole] = useState<RoleName>('SUPER_ADMIN');
-  const [email, setEmail] = useState('admin@erikon-group.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -89,21 +79,11 @@ export const LoginPage: React.FC = () => {
 
   const handleRoleSelect = (role: RoleName) => {
     setSelectedRole(role);
-    const cred = DEFAULT_ROLE_CREDENTIALS[role];
-    if (cred) {
-      setEmail(cred.email);
-      setPassword(cred.pass);
-    }
     setErrorMsg('');
   };
 
   const handleRoleDropdownChange = (role: RoleName) => {
     setSelectedRole(role);
-    const cred = DEFAULT_ROLE_CREDENTIALS[role];
-    if (cred) {
-      setEmail(cred.email);
-      setPassword(cred.pass);
-    }
     setErrorMsg('');
   };
 
@@ -448,7 +428,7 @@ export const LoginPage: React.FC = () => {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="admin@erikon-group.com"
+                      placeholder="name@erikon.com"
                       className="w-full bg-transparent text-slate-900 placeholder-slate-400 text-xs font-medium focus:outline-none"
                     />
                   </div>
