@@ -31,7 +31,7 @@ export class ReportsService {
       doc.on('error', (err) => reject(err));
 
       // Header
-      doc.fontSize(14).font('Helvetica-Bold').text('E-RIKON GROUP FINANCIAL LTD', { align: 'center' });
+      doc.fontSize(14).font('Helvetica-Bold').text('E-RiKON Financial Company PLC', { align: 'center' });
       doc.fontSize(9).font('Helvetica').text(`Branch: ${tx.branch.name}`, { align: 'center' });
       doc.text(`Phone: ${tx.branch.phone}`, { align: 'center' });
       doc.moveDown(0.5);
@@ -60,7 +60,7 @@ export class ReportsService {
       doc.text(`Remarks: ${tx.remarks || 'N/A'}`);
       doc.moveDown(1);
 
-      doc.fontSize(8).font('Helvetica-Oblique').text('Thank you for banking with E-RIKON GROUP FINANCIAL LTD.', { align: 'center' });
+      doc.fontSize(8).font('Helvetica-Oblique').text('Thank you for banking with E-RiKON Financial Company PLC.', { align: 'center' });
       doc.text('This is an official system generated paperless receipt.', { align: 'center' });
 
       doc.end();

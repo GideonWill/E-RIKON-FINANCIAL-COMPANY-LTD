@@ -268,7 +268,7 @@ export const ReportsPage: React.FC = () => {
     }
     const phoneDigits = selectedAccount.customer.phone.replace(/[^0-9]/g, '');
     const message = encodeURIComponent(
-      `📊 *E-RIKON GROUP FINANCIAL COMPANY LTD*\n` +
+      `📊 *E-RiKON Financial Company PLC*\n` +
       `*Monthly Statement - ${getMonthTitle(selectedMonth)}*\n\n` +
       `👤 *Client:* ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}\n` +
       `🔢 *Account No:* ${selectedAccount.accountNumber}\n` +
@@ -277,7 +277,7 @@ export const ReportsPage: React.FC = () => {
       `💰 *Total Deposited in ${getMonthTitle(selectedMonth)}:* GHS ${monthDeposits.toFixed(2)}\n` +
       `🌟 *Company Fee (31 Days):* GHS ${monthCompanyFee.toFixed(2)}\n` +
       `💵 *Net Available Savings:* GHS ${monthNetSavings.toFixed(2)}\n\n` +
-      `Thank you for saving with E-RIKON. Verified core banking operations.`
+      `Thank you for saving with E-RiKON. Verified core banking operations.`
     );
     window.open(`https://wa.me/${phoneDigits}?text=${message}`, '_blank');
     setDispatchStatus(`Statement for ${getMonthTitle(selectedMonth)} dispatched to ${selectedAccount.customer?.firstName}'s WhatsApp (+${phoneDigits})!`);
@@ -310,7 +310,7 @@ export const ReportsPage: React.FC = () => {
 
     return (
       `=====================================================\n` +
-      `E-RIKON GROUP FINANCIAL COMPANY LTD\n` +
+      `E-RiKON Financial Company PLC\n` +
       `OFFICIAL STATEMENT • ${monthTitle.toUpperCase()}\n` +
       `=====================================================\n\n` +
       `Dear ${cust?.firstName || 'Valued Client'} ${cust?.lastName || ''},\n\n` +
@@ -332,7 +332,7 @@ export const ReportsPage: React.FC = () => {
       `${rowsText}\n\n` +
       `-----------------------------------------------------\n` +
       `Certified Official Record by ECFMS Core Banking System.\n` +
-      `E-RIKON GROUP FINANCIAL COMPANY LTD\n` +
+      `E-RiKON Financial Company PLC\n` +
       `📍 14 Independence Avenue, Ridge, Accra | 📞 +233 30 200 1122\n` +
       `🌐 www.e-rikonfinancial.com\n` +
       `=====================================================`
@@ -345,7 +345,7 @@ export const ReportsPage: React.FC = () => {
   };
 
   const handleLaunchMailto = () => {
-    const subject = `Official Monthly Financial Statement - ${getMonthTitle(selectedMonth)} | E-RIKON Financial Company Ltd`;
+    const subject = `Official Monthly Financial Statement - ${getMonthTitle(selectedMonth)} | E-RiKON Financial Company PLC`;
     const body = generateEmailBodyText();
     const targetEmail = emailRecipient.trim();
     window.open(`mailto:${targetEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
@@ -354,7 +354,7 @@ export const ReportsPage: React.FC = () => {
   };
 
   const handleLaunchGmailWeb = () => {
-    const subject = `Official Monthly Financial Statement - ${getMonthTitle(selectedMonth)} | E-RIKON Financial Company Ltd`;
+    const subject = `Official Monthly Financial Statement - ${getMonthTitle(selectedMonth)} | E-RiKON Financial Company PLC`;
     const body = generateEmailBodyText();
     const targetEmail = emailRecipient.trim();
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(targetEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -758,7 +758,7 @@ export const ReportsPage: React.FC = () => {
                 <img src={logoImg} alt="E-RIKON Logo" className="h-14 sm:h-16 w-auto object-contain rounded-xl shadow-xs shrink-0 mt-0.5 sm:mt-0" />
                 <div className="space-y-0.5">
                   <h1 className="font-black text-lg sm:text-xl text-slate-950 tracking-tight leading-snug">
-                    E-RIKON GROUP FINANCIAL COMPANY LTD
+                    E-RiKON Financial Company PLC
                   </h1>
                   <p className="text-xs text-slate-600 font-semibold">Core Financial Management System (ECFMS)</p>
                   <p className="text-[11px] text-slate-500 font-medium">14 Independence Avenue, Ridge, Accra | +233 30 200 1122</p>
@@ -883,10 +883,10 @@ export const ReportsPage: React.FC = () => {
               <div className="space-y-1">
                 <div className="font-black text-slate-900 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>E-RIKON GROUP OFFICIAL STATEMENT RECORD</span>
+                  <span>E-RiKON OFFICIAL STATEMENT RECORD</span>
                 </div>
                 <p className="text-[10px] text-slate-500 font-mono">
-                  Certified by Super Admin & Head of Audit • E-RIKON Group Financial Company Ltd
+                  Certified by Super Admin & Head of Audit • E-RiKON Financial Company PLC
                 </p>
               </div>
 
@@ -966,7 +966,7 @@ export const ReportsPage: React.FC = () => {
                 Subject Line:
               </label>
               <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs font-mono text-slate-600 dark:text-slate-300 select-all">
-                Official Monthly Financial Statement - {getMonthTitle(selectedMonth)} | E-RIKON Financial Company Ltd
+                Official Monthly Financial Statement - {getMonthTitle(selectedMonth)} | E-RiKON Financial Company PLC
               </div>
             </div>
 

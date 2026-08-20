@@ -40,7 +40,7 @@ export const LoanCalculatorWidget: React.FC = () => {
               </span>
             </h3>
             <p className="text-xs text-slate-400">
-              E-RIKON Group Tenor Tiered Rate Simulation Engine
+              E-RiKON Tenor Tiered Rate Simulation Engine
             </p>
           </div>
         </div>

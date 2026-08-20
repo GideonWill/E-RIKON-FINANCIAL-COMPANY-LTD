@@ -159,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
 
       {/* Footer Info Box */}
       <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-xs space-y-1">
-        <div className="font-semibold text-slate-200">E-RIKON GROUP LTD</div>
+        <div className="font-semibold text-slate-200">E-RiKON Financial Company PLC</div>
         <p className="text-[11px] text-slate-400">RBAC Workstation Isolation Active</p>
         <div className="pt-2 text-[10px] text-amber-400/90 font-mono">
           Policy: 30-Day Interest & GH₵ 5-200 Packages

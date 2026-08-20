@@ -77,7 +77,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           <div className="relative p-3 sm:p-4 rounded-2xl bg-white shadow-xl shadow-slate-200/80 border border-slate-100">
             <img
               src={logoImg}
-              alt="E-RIKON Group"
+              alt="E-RiKON Financial Company PLC"
               className="w-24 h-24 sm:w-28 sm:h-28 object-contain rounded-xl drop-shadow-sm transform hover:scale-105 transition-transform"
             />
           </div>
@@ -85,11 +85,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
         <div className="space-y-1.5">
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950">
-            E-RIKON <span className="text-amber-500">GROUP</span>
+            E-RiKON <span className="text-amber-500">Financial Company PLC</span>
           </h1>
-          <p className="text-xs sm:text-sm font-extrabold text-slate-600 tracking-wide uppercase">
-            Financial Company Ltd
-          </p>
           <div className="inline-block px-3 py-1 rounded-full bg-slate-100 text-slate-500 font-mono text-[10px] font-bold mt-1">
             Core Financial Management System
           </div>
@@ -115,7 +112,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           Encrypted 256-bit Financial Ledger
         </p>
         <p className="text-[9px] font-mono text-slate-300 uppercase tracking-wider">
-          © 2026 E-RIKON Group Financial Company Ltd • All Rights Reserved
+          © 2026 E-RiKON Financial Company PLC • All Rights Reserved
         </p>
       </div>
     </div>

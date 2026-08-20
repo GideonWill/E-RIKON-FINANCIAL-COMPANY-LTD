@@ -88,7 +88,7 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
                 </span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                E-RIKON GROUP FINANCIAL COMPANY LTD • Employee Dossier
+                E-RiKON Financial Company PLC • Employee Dossier
               </p>
             </div>
           </div>

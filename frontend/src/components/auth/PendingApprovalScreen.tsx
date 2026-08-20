@@ -61,15 +61,18 @@ export const PendingApprovalScreen: React.FC = () => {
 
       {/* Top Bar */}
       <div className="flex items-center justify-between z-10 max-w-4xl w-full mx-auto">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3.5">
           <img 
             src={logoImg} 
-            alt="E-RIKON Logo" 
-            className="h-10 sm:h-12 w-auto object-contain rounded-lg shrink-0"
+            alt="E-RiKON Logo" 
+            className="h-11 sm:h-12 w-auto object-contain rounded-xl shrink-0 shadow-md"
           />
           <div>
-            <h1 className="font-extrabold text-lg sm:text-xl text-white flex items-center gap-2">
-              E-RIKON <span className="text-amber-400 font-semibold text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30">ECFMS v2.0</span>
+            <h1 className="font-black text-lg sm:text-xl text-white flex flex-wrap items-center gap-2">
+              <span>E-RiKON <span className="text-amber-400 font-black">Financial Company PLC</span></span>
+              <span className="text-amber-400 font-bold text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 font-mono">
+                ECFMS v2.0
+              </span>
             </h1>
             <p className="text-[11px] sm:text-xs text-slate-400">
               Core Financial Management System
@@ -201,7 +204,7 @@ export const PendingApprovalScreen: React.FC = () => {
 
       {/* Footer */}
       <div className="max-w-4xl w-full mx-auto text-center z-10 text-[11px] text-slate-500 border-t border-slate-900 pt-4">
-        © {new Date().getFullYear()} E-RIKON GROUP FINANCIAL COMPANY LTD. All rights reserved.
+        © {new Date().getFullYear()} E-RiKON Financial Company PLC. All rights reserved.
       </div>
     </div>
   );

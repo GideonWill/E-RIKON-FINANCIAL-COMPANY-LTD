@@ -17,7 +17,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
         <div className="relative">
           <img 
             src={logoImg} 
-            alt="E-RIKON GROUP FINANCIAL COMPANY LTD" 
+            alt="E-RiKON Financial Company PLC" 
             className="h-20 w-auto object-contain animate-pulse"
           />
         </div>

@@ -2,7 +2,7 @@
   "name": "e-rikon-ecfms-backend",
   "version": "1.0.0",
   "description": "E-RIKON Core Financial Management System Backend API",
-  "author": "E-RIKON GROUP FINANCIAL COMPANY LTD",
+  "author": "E-RiKON Financial Company PLC",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {

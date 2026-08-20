@@ -872,7 +872,7 @@ export const CustomersPage: React.FC = () => {
                 <p className="text-[11px] text-slate-600 dark:text-slate-300">
                   {fin.isDay31FeeRetained ? (
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                      <Check className="w-4 h-4" /> Day 31 reached! GH₵ {fin.packageRate}.00 management fee has been retained by E-RIKON Financial Company Ltd and recorded to corporate interest revenue.
+                      <Check className="w-4 h-4" /> Day 31 reached! GH₵ {fin.packageRate}.00 management fee has been retained by E-RiKON Financial Company PLC and recorded to corporate interest revenue.
                     </span>
                   ) : (
                     <span>

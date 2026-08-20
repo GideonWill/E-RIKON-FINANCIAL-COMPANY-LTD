@@ -63,12 +63,12 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
             <div className="flex justify-center mb-1">
               <img 
                 src={logoImg} 
-                alt="E-RIKON Logo" 
+                alt="E-RiKON Logo" 
                 className="h-11 sm:h-12 w-auto object-contain rounded-lg"
               />
             </div>
             <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white font-sans tracking-tight">
-              E-RIKON GROUP FINANCIAL COMPANY LTD
+              E-RiKON Financial Company PLC
             </h4>
             <p className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400">
               Accra Central Main Branch • Independence Avenue, Ridge
