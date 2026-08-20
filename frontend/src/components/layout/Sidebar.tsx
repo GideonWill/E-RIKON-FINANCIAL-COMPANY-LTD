@@ -205,14 +205,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
         {sidebarContent}
       </aside>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer with Swipe-to-Close and Safe Top Padding */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
+        <div className="fixed inset-0 z-50 lg:hidden flex animate-fade-in">
           <div 
             className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"
             onClick={onClose}
           />
-          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white dark:bg-slate-900 shadow-2xl z-10">
+          <div 
+            className="relative flex-1 flex flex-col max-w-xs w-full bg-white dark:bg-slate-900 shadow-2xl z-10 animate-slide-right"
+            style={{
+              paddingTop: 'max(env(safe-area-inset-top, 0px), 1rem)',
+              paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
+            }}
+          >
             {sidebarContent}
           </div>
         </div>

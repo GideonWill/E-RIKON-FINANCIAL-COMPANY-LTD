@@ -4,6 +4,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { StaffProfileModal } from '../ui/StaffProfileModal';
 import { NotificationsModal, getSystemNotifications } from '../ui/NotificationsModal';
 import { LoadingScreen } from '../ui/LoadingScreen';
+import { triggerAppRefresh } from '../ui/SplashScreen';
 import { useRealtimeSync } from '../../services/realtimeSync';
 import logoImg from '../../assets/logo.png';
 import { 
@@ -13,7 +14,8 @@ import {
   ShieldCheck, 
   LogOut,
   BellRing,
-  Menu
+  Menu,
+  RotateCw
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -123,6 +125,16 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               <span className="text-xs font-black uppercase tracking-wider">
                 {currentUser.role.replace(/_/g, ' ')} WORKSTATION
               </span>
+            </button>
+
+            {/* Instant Full System Refresh & Sync Button */}
+            <button
+              type="button"
+              onClick={() => triggerAppRefresh()}
+              className="p-1.5 sm:p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#0d9488] dark:hover:text-teal-400 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer group"
+              title="Refresh Page & Sync Latest System Updates"
+            >
+              <RotateCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500 text-[#0d9488]" />
             </button>
 
             {/* Theme Toggle Button */}
