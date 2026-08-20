@@ -32,7 +32,8 @@ import {
   Check,
   Trash2,
   Table,
-  ShieldCheck
+  ShieldCheck,
+  AlertCircle
 } from 'lucide-react';
 
 export const ReportsPage: React.FC = () => {
@@ -58,7 +59,14 @@ export const ReportsPage: React.FC = () => {
   const [isEmailCopied, setIsEmailCopied] = useState(false);
   const [dispatchStatus, setDispatchStatus] = useState<string | null>(null);
 
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId) || accounts[0];
+  // Sync selectedAccountId if accounts change
+  useEffect(() => {
+    if (accounts.length > 0 && (!selectedAccountId || !accounts.some((a) => a.id === selectedAccountId))) {
+      setSelectedAccountId(accounts[0].id);
+    }
+  }, [accounts, selectedAccountId]);
+
+  const selectedAccount: Account | undefined = accounts.find((a) => a.id === selectedAccountId) || accounts[0];
   const packageRate = selectedAccount?.savingsPackage || 20;
 
   // Retrieve all historical & active cycles for the chosen client account
@@ -88,11 +96,12 @@ export const ReportsPage: React.FC = () => {
         const dayNo = idx + 1;
         const currentCount = activeCycle?.currentDayCount || 0;
         const isPaid = dayNo <= currentCount && currentCount > 0;
+        const accSuffix = selectedAccount?.accountNumber ? selectedAccount.accountNumber.slice(-4) : '0000';
         return {
           dayNumber: dayNo,
           date: `2026-08-${dayNo.toString().padStart(2, '0')}`,
           amount: isPaid ? packageRate : 0,
-          receiptNo: isPaid ? `RCP-${selectedAccount?.accountNumber.slice(-4)}-${dayNo.toString().padStart(3, '0')}` : '-',
+          receiptNo: isPaid ? `RCP-${accSuffix}-${dayNo.toString().padStart(3, '0')}` : '-',
           isCompanyFee: dayNo === 31,
         };
       });
@@ -147,14 +156,18 @@ export const ReportsPage: React.FC = () => {
   };
 
   const handleExportTransactions = () => {
+    if (transactions.length === 0) {
+      alert('No transactions recorded to export.');
+      return;
+    }
     const data = transactions.map((t) => ({
-      ReceiptNo: t.receiptNo,
-      RefNo: t.referenceNo,
-      Customer: `${t.account?.customer?.firstName} ${t.account?.customer?.lastName}`,
-      AccountNo: t.account?.accountNumber,
-      GhanaCard: t.account?.customer?.ghanaCardNumber,
+      ReceiptNo: t.receiptNo || '—',
+      RefNo: t.referenceNo || '—',
+      Customer: t.account?.customer ? `${t.account.customer.firstName} ${t.account.customer.lastName}` : 'Client',
+      AccountNo: t.account?.accountNumber || '—',
+      GhanaCard: t.account?.customer?.ghanaCardNumber || '—',
       Type: t.type,
-      PaymentMode: t.paymentMode,
+      PaymentMode: t.paymentMode || 'Physical Cash',
       Amount: t.amount,
       Date: t.createdAt,
     }));
@@ -162,10 +175,14 @@ export const ReportsPage: React.FC = () => {
   };
 
   const handleExportLoans = () => {
+    if (loans.length === 0) {
+      alert('No loan portfolio records to export.');
+      return;
+    }
     const data = loans.map((l) => ({
       AppNo: l.applicationNo,
-      Customer: `${l.customer?.firstName} ${l.customer?.lastName}`,
-      GhanaCard: l.customer?.ghanaCardNumber,
+      Customer: l.customer ? `${l.customer.firstName} ${l.customer.lastName}` : 'Client',
+      GhanaCard: l.customer?.ghanaCardNumber || '—',
       AmountRequested: l.amountRequested,
       InterestRatePercent: l.interestRate,
       TotalRepayable: l.totalRepayable,
@@ -200,8 +217,9 @@ export const ReportsPage: React.FC = () => {
 
   // Transactions belonging strictly to the selected client and selected month
   const monthlyClientTransactions: Transaction[] = transactions.filter((t) => {
-    const isClient = t.accountId === selectedAccount?.id || t.account?.customerId === selectedAccount?.customerId;
-    const isMonth = t.createdAt.startsWith(selectedMonth);
+    if (!selectedAccount) return false;
+    const isClient = t.accountId === selectedAccount.id || t.account?.customerId === selectedAccount.customerId;
+    const isMonth = t.createdAt ? t.createdAt.startsWith(selectedMonth) : false;
     return isClient && isMonth;
   });
 
@@ -228,37 +246,42 @@ export const ReportsPage: React.FC = () => {
   const monthNetSavings = Math.max(0, monthDeposits - monthCompanyFee - monthWithdrawals);
 
   const handleExportCustomerStatement = () => {
+    if (!selectedAccount) {
+      alert('Please select a customer account first.');
+      return;
+    }
+    const custName = selectedAccount.customer ? `${selectedAccount.customer.firstName} ${selectedAccount.customer.lastName}` : 'Client';
     const data = monthlyClientTransactions.length > 0
       ? monthlyClientTransactions.map((tx, idx) => ({
           Index: idx + 1,
-          DateTime: new Date(tx.createdAt).toLocaleString('en-GB'),
-          ReceiptNo: tx.receiptNo,
-          ReferenceNo: tx.referenceNo,
-          Description: tx.type.replace('_', ' '),
-          PaymentMode: tx.paymentMode.replace('_', ' '),
+          DateTime: tx.createdAt ? new Date(tx.createdAt).toLocaleString('en-GB') : '—',
+          ReceiptNo: tx.receiptNo || '—',
+          ReferenceNo: tx.referenceNo || '—',
+          Description: tx.type ? tx.type.replace('_', ' ') : 'Transaction',
+          PaymentMode: tx.paymentMode ? tx.paymentMode.replace('_', ' ') : 'Cash',
           Amount: tx.amount,
-          PreviousBalance: tx.previousBal,
-          NewBalance: tx.newBal,
-          Customer: `${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}`,
-          AccountNo: selectedAccount.accountNumber,
-          GhanaCard: selectedAccount.customer?.ghanaCardNumber,
+          PreviousBalance: tx.previousBal || 0,
+          NewBalance: tx.newBal || 0,
+          Customer: custName,
+          AccountNo: selectedAccount.accountNumber || '—',
+          GhanaCard: selectedAccount.customer?.ghanaCardNumber || '—',
         }))
       : monthlyDailySplits.map((s, idx) => ({
           Index: idx + 1,
           DateTime: `${s.date} 09:00:00`,
-          ReceiptNo: s.receiptNo,
+          ReceiptNo: s.receiptNo || '—',
           ReferenceNo: `CYC-SPLIT-${s.dayNumber}`,
           Description: s.isCompanyFee ? 'Company 31-Day Management Fee' : 'Daily Collection Deposit',
           PaymentMode: 'Physical Cash',
           Amount: s.amount,
           PreviousBalance: Math.max(0, (s.amount * s.dayNumber) - s.amount),
           NewBalance: s.amount * s.dayNumber,
-          Customer: `${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}`,
-          AccountNo: selectedAccount.accountNumber,
-          GhanaCard: selectedAccount.customer?.ghanaCardNumber,
+          Customer: custName,
+          AccountNo: selectedAccount.accountNumber || '—',
+          GhanaCard: selectedAccount.customer?.ghanaCardNumber || '—',
         }));
 
-    exportCsv(`E-RIKON_Statement_${selectedAccount.customer?.firstName}_${selectedMonth}`, data);
+    exportCsv(`E-RIKON_Statement_${selectedAccount.customer?.firstName || 'Client'}_${selectedMonth}`, data);
   };
 
   const handleSendWhatsApp = () => {
@@ -270,8 +293,8 @@ export const ReportsPage: React.FC = () => {
     const message = encodeURIComponent(
       `📊 *E-RiKON Financial Company PLC*\n` +
       `*Monthly Statement - ${getMonthTitle(selectedMonth)}*\n\n` +
-      `👤 *Client:* ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}\n` +
-      `🔢 *Account No:* ${selectedAccount.accountNumber}\n` +
+      `👤 *Client:* ${selectedAccount.customer?.firstName || ''} ${selectedAccount.customer?.lastName || ''}\n` +
+      `🔢 *Account No:* ${selectedAccount.accountNumber || '—'}\n` +
       `📦 *Savings Package:* GHS ${packageRate}.00 / Day\n` +
       `📅 *Billing Month:* ${getMonthTitle(selectedMonth)}\n` +
       `💰 *Total Deposited in ${getMonthTitle(selectedMonth)}:* GHS ${monthDeposits.toFixed(2)}\n` +
@@ -292,16 +315,16 @@ export const ReportsPage: React.FC = () => {
     if (monthlyClientTransactions.length > 0) {
       rowsText = monthlyClientTransactions
         .map((tx, idx) => {
-          const dt = new Date(tx.createdAt).toLocaleString('en-GB');
-          const desc = tx.type === 'COMPANY_FEE_DEDUCTION' ? 'Day 31 Company Fee Retained' : tx.type.replace('_', ' ');
-          return `${idx + 1}. [${dt}] ${tx.receiptNo} | ${desc} | GHS ${tx.amount.toFixed(2)} | Bal: GHS ${tx.newBal.toFixed(2)}`;
+          const dt = tx.createdAt ? new Date(tx.createdAt).toLocaleString('en-GB') : '—';
+          const desc = tx.type === 'COMPANY_FEE_DEDUCTION' ? 'Day 31 Company Fee Retained' : tx.type?.replace('_', ' ') || 'Transaction';
+          return `${idx + 1}. [${dt}] ${tx.receiptNo || '—'} | ${desc} | GHS ${tx.amount.toFixed(2)} | Bal: GHS ${(tx.newBal || 0).toFixed(2)}`;
         })
         .join('\n');
     } else if (monthlyDailySplits.length > 0) {
       rowsText = monthlyDailySplits
         .map((s, idx) => {
           const desc = s.isCompanyFee ? 'Day 31 Company Fee Retained' : 'Daily Collection Deposit';
-          return `${idx + 1}. [${s.date} 09:00:00] ${s.receiptNo} | ${desc} | GHS ${s.amount.toFixed(2)} | Bal: GHS ${(s.amount * s.dayNumber).toFixed(2)}`;
+          return `${idx + 1}. [${s.date} 09:00:00] ${s.receiptNo || '—'} | ${desc} | GHS ${s.amount.toFixed(2)} | Bal: GHS ${(s.amount * s.dayNumber).toFixed(2)}`;
         })
         .join('\n');
     } else {
@@ -349,7 +372,7 @@ export const ReportsPage: React.FC = () => {
     const body = generateEmailBodyText();
     const targetEmail = emailRecipient.trim();
     window.open(`mailto:${targetEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
-    setDispatchStatus(`Email client opened for ${targetEmail || selectedAccount.customer?.firstName || 'client'}!`);
+    setDispatchStatus(`Email client opened for ${targetEmail || selectedAccount?.customer?.firstName || 'client'}!`);
     setTimeout(() => setDispatchStatus(null), 5000);
   };
 
@@ -359,7 +382,7 @@ export const ReportsPage: React.FC = () => {
     const targetEmail = emailRecipient.trim();
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(targetEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.open(gmailUrl, '_blank');
-    setDispatchStatus(`Opening Gmail composer for ${targetEmail || selectedAccount.customer?.firstName || 'client'}!`);
+    setDispatchStatus(`Opening Gmail composer for ${targetEmail || selectedAccount?.customer?.firstName || 'client'}!`);
     setTimeout(() => setDispatchStatus(null), 5000);
   };
 
@@ -379,7 +402,7 @@ export const ReportsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <FileSpreadsheet className="w-6 h-6 text-amber-500" />
+            <FileSpreadsheet className="w-6 h-6 text-[#0d9488]" />
             Financial Statements, Reports & Client Dispatch
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -400,12 +423,12 @@ export const ReportsPage: React.FC = () => {
 
       {/* Dispatch Alert */}
       {dispatchStatus && (
-        <div className="p-4 rounded-2xl bg-emerald-500 text-white font-bold text-xs flex items-center justify-between shadow-xl animate-fade-in">
+        <div className="p-4 rounded-2xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-between shadow-xl animate-fade-in">
           <div className="flex items-center space-x-2">
             <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
             <span>{dispatchStatus}</span>
           </div>
-          <button onClick={() => setDispatchStatus(null)} className="text-white font-mono">✕</button>
+          <button onClick={() => setDispatchStatus(null)} className="text-white font-mono cursor-pointer">✕</button>
         </div>
       )}
 
@@ -413,7 +436,7 @@ export const ReportsPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-          <div className="flex items-center space-x-3 text-amber-500">
+          <div className="flex items-center space-x-3 text-[#0d9488]">
             <FileSpreadsheet className="w-5 h-5" />
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">Transactions Ledger</h3>
           </div>
@@ -422,7 +445,7 @@ export const ReportsPage: React.FC = () => {
           </p>
           <button
             onClick={handleExportTransactions}
-            className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-md shadow-amber-500/20 cursor-pointer"
+            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#0d9488] to-[#166534] hover:opacity-95 text-white font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-md shadow-teal-900/10 cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>Export Transactions (CSV)</span>
@@ -430,7 +453,7 @@ export const ReportsPage: React.FC = () => {
         </div>
 
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-          <div className="flex items-center space-x-3 text-emerald-500">
+          <div className="flex items-center space-x-3 text-emerald-600">
             <Table className="w-5 h-5" />
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">Loan Portfolio Report</h3>
           </div>
@@ -447,7 +470,7 @@ export const ReportsPage: React.FC = () => {
         </div>
 
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-          <div className="flex items-center space-x-3 text-blue-500">
+          <div className="flex items-center space-x-3 text-blue-600">
             <FileText className="w-5 h-5" />
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">Month-to-Month Statement</h3>
           </div>
@@ -471,7 +494,7 @@ export const ReportsPage: React.FC = () => {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
           <div>
             <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-amber-500" />
+              <Calendar className="w-5 h-5 text-[#0d9488]" />
               Month-to-Month Customer Statement & Dispatch Center
             </h3>
             <p className="text-xs text-slate-500">
@@ -481,26 +504,32 @@ export const ReportsPage: React.FC = () => {
 
           {/* Selectors & Dispatch Buttons */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <select
-              value={selectedAccountId}
-              onChange={(e) => {
-                setSelectedAccountId(e.target.value);
-                setSelectedCycleNumber(1);
-              }}
-              className="py-2 px-3 rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-xs font-bold text-slate-950 dark:text-white shadow-xs cursor-pointer"
-            >
-              {accounts.map((acc) => (
-                <option key={acc.id} value={acc.id} className="text-slate-950 dark:text-white bg-white dark:bg-slate-900">
-                  {acc.customer?.firstName} {acc.customer?.lastName} ({acc.accountNumber})
-                </option>
-              ))}
-            </select>
+            {accounts.length > 0 ? (
+              <select
+                value={selectedAccountId}
+                onChange={(e) => {
+                  setSelectedAccountId(e.target.value);
+                  setSelectedCycleNumber(1);
+                }}
+                className="py-2 px-3 rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-xs font-bold text-slate-950 dark:text-white shadow-xs cursor-pointer"
+              >
+                {accounts.map((acc) => (
+                  <option key={acc.id} value={acc.id} className="text-slate-950 dark:text-white bg-white dark:bg-slate-900">
+                    {acc.customer ? `${acc.customer.firstName} ${acc.customer.lastName}` : 'Client'} ({acc.accountNumber})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-mono text-slate-500">
+                No accounts registered yet
+              </span>
+            )}
 
             {/* Month Selector */}
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="py-2 px-3.5 rounded-xl bg-white dark:bg-slate-950 border-2 border-amber-500/60 text-xs font-black text-amber-700 dark:text-amber-400 font-mono shadow-xs cursor-pointer"
+              className="py-2 px-3.5 rounded-xl bg-white dark:bg-slate-950 border border-teal-500/60 text-xs font-black text-teal-800 dark:text-teal-400 font-mono shadow-xs cursor-pointer"
               title="Select specific month to filter records"
             >
               {MONTH_OPTIONS.map((m) => (
@@ -552,7 +581,7 @@ export const ReportsPage: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
             <span className="text-[10px] text-slate-400 uppercase font-bold block">Client Package</span>
-            <span className="text-base font-black text-amber-500 font-mono">GH₵ {packageRate}.00 / Day</span>
+            <span className="text-base font-black text-[#0d9488] font-mono">GH₵ {packageRate}.00 / Day</span>
           </div>
 
           <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
@@ -562,12 +591,12 @@ export const ReportsPage: React.FC = () => {
 
           <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
             <span className="text-[10px] text-slate-400 uppercase font-bold block">Company 31-Day Fee</span>
-            <span className="text-base font-black text-emerald-500 font-mono">GHS {monthCompanyFee.toFixed(2)}</span>
+            <span className="text-base font-black text-emerald-600 font-mono">GHS {monthCompanyFee.toFixed(2)}</span>
           </div>
 
           <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
             <span className="text-[10px] text-slate-400 uppercase font-bold block">Net Month Savings</span>
-            <span className="text-base font-black text-blue-500 font-mono">GHS {monthNetSavings.toFixed(2)}</span>
+            <span className="text-base font-black text-blue-600 font-mono">GHS {monthNetSavings.toFixed(2)}</span>
           </div>
         </div>
 
@@ -575,8 +604,8 @@ export const ReportsPage: React.FC = () => {
         <div className="overflow-x-auto">
           <div className="flex items-center justify-between pb-2 text-xs font-bold text-slate-700 dark:text-slate-300">
             <span className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-amber-500" />
-              <span>Records for: <b className="text-amber-500 font-mono">{getMonthTitle(selectedMonth)}</b></span>
+              <Calendar className="w-4 h-4 text-[#0d9488]" />
+              <span>Records for: <b className="text-[#0d9488] font-mono">{getMonthTitle(selectedMonth)}</b></span>
             </span>
             <span className="text-[11px] text-slate-400 font-mono">
               {monthlyClientTransactions.length > 0 
@@ -604,7 +633,7 @@ export const ReportsPage: React.FC = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
               {monthlyClientTransactions.length > 0 ? (
                 monthlyClientTransactions.map((tx, idx) => {
-                  const txDate = new Date(tx.createdAt);
+                  const txDate = tx.createdAt ? new Date(tx.createdAt) : new Date();
                   const formattedDateTime = txDate.toLocaleString('en-GB', {
                     day: '2-digit',
                     month: '2-digit',
@@ -618,30 +647,30 @@ export const ReportsPage: React.FC = () => {
                     <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                       <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">{idx + 1}</td>
                       <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 font-bold flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <Clock className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
                         <span>{formattedDateTime}</span>
                       </td>
-                      <td className="py-2.5 px-3 font-bold text-amber-500">{tx.receiptNo}</td>
-                      <td className="py-2.5 px-3 text-slate-500">{tx.referenceNo}</td>
+                      <td className="py-2.5 px-3 font-bold text-[#0d9488]">{tx.receiptNo || '—'}</td>
+                      <td className="py-2.5 px-3 text-slate-500">{tx.referenceNo || '—'}</td>
                       <td className="py-2.5 px-3 font-sans">
                         <span className="font-medium text-slate-800 dark:text-slate-200">
-                          {tx.type === 'COMPANY_FEE_DEDUCTION' ? 'Day 31 Company Fee Retained' : tx.type.replace('_', ' ')}
+                          {tx.type === 'COMPANY_FEE_DEDUCTION' ? 'Day 31 Company Fee Retained' : tx.type?.replace('_', ' ') || 'Transaction'}
                         </span>
                       </td>
                       <td className="py-2.5 px-3 font-sans text-slate-500">
-                        {tx.paymentMode.replace('_', ' ')}
+                        {tx.paymentMode ? tx.paymentMode.replace('_', ' ') : 'Cash'}
                       </td>
                       <td className="py-2.5 px-3 text-right font-black text-slate-900 dark:text-white">
                         GHS {tx.amount.toFixed(2)}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-bold text-emerald-500">
-                        GHS {tx.newBal.toFixed(2)}
+                      <td className="py-2.5 px-3 text-right font-bold text-emerald-600">
+                        GHS {(tx.newBal || 0).toFixed(2)}
                       </td>
                       <td className="py-2.5 px-3 text-center">
                         <button
                           type="button"
                           onClick={() => setSelectedTxForReceipt(tx)}
-                          className="px-2 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-slate-950 font-bold text-[11px] transition-all cursor-pointer inline-flex items-center gap-1"
+                          className="px-2 py-0.5 rounded bg-teal-50 hover:bg-[#0d9488] text-[#0d9488] hover:text-white font-bold text-[11px] transition-all cursor-pointer inline-flex items-center gap-1"
                         >
                           <Printer className="w-3 h-3" />
                           <span>Receipt</span>
@@ -651,14 +680,14 @@ export const ReportsPage: React.FC = () => {
                   );
                 })
               ) : monthlyDailySplits.length > 0 ? (
-                monthlyDailySplits.map((split, idx) => (
+                monthlyDailySplits.map((split) => (
                   <tr key={split.dayNumber} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                     <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">Day {split.dayNumber}</td>
                     <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 font-bold flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <Clock className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
                       <span>{split.date} 09:00:00</span>
                     </td>
-                    <td className="py-2.5 px-3 font-bold text-amber-500">{split.receiptNo}</td>
+                    <td className="py-2.5 px-3 font-bold text-[#0d9488]">{split.receiptNo}</td>
                     <td className="py-2.5 px-3 text-slate-500">CYC-SPLIT-{split.dayNumber}</td>
                     <td className="py-2.5 px-3 font-sans">
                       {split.isCompanyFee ? 'Day 31 Company Fee Retained' : 'Daily Collection Deposit'}
@@ -667,7 +696,7 @@ export const ReportsPage: React.FC = () => {
                     <td className="py-2.5 px-3 text-right font-black text-slate-900 dark:text-white">
                       GHS {split.amount.toFixed(2)}
                     </td>
-                    <td className="py-2.5 px-3 text-right font-bold text-emerald-500">
+                    <td className="py-2.5 px-3 text-right font-bold text-emerald-600">
                       GHS {(split.amount * split.dayNumber).toFixed(2)}
                     </td>
                     <td className="py-2.5 px-3 text-center">
@@ -680,10 +709,12 @@ export const ReportsPage: React.FC = () => {
                   <td colSpan={9} className="py-8 text-center text-slate-400 font-sans">
                     <div className="space-y-1">
                       <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                        No financial transaction records recorded in {getMonthTitle(selectedMonth)} for {selectedAccount.customer?.firstName} {selectedAccount.customer?.lastName}.
+                        {selectedAccount 
+                          ? `No financial transaction records recorded in ${getMonthTitle(selectedMonth)} for ${selectedAccount.customer?.firstName || 'client'}.`
+                          : 'No customer accounts available. Register a customer and open a savings package to view records.'}
                       </p>
                       <p className="text-[11px] text-slate-400">
-                        Select another month from the dropdown above to view records.
+                        {selectedAccount ? 'Select another month from the dropdown above to view records.' : 'Visit Customer 360 to register new clients.'}
                       </p>
                     </div>
                   </td>
@@ -715,33 +746,41 @@ export const ReportsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
-              {transactions.slice(0, 10).map((tx) => (
-                <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className="py-2.5 px-3 font-bold text-amber-500">{tx.receiptNo}</td>
-                  <td className="py-2.5 px-3 text-slate-500">{tx.referenceNo}</td>
-                  <td className="py-2.5 px-3 font-bold font-sans text-slate-900 dark:text-white">
-                    {tx.account?.customer?.firstName} {tx.account?.customer?.lastName}
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                      {tx.type}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-black text-slate-900 dark:text-white">
-                    GHS {tx.amount.toFixed(2)}
-                  </td>
-                  <td className="py-2.5 px-3 text-slate-400">{new Date(tx.createdAt).toLocaleString('en-GB')}</td>
-                  <td className="py-2.5 px-3 text-center">
-                    <button
-                      onClick={() => setSelectedTxForReceipt(tx)}
-                      className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-slate-950 font-bold transition-all cursor-pointer inline-flex items-center gap-1"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>Receipt</span>
-                    </button>
+              {transactions.length > 0 ? (
+                transactions.slice(0, 10).map((tx) => (
+                  <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                    <td className="py-2.5 px-3 font-bold text-[#0d9488]">{tx.receiptNo || '—'}</td>
+                    <td className="py-2.5 px-3 text-slate-500">{tx.referenceNo || '—'}</td>
+                    <td className="py-2.5 px-3 font-bold font-sans text-slate-900 dark:text-white">
+                      {tx.account?.customer ? `${tx.account.customer.firstName} ${tx.account.customer.lastName}` : 'Client'}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        {tx.type}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-black text-slate-900 dark:text-white">
+                      GHS {tx.amount.toFixed(2)}
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-400">{tx.createdAt ? new Date(tx.createdAt).toLocaleString('en-GB') : '—'}</td>
+                    <td className="py-2.5 px-3 text-center">
+                      <button
+                        onClick={() => setSelectedTxForReceipt(tx)}
+                        className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-[#0d9488] text-[#0d9488] hover:text-white font-bold transition-all cursor-pointer inline-flex items-center gap-1"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Receipt</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="py-6 text-center text-slate-400 font-sans">
+                    No transactions recorded yet in the ledger.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -765,8 +804,8 @@ export const ReportsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="text-left md:text-right font-mono text-xs p-3 md:p-0 rounded-2xl md:rounded-none bg-amber-500/10 md:bg-transparent border border-amber-500/30 md:border-none shrink-0 space-y-0.5">
-                <div className="font-black text-amber-600 text-xs sm:text-sm uppercase tracking-wide">
+              <div className="text-left md:text-right font-mono text-xs p-3 md:p-0 rounded-2xl md:rounded-none bg-teal-50 md:bg-transparent border border-teal-200 md:border-none shrink-0 space-y-0.5">
+                <div className="font-black text-[#0d9488] text-xs sm:text-sm uppercase tracking-wide">
                   OFFICIAL STATEMENT • {getMonthTitle(selectedMonth).toUpperCase()}
                 </div>
                 <div className="text-slate-800 font-bold">Billing Period: {getMonthTitle(selectedMonth)}</div>
@@ -778,19 +817,21 @@ export const ReportsPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 rounded-2xl bg-slate-100 text-xs font-mono border border-slate-200">
               <div className="p-1">
                 <span className="text-[10px] text-slate-500 block uppercase font-bold">Client Name</span>
-                <span className="font-bold font-sans text-sm text-slate-900">{selectedAccount.customer?.firstName} {selectedAccount.customer?.lastName}</span>
+                <span className="font-bold font-sans text-sm text-slate-900">
+                  {selectedAccount?.customer ? `${selectedAccount.customer.firstName} ${selectedAccount.customer.lastName}` : 'Unregistered Client'}
+                </span>
               </div>
               <div className="p-1">
                 <span className="text-[10px] text-slate-500 block uppercase font-bold">Account No</span>
-                <span className="font-bold text-slate-900">{selectedAccount.accountNumber}</span>
+                <span className="font-bold text-slate-900">{selectedAccount?.accountNumber || '—'}</span>
               </div>
               <div className="p-1">
                 <span className="text-[10px] text-slate-500 block uppercase font-bold">Ghana Card PIN</span>
-                <span className="font-bold text-slate-900">{selectedAccount.customer?.ghanaCardNumber}</span>
+                <span className="font-bold text-slate-900">{selectedAccount?.customer?.ghanaCardNumber || '—'}</span>
               </div>
               <div className="p-1">
                 <span className="text-[10px] text-slate-500 block uppercase font-bold">Savings Package</span>
-                <span className="font-bold text-amber-600">GH₵ {packageRate}.00 / Day</span>
+                <span className="font-bold text-[#0d9488]">GH₵ {packageRate}.00 / Day</span>
               </div>
             </div>
 
@@ -828,7 +869,7 @@ export const ReportsPage: React.FC = () => {
                 <tbody className="divide-y divide-slate-200">
                   {monthlyClientTransactions.length > 0 ? (
                     monthlyClientTransactions.map((tx, idx) => {
-                      const dt = new Date(tx.createdAt);
+                      const dt = tx.createdAt ? new Date(tx.createdAt) : new Date();
                       const formattedDt = dt.toLocaleString('en-GB', {
                         day: '2-digit',
                         month: '2-digit',
@@ -841,14 +882,14 @@ export const ReportsPage: React.FC = () => {
                         <tr key={tx.id} className="hover:bg-slate-50">
                           <td className="py-1.5 px-2 font-bold">{idx + 1}</td>
                           <td className="py-1.5 px-2 font-bold text-slate-800">{formattedDt}</td>
-                          <td className="py-1.5 px-2 text-amber-600 font-bold">{tx.receiptNo}</td>
-                          <td className="py-1.5 px-2 text-slate-600">{tx.referenceNo}</td>
+                          <td className="py-1.5 px-2 text-[#0d9488] font-bold">{tx.receiptNo || '—'}</td>
+                          <td className="py-1.5 px-2 text-slate-600">{tx.referenceNo || '—'}</td>
                           <td className="py-1.5 px-2 font-sans font-medium">
-                            {tx.type === 'COMPANY_FEE_DEDUCTION' ? 'Day 31 Company Fee Retained' : tx.type.replace('_', ' ')}
+                            {tx.type === 'COMPANY_FEE_DEDUCTION' ? 'Day 31 Company Fee Retained' : tx.type?.replace('_', ' ') || 'Transaction'}
                           </td>
-                          <td className="py-1.5 px-2 text-slate-600 font-sans">{tx.paymentMode.replace('_', ' ')}</td>
+                          <td className="py-1.5 px-2 text-slate-600 font-sans">{tx.paymentMode ? tx.paymentMode.replace('_', ' ') : 'Cash'}</td>
                           <td className="py-1.5 px-2 text-right font-black">GHS {tx.amount.toFixed(2)}</td>
-                          <td className="py-1.5 px-2 text-right font-bold text-emerald-600">GHS {tx.newBal.toFixed(2)}</td>
+                          <td className="py-1.5 px-2 text-right font-bold text-emerald-600">GHS {(tx.newBal || 0).toFixed(2)}</td>
                         </tr>
                       );
                     })
@@ -857,7 +898,7 @@ export const ReportsPage: React.FC = () => {
                       <tr key={s.dayNumber} className="hover:bg-slate-50">
                         <td className="py-1.5 px-2 font-bold">{idx + 1}</td>
                         <td className="py-1.5 px-2 font-bold text-slate-800">{s.date} 09:00:00</td>
-                        <td className="py-1.5 px-2 text-amber-600 font-bold">{s.receiptNo}</td>
+                        <td className="py-1.5 px-2 text-[#0d9488] font-bold">{s.receiptNo}</td>
                         <td className="py-1.5 px-2 text-slate-600">CYC-SPLIT-{s.dayNumber}</td>
                         <td className="py-1.5 px-2 font-sans">
                           {s.isCompanyFee ? 'Company 31-Day Management Fee' : 'Daily Collection Deposit'}
