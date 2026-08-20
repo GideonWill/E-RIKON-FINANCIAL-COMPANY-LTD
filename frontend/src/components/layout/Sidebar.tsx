@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getStoredApprovals } from '../../services/api';
+import { useRealtimeSync } from '../../services/realtimeSync';
 import { 
   LayoutDashboard, 
   Users, 
@@ -24,10 +25,30 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
   const { currentUser } = useAuth();
+  const [approvals, setApprovals] = useState(getStoredApprovals());
+
+  const refreshApprovals = () => {
+    setApprovals(getStoredApprovals());
+  };
+
+  // Listen for local and real-time approval updates
+  useEffect(() => {
+    refreshApprovals();
+    window.addEventListener('erikon_realtime_update', refreshApprovals);
+    window.addEventListener('storage', refreshApprovals);
+    return () => {
+      window.removeEventListener('erikon_realtime_update', refreshApprovals);
+      window.removeEventListener('storage', refreshApprovals);
+    };
+  }, []);
+
+  useRealtimeSync(() => {
+    refreshApprovals();
+  });
+
   if (!currentUser) return null;
 
   const activeRole = currentUser.role;
-  const approvals = getStoredApprovals();
   const pendingApprovalsCount = approvals.filter((a) => a.status === 'PENDING').length;
 
   const navItems = [

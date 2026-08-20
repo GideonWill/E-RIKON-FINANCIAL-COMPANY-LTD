@@ -460,12 +460,14 @@ export const ApprovalsPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="font-bold text-slate-300">Super Admin Review Remarks *</label>
+                <label className="font-bold text-slate-200">Super Admin Review Remarks *</label>
                 <textarea
                   value={actionRemarks}
                   onChange={(e) => setActionRemarks(e.target.value)}
                   rows={3}
-                  className="w-full mt-1 p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs"
+                  placeholder="Enter executive review remarks..."
+                  style={{ color: '#ffffff', backgroundColor: '#020617' }}
+                  className="w-full mt-1 p-3 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder:text-slate-400 text-xs font-medium focus:ring-2 focus:ring-emerald-500/50 outline-none"
                 />
               </div>
             </div>

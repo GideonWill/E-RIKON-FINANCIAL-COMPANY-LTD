@@ -43,7 +43,11 @@ input, textarea, select, option {
 .auth-dark-input,
 .dark-auth input,
 .dark-auth select,
-.dark-auth textarea {
+.dark-auth textarea,
+.bg-slate-900 textarea,
+.bg-slate-950 textarea,
+.bg-slate-900 input,
+.bg-slate-950 input {
   color: #ffffff !important;
 }
 
