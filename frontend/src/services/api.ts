@@ -280,6 +280,54 @@ export const saveRegisteredUsers = (users: RegisteredUserRecord[]) => {
   broadcastRealtimeEvent('STAFF_REGISTERED', users);
 };
 
+/**
+ * Permanently Delete a User from the System (Super Admin Only)
+ */
+export const deleteRegisteredUser = async (userId: string, currentSuperAdmin: User): Promise<boolean> => {
+  if (currentSuperAdmin.role !== 'SUPER_ADMIN') {
+    throw new Error('Security Clearance Violation: Only the Super Admin can permanently delete user accounts.');
+  }
+
+  // 1. Remove from registered users storage
+  const users = getRegisteredUsers();
+  const targetUser = users.find((u) => u.id === userId);
+  const updatedUsers = users.filter((u) => u.id !== userId);
+  saveRegisteredUsers(updatedUsers);
+
+  // 2. Remove any associated pending approvals
+  const approvals = getStoredApprovals();
+  const updatedApprovals = approvals.filter((a) => a.targetId !== userId && a.details?.email !== targetUser?.email);
+  saveStoredApprovals(updatedApprovals);
+
+  // 3. Log to Immutable Audit Trail
+  const auditLogs = getStoredAuditLogs();
+  const newLog: AuditLog = {
+    id: `audit-${Date.now()}`,
+    userId: currentSuperAdmin.id,
+    userEmail: currentSuperAdmin.email,
+    userRole: currentSuperAdmin.role,
+    branchName: currentSuperAdmin.branch?.name || 'Accra Central Main Branch',
+    action: 'USER_DELETED_BY_SUPER_ADMIN',
+    resource: 'AUTH',
+    newValue: `User ${targetUser?.firstName || ''} ${targetUser?.lastName || ''} (${targetUser?.email || userId}, Role: ${targetUser?.role || 'STAFF'}) permanently removed from system by Super Admin ${currentSuperAdmin.firstName} ${currentSuperAdmin.lastName}.`,
+    ipAddress: '127.0.0.1',
+    createdAt: new Date().toISOString(),
+  };
+  saveStoredAuditLogs([newLog, ...auditLogs]);
+
+  // 4. Delete on live backend
+  try {
+    await apiClient.delete(`/auth/users/${userId}`);
+  } catch (err: any) {
+    try {
+      await apiClient.delete(`/auth/reject/${userId}`);
+    } catch {}
+  }
+
+  broadcastRealtimeEvent('USER_DELETED', { userId });
+  return true;
+};
+
 // Aliases for live state
 export const MOCK_CUSTOMERS = getStoredCustomers();
 export const MOCK_ACCOUNTS = getStoredAccounts();

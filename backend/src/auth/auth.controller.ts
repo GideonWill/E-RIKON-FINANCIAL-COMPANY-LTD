@@ -32,6 +32,11 @@ export class AuthController {
     return this.authService.rejectUser(id);
   }
 
+  @Delete('users/:id')
+  async deleteUser(@Param('id') id: string) {
+    return this.authService.rejectUser(id);
+  }
+
   @Get('users')
   async getUsers() {
     return this.authService.getAllUsers();

@@ -302,3 +302,8 @@ export interface AuditLog {
   ipAddress?: string;
   createdAt: string;
 }
+
+export interface RegisteredUserRecord extends User {
+  password?: string;
+  ghanaCard?: string;
+}

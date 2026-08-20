@@ -11,11 +11,12 @@ import {
   getStoredCompanyInterest, 
   getStoredCompanyWithdrawals, 
   getStoredApprovals,
-  getRegisteredUsers
+  getRegisteredUsers,
+  deleteRegisteredUser
 } from '../services/api';
 import { useRealtimeSync } from '../services/realtimeSync';
 import { useAuth } from '../contexts/AuthContext';
-import { SAVINGS_PACKAGES } from '../types';
+import { SAVINGS_PACKAGES, RegisteredUserRecord } from '../types';
 import { 
   Users, 
   Wallet, 
@@ -35,7 +36,8 @@ import {
   ArrowRight,
   CheckCircle2,
   XCircle,
-  UserCheck
+  UserCheck,
+  Trash2
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -60,6 +62,27 @@ export const DashboardPage: React.FC = () => {
   const [withdrawals, setWithdrawals] = useState(getStoredCompanyWithdrawals());
   const [approvals, setApprovals] = useState(getStoredApprovals());
   const [registeredStaff, setRegisteredStaff] = useState(getRegisteredUsers());
+  const [userToDelete, setUserToDelete] = useState<RegisteredUserRecord | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [deleteFeedback, setDeleteFeedback] = useState<string | null>(null);
+
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+
+  const handleConfirmDeleteUser = async () => {
+    if (!userToDelete || !currentUser || !isSuperAdmin) return;
+    setIsDeleting(true);
+    try {
+      await deleteRegisteredUser(userToDelete.id, currentUser);
+      setRegisteredStaff(getRegisteredUsers());
+      setDeleteFeedback(`🗑️ User ${userToDelete.firstName} ${userToDelete.lastName} (${userToDelete.email}) permanently removed.`);
+      setUserToDelete(null);
+      setTimeout(() => setDeleteFeedback(null), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete user.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Real-time multi-device subscription
   useRealtimeSync(() => {
@@ -331,6 +354,7 @@ export const DashboardPage: React.FC = () => {
                   <th className="py-2.5 px-3">Ghana Card</th>
                   <th className="py-2.5 px-3">Branch</th>
                   <th className="py-2.5 px-3">Clearance Status</th>
+                  {isSuperAdmin && <th className="py-2.5 px-3 text-center">Action</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
@@ -395,12 +419,30 @@ export const DashboardPage: React.FC = () => {
                             </span>
                           )}
                         </td>
+
+                        {isSuperAdmin && (
+                          <td className="py-2.5 px-3 text-center">
+                            {isSuperAdminRole ? (
+                              <span className="text-[10px] text-slate-400 font-sans italic">Primary Exec</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setUserToDelete(staff)}
+                                className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-[10px] transition-all cursor-pointer inline-flex items-center gap-1"
+                                title="Permanently delete user"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                <span>Delete</span>
+                              </button>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td colSpan={7} className="py-6 text-center text-slate-400 font-sans">
+                    <td colSpan={8} className="py-6 text-center text-slate-400 font-sans">
                       No signed-up users registered yet.
                     </td>
                   </tr>
@@ -416,6 +458,70 @@ export const DashboardPage: React.FC = () => {
         staffName={selectedStaffName}
         onClose={() => setSelectedStaffName(null)}
       />
+
+      {/* Super Admin Permanent User Deletion Modal */}
+      {userToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+          <div className="max-w-md w-full p-6 rounded-3xl bg-slate-900 border border-rose-900/60 shadow-2xl text-white space-y-4">
+            
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center space-x-2 text-rose-500">
+                <Trash2 className="w-5 h-5" />
+                <h3 className="font-extrabold text-base text-white">
+                  Permanently Delete User Account
+                </h3>
+              </div>
+              <button
+                onClick={() => setUserToDelete(null)}
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3.5 rounded-2xl bg-rose-950/40 border border-rose-900/50 space-y-1">
+                <div className="text-rose-300 font-bold">⚠️ Warning: Irreversible Super Admin Action</div>
+                <div className="text-slate-300 text-[11px]">
+                  You are about to permanently remove this user account from E-RiKON ECFMS:
+                </div>
+                <div className="pt-2 font-mono text-xs text-white">
+                  <div><strong>Name:</strong> {userToDelete.firstName} {userToDelete.lastName}</div>
+                  <div><strong>Email:</strong> {userToDelete.email}</div>
+                  <div><strong>Role:</strong> {userToDelete.role}</div>
+                  <div><strong>Ghana Card:</strong> {userToDelete.ghanaCard || 'N/A'}</div>
+                </div>
+              </div>
+
+              <p className="text-slate-400 text-[11px] leading-relaxed">
+                Once deleted, this user will no longer be able to log in to any workstation. All associated pending approvals will be purged and an immutable audit log entry will be recorded.
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setUserToDelete(null)}
+                disabled={isDeleting}
+                className="w-1/2 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmDeleteUser}
+                disabled={isDeleting}
+                className="w-1/2 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-lg shadow-rose-600/30 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isDeleting ? 'Deleting...' : 'Delete Permanently'}</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
