@@ -134,46 +134,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: true };
       }
     } catch (apiErr: any) {
-      console.warn('Backend login notice (falling back to local workstation auth):', apiErr?.message || apiErr);
+      console.warn('Backend login notice:', apiErr?.response?.data?.message || apiErr?.message);
+      const serverMsg = apiErr?.response?.data?.message;
+      if (typeof serverMsg === 'string' && serverMsg.toLowerCase().includes('password')) {
+        return { success: false, error: serverMsg };
+      }
     }
 
-    // 2. Seamless Local Workstation Auth Fallback (Enables instant local inspection & offline testing)
-    const effectiveRole: RoleName = role || 'SUPER_ADMIN';
+    // 2. Validate against Locally Registered Accounts (only actual created accounts)
     const localUsers = getRegisteredUsers();
     const match = localUsers.find((u) => u.email.toLowerCase() === cleanEmail);
 
     if (match) {
-      const localAuthenticated: RegisteredUserRecord = {
-        ...match,
-        isApproved: true,
-        status: 'ACTIVE',
-      };
-      setCurrentUser(localAuthenticated);
-      localStorage.setItem('erikon_current_user', JSON.stringify(localAuthenticated));
+      if (match.password && match.password !== cleanPass) {
+        return { success: false, error: 'Incorrect password for this account. Please verify and try again.' };
+      }
+
+      setCurrentUser(match);
+      localStorage.setItem('erikon_current_user', JSON.stringify(match));
       return { success: true };
     }
 
-    // Fallback: Generate authorized local test workstation account for the role
-    const fallbackUser: RegisteredUserRecord = {
-      id: `local-usr-${Date.now()}`,
-      employeeId: `EMP-${effectiveRole.slice(0, 3)}-001`,
-      firstName: effectiveRole === 'SUPER_ADMIN' ? 'Executive' : effectiveRole.replace(/_/g, ' '),
-      lastName: 'Director',
-      email: cleanEmail,
-      phone: '+233 24 123 4567',
-      role: effectiveRole,
-      password: cleanPass,
-      ghanaCard: 'GHA-123456789-0',
-      branchId: 'br-01',
-      branch: MOCK_BRANCHES[0],
-      isApproved: true,
-      createdAt: new Date().toISOString(),
-      status: 'ACTIVE',
+    // 3. No account found in system: Reject login
+    return { 
+      success: false, 
+      error: 'No registered account found with these credentials. Please click "sign up" to create your account first.' 
     };
-
-    setCurrentUser(fallbackUser);
-    localStorage.setItem('erikon_current_user', JSON.stringify(fallbackUser));
-    return { success: true };
   };
 
   const loginAsRole = (role: RoleName) => {
