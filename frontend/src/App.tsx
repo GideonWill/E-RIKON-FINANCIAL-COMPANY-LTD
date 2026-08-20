@@ -14,6 +14,7 @@ import { FieldOfficerPage } from './pages/FieldOfficerPage';
 import { LoansPage } from './pages/LoansPage';
 import { BranchesPage } from './pages/BranchesPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { EndOfDayPage } from './pages/EndOfDayPage';
 import { AuditPage } from './pages/AuditPage';
 import { CompanyInterestPage } from './pages/CompanyInterestPage';
 import { ApprovalsPage } from './pages/ApprovalsPage';
@@ -101,6 +102,7 @@ export const App: React.FC = () => {
                         />
                         
                         <Route path="/reports" element={<ReportsPage />} />
+                        <Route path="/end-of-day" element={<EndOfDayPage />} />
                         
                         <Route
                           path="/audit"

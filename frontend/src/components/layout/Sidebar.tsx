@@ -15,6 +15,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   PiggyBank,
+  CalendarCheck2,
   X
 } from 'lucide-react';
 
@@ -111,6 +112,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
       to: '/reports',
       label: 'Financial Statements',
       icon: FileSpreadsheet,
+      roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+    },
+    {
+      to: '/end-of-day',
+      label: 'End of Day (EOD) Close',
+      icon: CalendarCheck2,
       roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
     },
     {
