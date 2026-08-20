@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { User } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+import { deleteRegisteredUser } from '../../services/api';
 import { 
   UserCheck, 
   ShieldCheck, 
@@ -11,7 +13,10 @@ import {
   CheckCircle2, 
   Clock, 
   KeyRound,
-  Shield
+  Shield,
+  Trash2,
+  AlertTriangle,
+  LogOut
 } from 'lucide-react';
 
 interface StaffProfileModalProps {
@@ -21,7 +26,13 @@ interface StaffProfileModalProps {
 }
 
 export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, user, onClose }) => {
+  const { logout } = useAuth();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
   if (!isOpen || !user) return null;
+
+  const isSuperAdmin = user.role === 'SUPER_ADMIN';
 
   const rolePrivileges: Record<string, string[]> = {
     SUPER_ADMIN: [
@@ -64,13 +75,28 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
 
   const privileges = rolePrivileges[user.role] || ['Standard Staff Privileges'];
 
+  // Handle Permanent Super Admin Self-Deletion
+  const handleDeleteSuperAdminAccount = async () => {
+    if (!isSuperAdmin) return;
+    setIsDeleting(true);
+    try {
+      await deleteRegisteredUser(user.id, user);
+      onClose();
+      logout();
+      alert(`✅ Super Admin account (${user.email}) has been permanently deleted.\n\nAll company customer records, account balances, and financial history remain 100% safe and intact.\n\nYou can now register or log in with a new Super Admin account.`);
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete Super Admin account.');
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div 
       className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div 
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-6 relative overflow-hidden"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-6 relative overflow-hidden max-h-[95vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         
@@ -111,13 +137,13 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
 
             <div>
               <div className="text-[11px] font-mono text-amber-400 font-extrabold flex items-center gap-1">
-                <CreditCard className="w-3.5 h-3.5" /> ID: {user.employeeId}
+                <CreditCard className="w-3.5 h-3.5" /> ID: {user.employeeId || 'EMP-ADMIN'}
               </div>
               <h4 className="text-xl font-extrabold tracking-tight text-white mt-0.5">
                 {user.firstName} {user.lastName}
               </h4>
               <span className="inline-block mt-1 px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500 text-slate-950">
-                {user.role.replace('_', ' ')}
+                {user.role.replace(/_/g, ' ')}
               </span>
             </div>
           </div>
@@ -139,7 +165,7 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
               <Phone className="w-3 h-3 text-blue-500" /> Phone Line
             </span>
             <div className="font-mono font-bold text-slate-800 dark:text-slate-200">
-              {user.phone}
+              {user.phone || '—'}
             </div>
           </div>
 
@@ -148,7 +174,7 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
               <Building2 className="w-3 h-3 text-purple-500" /> Primary Branch
             </span>
             <div className="font-bold text-slate-800 dark:text-slate-200 truncate">
-              {user.branch?.name || 'Accra Main Branch'}
+              {user.branch?.name || 'Accra Central Main Branch'}
             </div>
           </div>
 
@@ -180,6 +206,71 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
             ))}
           </ul>
         </div>
+
+        {/* ================= SUPER ADMIN DELETE ACCOUNT SECTION ================= */}
+        {isSuperAdmin && (
+          <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 space-y-3">
+            {!showDeleteConfirm ? (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Super Admin Account</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                    Permanently delete this account. Company financial and client data will remain 100% intact.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-rose-600/20 cursor-pointer w-fit shrink-0"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Account</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-rose-300 dark:border-rose-800 animate-fade-in">
+                <div className="flex items-start space-x-2 text-rose-600 dark:text-rose-400 font-bold text-xs">
+                  <AlertTriangle className="w-5 h-5 shrink-0" />
+                  <div>
+                    <span className="block text-sm">Confirm Super Admin Account Deletion</span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-normal">
+                      Are you sure you want to permanently delete your Super Admin account (<strong>{user.firstName} {user.lastName}</strong> - {user.email})?
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-300">
+                  🛡️ <strong>Zero Data Disruption Guarantee:</strong> All customer profiles, transactions, daily collection cycles, loans, and financial statements remain completely untouched and safe. A new Super Admin account can be registered immediately.
+                </div>
+
+                <div className="flex items-center justify-end space-x-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={isDeleting}
+                    className="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDeleteSuperAdminAccount}
+                    disabled={isDeleting}
+                    className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-md shadow-rose-600/30 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{isDeleting ? 'Deleting...' : 'Yes, Delete Permanently'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Close Button */}
         <button
