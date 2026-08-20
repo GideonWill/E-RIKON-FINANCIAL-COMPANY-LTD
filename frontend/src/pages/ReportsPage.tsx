@@ -9,30 +9,30 @@ import {
 import { useRealtimeSync } from '../services/realtimeSync';
 import { Transaction, Account, DailySplitEntry, DailyCollectionCycle } from '../types';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
-import logoImg from '../assets/logo.jpeg';
+import logoImg from '../assets/logo.png';
 import { 
-  FileSpreadsheet, 
-  Download, 
-  FileText, 
-  Printer, 
+  Building2, 
+  Wallet, 
   Calendar, 
-  CheckCircle2,
-  Table,
-  Share2,
-  Send,
-  Building2,
-  Smartphone,
-  Mail,
-  Coins,
-  ShieldCheck,
-  User,
-  Clock,
-  Sparkles,
-  Trash2,
+  Download, 
+  FileSpreadsheet, 
+  Send, 
+  Mail, 
+  Printer, 
+  FileText, 
+  X, 
+  CheckCircle2, 
+  Clock, 
+  Smartphone, 
+  Users, 
+  Receipt,
+  MessageCircle,
+  ExternalLink,
   Copy,
   Check,
-  ExternalLink,
-  X
+  Trash2,
+  Table,
+  ShieldCheck
 } from 'lucide-react';
 
 export const ReportsPage: React.FC = () => {
@@ -755,7 +755,7 @@ export const ReportsPage: React.FC = () => {
             {/* Letterhead Header - Fully Responsive on Mobile & Desktop */}
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b-2 border-slate-900 pb-4">
               <div className="flex items-start sm:items-center space-x-3 sm:space-x-4">
-                <img src={logoImg} alt="E-RIKON Logo" className="h-14 sm:h-16 w-auto object-contain rounded-xl shadow-xs shrink-0 mt-0.5 sm:mt-0" />
+                <img src={logoImg} alt="E-RIKON Logo" className="h-14 sm:h-16 w-auto object-contain shrink-0 mt-0.5 sm:mt-0" />
                 <div className="space-y-0.5">
                   <h1 className="font-black text-lg sm:text-xl text-slate-950 tracking-tight leading-snug">
                     E-RiKON Financial Company PLC

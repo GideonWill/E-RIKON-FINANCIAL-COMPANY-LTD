@@ -1,18 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import logoImg from '../../assets/logo.jpeg';
+import logoImg from '../../assets/logo.png';
 import { 
   ShieldAlert, 
-  Clock, 
   LogOut, 
   RefreshCw, 
-  User, 
-  Building2, 
-  CreditCard, 
-  Phone, 
-  Mail, 
   CheckCircle2,
-  Lock
+  Lock,
+  Sparkles,
+  ChevronRight
 } from 'lucide-react';
 import { apiClient } from '../../services/api';
 
@@ -39,7 +35,7 @@ export const PendingApprovalScreen: React.FC = () => {
           return;
         }
       }
-      setStatusNote('Account is still pending Super Admin approval. You will gain instant access once approved.');
+      setStatusNote('Account is still awaiting Super Admin approval. You will gain instant access once approved.');
     } catch {
       setStatusNote('Connecting to authorization server...');
     } finally {
@@ -50,162 +46,99 @@ export const PendingApprovalScreen: React.FC = () => {
 
   return (
     <div 
-      className="min-h-screen bg-slate-950 text-white flex flex-col justify-between p-4 sm:p-6 lg:p-8 relative overflow-hidden font-sans"
-      style={{
-        paddingTop: 'max(calc(env(safe-area-inset-top, 0px) + 1rem), 2.5rem)',
-      }}
+      className="min-h-screen bg-[#f8fafc] flex flex-col justify-between p-3 sm:p-5 lg:p-6 select-none overflow-y-auto lg:overflow-hidden font-sans"
     >
-      {/* Ambient Glows */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-      {/* Top Bar */}
-      <div className="flex items-center justify-between z-10 max-w-4xl w-full mx-auto">
-        <div className="flex items-center space-x-3.5">
+      {/* Top Header Bar */}
+      <header className="relative z-10 w-full max-w-4xl mx-auto flex items-center justify-between gap-4 shrink-0 pb-2">
+        <div className="flex items-center space-x-3">
           <img 
             src={logoImg} 
             alt="E-RiKON Logo" 
-            className="h-11 sm:h-12 w-auto object-contain rounded-xl shrink-0 shadow-md"
+            className="h-10 sm:h-12 w-auto object-contain"
           />
-          <div>
-            <h1 className="font-black text-lg sm:text-xl text-white flex flex-wrap items-center gap-2">
-              <span>E-RiKON <span className="text-amber-400 font-black">Financial Company PLC</span></span>
-              <span className="text-amber-400 font-bold text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 font-mono">
-                ECFMS v2.0
-              </span>
-            </h1>
-            <p className="text-[11px] sm:text-xs text-slate-400">
-              Core Financial Management System
-            </p>
-          </div>
+          <span className="text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-full bg-teal-50 text-[#0d9488] border border-teal-200">
+            ECFMS v2.0
+          </span>
         </div>
 
         <button
           onClick={logout}
-          className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-md"
+          className="px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-slate-200 shadow-2xs"
         >
-          <LogOut className="w-4 h-4 text-rose-400" />
+          <LogOut className="w-3.5 h-3.5" />
           <span>Sign Out</span>
         </button>
-      </div>
+      </header>
 
-      {/* Center Notice Card */}
-      <div className="my-8 z-10 max-w-xl w-full mx-auto">
-        <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/95 border border-amber-500/30 shadow-2xl backdrop-blur-xl text-center space-y-6">
+      {/* Main Notice Card */}
+      <main className="relative z-10 w-full max-w-lg mx-auto my-auto py-4">
+        <div className="bg-white rounded-[32px] p-6 sm:p-8 shadow-2xl shadow-slate-900/10 border border-slate-100 text-center space-y-5">
           
-          {/* Pulsing Shield Icon */}
+          {/* Animated Icon Emblem in Logo Teal & Emerald */}
           <div className="relative inline-flex items-center justify-center">
-            <span className="animate-ping absolute inline-flex h-20 w-20 rounded-full bg-amber-400/20"></span>
-            <div className="p-4 rounded-3xl bg-amber-500/20 border border-amber-500/40 text-amber-400 shadow-xl relative">
-              <ShieldAlert className="w-10 h-10" />
+            <span className="animate-ping absolute inline-flex h-16 w-16 rounded-full bg-teal-400/20"></span>
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0d9488] to-[#166534] text-white flex items-center justify-center shadow-lg shadow-teal-900/20 relative">
+              <Lock className="w-8 h-8" />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-amber-500/20 border border-amber-500/40 text-amber-400 inline-flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 animate-spin" />
-              <span>AWAITING SUPER ADMIN APPROVAL</span>
+          {/* Heading */}
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-teal-50 text-[#065f46] border border-teal-200">
+              Clearance Pending
             </span>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-white">
-              Account Registration Pending
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              Registration Submitted!
             </h2>
-            <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-              Welcome, <strong className="text-white">{currentUser?.firstName} {currentUser?.lastName}</strong>. Your account has been registered in the system, but financial security policies require executive approval by the <strong className="text-amber-400">Super Admin</strong> before workstation access is granted.
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Welcome, <strong className="text-slate-900 font-bold">{currentUser?.firstName} {currentUser?.lastName}</strong>. Your account with role <span className="font-mono text-[11px] font-bold text-[#065f46] bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200 uppercase">{currentUser?.role}</span> has been recorded.
             </p>
           </div>
 
-          {/* User Details Box */}
-          <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 text-left space-y-2.5 text-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-amber-400" />
-                <span>Requested Position:</span>
-              </span>
-              <span className="font-bold text-white font-mono bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700">
-                {currentUser?.role?.replace(/_/g, ' ')}
-              </span>
+          {/* Info Box */}
+          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-left space-y-2 text-xs text-slate-700">
+            <div className="flex items-center space-x-2 text-[#065f46] font-black">
+              <ShieldAlert className="w-4 h-4 shrink-0" />
+              <span>Super Administrator Clearance Required</span>
             </div>
-
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-blue-400" />
-                <span>Staff Email:</span>
-              </span>
-              <span className="font-mono text-slate-300 truncate max-w-[200px]">
-                {currentUser?.email}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Phone:</span>
-              </span>
-              <span className="font-mono text-slate-300">
-                {currentUser?.phone}
-              </span>
-            </div>
-
-            {currentUser?.ghanaCard && (
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
-                <span className="text-slate-400 flex items-center gap-1.5">
-                  <CreditCard className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Ghana Card PIN:</span>
-                </span>
-                <span className="font-mono text-cyan-400 font-bold">
-                  {currentUser?.ghanaCard}
-                </span>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-purple-400" />
-                <span>Assigned Branch:</span>
-              </span>
-              <span className="font-semibold text-slate-300">
-                {currentUser?.branch?.name || 'Accra Central Main Branch'}
-              </span>
+            <p className="text-[11px] text-slate-600 leading-normal">
+              For regulatory auditing and financial safety, all newly registered staff require executive clearance by the <strong>Super Admin</strong> before accessing workstation tools.
+            </p>
+            <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] font-mono text-slate-500">
+              <span>Branch: {currentUser?.branch?.name || 'Accra Central Main'}</span>
+              <span>Ref: #{currentUser?.id?.slice(0, 8) || 'STAFF'}</span>
             </div>
           </div>
 
-          {statusNote && (
-            <div className="p-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold text-center animate-pulse">
-              {statusNote}
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3">
+          {/* Action Button */}
+          <div className="space-y-3 pt-1">
             <button
               onClick={handleManualCheck}
               disabled={isChecking}
-              className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg disabled:opacity-50"
+              className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#0d9488] via-[#059669] to-[#166534] hover:from-[#0f766e] hover:to-[#14532d] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all shadow-lg shadow-teal-900/20 cursor-pointer disabled:opacity-50 transform hover:scale-[1.01] active:scale-[0.99]"
             >
               <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
-              <span>{isChecking ? 'Checking Approval Status...' : 'Check Approval Status'}</span>
+              <span>{isChecking ? 'Checking Clearance...' : 'Check Approval Status Now'}</span>
             </button>
 
-            <button
-              onClick={logout}
-              className="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Sign Out</span>
-            </button>
+            {statusNote && (
+              <div className="p-2.5 rounded-xl bg-teal-50 border border-teal-200 text-xs text-teal-950 flex items-center justify-center space-x-2 animate-fade-in font-medium">
+                <span>{statusNote}</span>
+              </div>
+            )}
+
+            <p className="text-[10px] text-slate-400 font-mono">
+              ⚡ Real-time authorization active • Unlocks automatically on approval.
+            </p>
           </div>
 
-          <p className="text-[11px] text-slate-500 italic">
-            ⚡ This page will automatically unlock in real-time as soon as the Super Admin approves your account on their device.
-          </p>
-
         </div>
-      </div>
+      </main>
 
       {/* Footer */}
-      <div className="max-w-4xl w-full mx-auto text-center z-10 text-[11px] text-slate-500 border-t border-slate-900 pt-4">
+      <footer className="relative z-10 w-full max-w-4xl mx-auto text-center shrink-0 pt-2 text-[11px] text-slate-500 font-mono">
         © {new Date().getFullYear()} E-RiKON Financial Company PLC. All rights reserved.
-      </div>
+      </footer>
     </div>
   );
 };

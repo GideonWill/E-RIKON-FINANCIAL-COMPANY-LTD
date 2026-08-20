@@ -1,6 +1,6 @@
 import React from 'react';
 import { Transaction } from '../../types';
-import logoImg from '../../assets/logo.jpeg';
+import logoImg from '../../assets/logo.png';
 import { Printer, CheckCircle2, X, ShieldCheck, Building2, Sparkles, Check } from 'lucide-react';
 
 interface ReceiptPrinterModalProps {
@@ -64,7 +64,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
               <img 
                 src={logoImg} 
                 alt="E-RiKON Logo" 
-                className="h-11 sm:h-12 w-auto object-contain rounded-lg"
+                className="h-11 sm:h-12 w-auto object-contain"
               />
             </div>
             <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white font-sans tracking-tight">

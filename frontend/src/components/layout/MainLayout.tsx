@@ -89,8 +89,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           className="fixed top-14 left-1/2 -translate-x-1/2 z-50 transition-all duration-200 pointer-events-none flex items-center justify-center"
           style={{ transform: `translate(-50%, ${pullDistance}px)` }}
         >
-          <div className="bg-slate-900 text-amber-400 border border-slate-800 px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 text-xs font-bold font-mono">
-            <RefreshCw className={`w-4 h-4 text-amber-400 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <div className="bg-white dark:bg-slate-900 text-[#ea580c] border border-orange-200 dark:border-slate-800 px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 text-xs font-bold font-mono">
+            <RefreshCw className={`w-4 h-4 text-[#ea580c] ${isRefreshing ? 'animate-spin' : ''}`} />
             <span>{isRefreshing ? 'Refreshing Workstation...' : pullDistance > 60 ? 'Release to Refresh' : 'Pull down to refresh'}</span>
           </div>
         </div>

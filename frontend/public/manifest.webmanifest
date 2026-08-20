@@ -1,13 +1,13 @@
 {
-  "name": "E-RIKON Core Financial Management System",
-  "short_name": "E-RIKON",
-  "description": "E-RIKON Core Financial Management System (ECFMS)",
+  "name": "E-RiKON Financial Company PLC",
+  "short_name": "E-RiKON",
+  "description": "E-RiKON Financial Company PLC Core Financial Management System (ECFMS)",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#020617",
-  "theme_color": "#020617",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -40,9 +40,9 @@
       "purpose": "any"
     },
     {
-      "src": "/logo.jpeg",
+      "src": "/logo.png",
       "sizes": "any",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any"
     }
   ]

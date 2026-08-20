@@ -6,7 +6,7 @@ import { RoleName } from '../types';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
 import { GhanaCardInput } from '../components/ui/GhanaCardInput';
 import { GhanaPhoneInput, isValidGhanaPhone } from '../components/ui/GhanaPhoneInput';
-import logoImg from '../assets/logo.jpeg';
+import logoImg from '../assets/logo.png';
 import { 
   Building2, 
   ShieldCheck, 
@@ -20,7 +20,7 @@ import {
   CheckCircle2, 
   Trash2,
   ChevronRight,
-  ShieldAlert
+  ChevronDown
 } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
@@ -30,10 +30,20 @@ export const LoginPage: React.FC = () => {
   // Tab State: 'signin' | 'signup'
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
 
+  const DEFAULT_ROLE_CREDENTIALS: Record<RoleName, { email: string; pass: string }> = {
+    SUPER_ADMIN: { email: 'admin@erikon-group.com', pass: 'admin123' },
+    ADMIN: { email: 'operations@erikon-group.com', pass: 'admin123' },
+    BRANCH_ADMIN: { email: 'branch.accra@erikon-group.com', pass: 'admin123' },
+    TELLER: { email: 'teller.accra@erikon-group.com', pass: 'teller123' },
+    FIELD_OFFICER: { email: 'field.officer@erikon-group.com', pass: 'field123' },
+    LOAN_OFFICER: { email: 'loan.officer@erikon-group.com', pass: 'loan123' },
+    AUDITOR: { email: 'auditor@erikon-group.com', pass: 'audit123' },
+  };
+
   // Sign In State
   const [selectedRole, setSelectedRole] = useState<RoleName>('SUPER_ADMIN');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@erikon-group.com');
+  const [password, setPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -67,18 +77,33 @@ export const LoginPage: React.FC = () => {
     }
   }, [resetSuccessMsg]);
 
-  const rolesList: { role: RoleName; label: string; icon: any; color: string }[] = [
-    { role: 'SUPER_ADMIN', label: 'Super Admin', icon: ShieldCheck, color: 'from-amber-500 to-amber-600' },
-    { role: 'ADMIN', label: 'Operations Admin', icon: Shield, color: 'from-blue-500 to-indigo-600' },
-    { role: 'BRANCH_ADMIN', label: 'Branch Admin', icon: Building2, color: 'from-emerald-500 to-emerald-600' },
-    { role: 'TELLER', label: 'Teller Station', icon: Landmark, color: 'from-amber-500 to-yellow-600' },
-    { role: 'FIELD_OFFICER', label: 'Field Officer', icon: Smartphone, color: 'from-emerald-600 to-teal-600' },
-    { role: 'LOAN_OFFICER', label: 'Loan Officer', icon: Calculator, color: 'from-amber-600 to-orange-600' },
-    { role: 'AUDITOR', label: 'Auditor Desk', icon: FileCheck, color: 'from-teal-500 to-emerald-700' },
+  const rolesList: { role: RoleName; label: string }[] = [
+    { role: 'SUPER_ADMIN', label: 'Super Admin' },
+    { role: 'ADMIN', label: 'Operations Admin' },
+    { role: 'BRANCH_ADMIN', label: 'Branch Admin' },
+    { role: 'TELLER', label: 'Teller Station' },
+    { role: 'FIELD_OFFICER', label: 'Field Officer' },
+    { role: 'LOAN_OFFICER', label: 'Loan Officer' },
+    { role: 'AUDITOR', label: 'Auditor Desk' },
   ];
 
-  const handleRoleSelect = (item: typeof rolesList[0]) => {
-    setSelectedRole(item.role);
+  const handleRoleSelect = (role: RoleName) => {
+    setSelectedRole(role);
+    const cred = DEFAULT_ROLE_CREDENTIALS[role];
+    if (cred) {
+      setEmail(cred.email);
+      setPassword(cred.pass);
+    }
+    setErrorMsg('');
+  };
+
+  const handleRoleDropdownChange = (role: RoleName) => {
+    setSelectedRole(role);
+    const cred = DEFAULT_ROLE_CREDENTIALS[role];
+    if (cred) {
+      setEmail(cred.email);
+      setPassword(cred.pass);
+    }
     setErrorMsg('');
   };
 
@@ -155,7 +180,6 @@ export const LoginPage: React.FC = () => {
         password: signupPassword,
       });
 
-      // Auto populate signin form with registered credentials
       setSelectedRole(signupRoleType);
       setEmail(signupEmail);
       setPassword(signupPassword);
@@ -170,7 +194,6 @@ export const LoginPage: React.FC = () => {
         );
       }
 
-      // Clear form
       setSignupFirstName('');
       setSignupLastName('');
       setSignupEmail('');
@@ -202,8 +225,8 @@ export const LoginPage: React.FC = () => {
         />
       )}
 
-      {/* Main Container - Warm Ambient Orange Backdrop matching Template */}
-      <div className="min-h-screen lg:h-screen lg:max-h-screen w-full bg-[#f97316] bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] flex flex-col justify-between p-3 sm:p-5 lg:p-6 select-none overflow-y-auto lg:overflow-hidden font-sans">
+      {/* Main Screen Canvas matching Figma Mockup */}
+      <div className="min-h-screen lg:h-screen lg:max-h-screen w-full bg-[#f1f5f9] flex flex-col justify-between p-3 sm:p-5 lg:p-6 select-none overflow-y-auto lg:overflow-hidden font-sans">
         
         {/* Global Reset Notification */}
         {resetSuccessMsg && (
@@ -212,93 +235,97 @@ export const LoginPage: React.FC = () => {
           </div>
         )}
 
-        {/* Central Master Card matching Template Image */}
-        <div className="flex-1 flex items-center justify-center my-auto w-full max-w-4xl mx-auto">
-          <div className="w-full bg-white rounded-[32px] sm:rounded-[36px] shadow-2xl shadow-orange-950/30 overflow-hidden flex flex-col md:flex-row min-h-[480px] border border-white/40">
+        {/* Central Master Card matching Figma Image Exactly */}
+        <div className="flex-1 flex items-center justify-center my-auto w-full max-w-[1020px] mx-auto">
+          <div className="w-full bg-white rounded-[32px] sm:rounded-[36px] shadow-2xl shadow-slate-900/10 overflow-hidden flex flex-col md:flex-row min-h-[490px] border border-slate-100">
             
-            {/* ================= LEFT SIDE: 3D Glossy Spheres Banner ================= */}
-            <div className="md:w-5/12 bg-gradient-to-br from-[#f97316] via-[#ea580c] to-[#c2410c] text-white p-6 sm:p-7 flex flex-col justify-between relative overflow-hidden shrink-0">
+            {/* ================= LEFT SIDE: Geometric Faceted Polygon Mesh ================= */}
+            <div className="md:w-5/12 bg-[#061d31] text-white p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden shrink-0">
               
-              {/* Geometric Polygon Overlay Grid */}
-              <div className="absolute inset-0 pointer-events-none opacity-25">
-                <svg className="w-full h-full stroke-white fill-none" viewBox="0 0 300 450" preserveAspectRatio="none">
-                  <line x1="0" y1="50" x2="300" y2="200" strokeWidth="1" />
-                  <line x1="300" y1="50" x2="0" y2="250" strokeWidth="1" />
-                  <line x1="50" y1="0" x2="250" y2="450" strokeWidth="1" />
-                  <line x1="0" y1="350" x2="300" y2="150" strokeWidth="1" />
+              {/* SVG Faceted Polygonal Geometric Mesh based on Logo Palette */}
+              <div className="absolute inset-0 pointer-events-none opacity-85">
+                <svg className="w-full h-full object-cover" viewBox="0 0 400 600" preserveAspectRatio="none" fill="none">
+                  {/* Facet Polygons with rich logo greens, teals, cyans, and blues */}
+                  <polygon points="0,0 200,0 120,100" fill="#0b3856" />
+                  <polygon points="200,0 400,0 320,80" fill="#14532d" />
+                  <polygon points="120,100 200,0 280,110" fill="#047857" />
+                  <polygon points="0,0 120,100 0,160" fill="#0f766e" />
+                  <polygon points="0,160 120,100 80,240" fill="#0d9488" />
+                  <polygon points="120,100 280,110 200,220" fill="#10b981" />
+                  <polygon points="280,110 400,0 400,140" fill="#15803d" />
+                  <polygon points="280,110 400,140 340,240" fill="#84cc16" />
+                  <polygon points="200,220 280,110 340,240" fill="#4ade80" />
+                  <polygon points="80,240 120,100 200,220" fill="#06b6d4" />
+                  <polygon points="0,160 80,240 0,320" fill="#0369a1" />
+                  <polygon points="80,240 200,220 140,360" fill="#0891b2" />
+                  <polygon points="200,220 340,240 260,370" fill="#22c55e" />
+                  <polygon points="340,240 400,140 400,300" fill="#65a30d" />
+                  <polygon points="340,240 400,300 370,410" fill="#4d7c0f" />
+                  <polygon points="260,370 340,240 370,410" fill="#16a34a" />
+                  <polygon points="140,360 200,220 260,370" fill="#0284c7" />
+                  <polygon points="0,320 80,240 140,360" fill="#0c4a6e" />
+                  <polygon points="0,320 140,360 60,460" fill="#075985" />
+                  <polygon points="60,460 140,360 210,480" fill="#0891b2" />
+                  <polygon points="140,360 260,370 210,480" fill="#0f766e" />
+                  <polygon points="210,480 260,370 320,490" fill="#15803d" />
+                  <polygon points="260,370 370,410 320,490" fill="#16a34a" />
+                  <polygon points="370,410 400,300 400,480" fill="#3f6212" />
+                  <polygon points="370,410 400,480 400,600" fill="#14532d" />
+                  <polygon points="320,490 370,410 400,600" fill="#15803d" />
+                  <polygon points="210,480 320,490 280,600" fill="#065f46" />
+                  <polygon points="60,460 210,480 160,600" fill="#042f2e" />
+                  <polygon points="0,320 60,460 0,550" fill="#082f49" />
+                  <polygon points="0,550 60,460 160,600" fill="#0a2540" />
+                  <polygon points="0,550 160,600 0,600" fill="#041829" />
+                  <polygon points="160,600 210,480 280,600" fill="#064e3b" />
+                  <polygon points="280,600 320,490 400,600" fill="#14532d" />
                 </svg>
               </div>
 
-              {/* 3D Glossy Amber Sphere Balls (Matching the Illustration in the Image) */}
-              <div className="absolute -left-10 top-16 w-52 h-52 pointer-events-none">
-                {/* Primary Sphere */}
-                <div 
-                  className="w-48 h-48 rounded-full shadow-2xl relative"
-                  style={{
-                    background: 'radial-gradient(circle at 35% 30%, #ffedd5 0%, #fb923c 45%, #c2410c 85%, #7c2d12 100%)',
-                    boxShadow: 'inset -10px -10px 25px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.3)',
-                  }}
-                >
-                  {/* Glossy Reflection Highlight */}
-                  <div className="absolute top-6 left-10 w-8 h-4 rounded-full bg-white/70 rotate-[-25deg] blur-[1px]"></div>
-                  <div className="absolute top-11 left-16 w-3 h-2 rounded-full bg-white/50 rotate-[-25deg]"></div>
-                </div>
-              </div>
-
-              {/* Secondary Smaller Sphere in Background */}
-              <div className="absolute right-[-15px] top-24 w-32 h-32 pointer-events-none">
-                <div 
-                  className="w-28 h-28 rounded-full shadow-xl relative"
-                  style={{
-                    background: 'radial-gradient(circle at 35% 30%, #ffedd5 0%, #fb923c 45%, #c2410c 85%, #7c2d12 100%)',
-                    boxShadow: 'inset -6px -6px 18px rgba(0,0,0,0.4), 0 15px 25px rgba(0,0,0,0.25)',
-                  }}
-                >
-                  <div className="absolute top-4 left-6 w-5 h-2.5 rounded-full bg-white/70 rotate-[-25deg] blur-[0.5px]"></div>
-                </div>
-              </div>
+              {/* Gradient Dark Overlay to match Figma background depth */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#051b2c] via-[#051b2c]/85 to-transparent pointer-events-none"></div>
 
               {/* Top Banner Header */}
               <div className="relative z-10 space-y-1">
-                <h2 className="text-2xl sm:text-3xl font-black tracking-wider uppercase text-white drop-shadow-sm">
+                <h2 className="text-2xl sm:text-3xl font-black tracking-wider uppercase text-white drop-shadow-xs">
                   {activeTab === 'signin' ? 'SIGN IN' : 'SIGN UP'}
                 </h2>
-                <div className="flex items-center space-x-2 pt-1">
-                  <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-orange-100 font-mono">
-                    ECFMS v2.0 PORTAL
+                <div className="flex items-center space-x-2 pt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-slate-200 font-mono">
+                    ECFMS V2.0 PORTAL
                   </span>
                 </div>
               </div>
 
-              {/* Bottom Information Block */}
-              <div className="relative z-10 mt-auto pt-24 sm:pt-32 space-y-2">
-                <div className="space-y-0.5">
+              {/* Middle & Bottom Information Block */}
+              <div className="relative z-10 mt-auto pt-16 sm:pt-24 space-y-3">
+                <div className="space-y-1">
                   <div className="font-black text-sm sm:text-base text-white tracking-tight">
                     E-RiKON Financial Company PLC
                   </div>
-                  <p className="text-[11px] text-orange-100/90 leading-relaxed font-normal">
+                  <p className="text-[11px] text-slate-300/90 leading-relaxed font-normal">
                     Core banking workstation for double-entry financial accounting, 31-day daily collection cycles & microfinance operations.
                   </p>
                 </div>
 
-                {/* Role Switcher Chips */}
+                {/* SELECT SCOPE Buttons matching Figma exact pill colors */}
                 <div className="pt-2">
-                  <div className="text-[10px] font-bold text-orange-200 uppercase tracking-wider mb-1.5">
-                    Select Scope:
+                  <div className="text-[10px] font-black text-slate-300 uppercase tracking-wider mb-2">
+                    SELECT SCOPE:
                   </div>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1.5">
                     {rolesList.map((r) => {
                       const isSelected = selectedRole === r.role && activeTab === 'signin';
                       return (
                         <button
                           key={r.role}
                           type="button"
-                          onClick={() => { setSelectedRole(r.role); setActiveTab('signin'); setErrorMsg(''); }}
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-all cursor-pointer ${
+                          onClick={() => handleRoleSelect(r.role)}
+                          className={`text-[10px] font-bold px-3 py-1 rounded-full transition-all cursor-pointer ${
                             isSelected
-                              ? 'bg-white text-[#ea580c] font-black shadow-sm'
-                              : 'bg-black/20 text-white/90 hover:bg-black/30'
+                              ? 'bg-white text-slate-900 font-black shadow-md'
+                              : 'bg-[#155e75]/80 text-white hover:bg-[#0e7490] border border-cyan-500/20'
                           }`}
                         >
                           {r.label}
@@ -311,46 +338,47 @@ export const LoginPage: React.FC = () => {
 
             </div>
 
-            {/* ================= RIGHT SIDE: Pill Input Template Form ================= */}
+            {/* ================= RIGHT SIDE: Interactive Form matching Figma UI ================= */}
             <div className="md:w-7/12 bg-white p-6 sm:p-8 flex flex-col justify-between relative">
               
-              {/* Top Tab Bar (Matching Template: Underlined Active Tab) */}
-              <div className="flex items-center justify-between border-b-2 border-slate-100 pb-2 mb-4">
+              {/* Top Navigation Bar with Underlined Tab & Official Brand Logo */}
+              <div className="flex items-center justify-between pb-3 mb-3">
                 <div className="flex items-center space-x-6">
                   <button
                     type="button"
                     onClick={() => { setActiveTab('signup'); setErrorMsg(''); setResetSuccessMsg(null); }}
-                    className={`text-sm sm:text-base font-black transition-all cursor-pointer relative pb-2 ${
+                    className={`text-sm sm:text-base font-bold transition-all cursor-pointer relative pb-1 ${
                       activeTab === 'signup'
-                        ? 'text-[#ea580c]'
-                        : 'text-slate-400 hover:text-slate-700'
+                        ? 'text-[#065f46] font-black'
+                        : 'text-slate-700 hover:text-slate-950 font-bold'
                     }`}
                   >
                     <span>sign up</span>
                     {activeTab === 'signup' && (
-                      <div className="absolute bottom-[-2px] left-0 right-0 h-[3px] bg-[#ea580c] rounded-full"></div>
+                      <div className="absolute bottom-[-4px] left-0 right-0 h-[2.5px] bg-[#065f46] rounded-full"></div>
                     )}
                   </button>
 
                   <button
                     type="button"
                     onClick={() => { setActiveTab('signin'); setErrorMsg(''); setSignupSuccessMsg(null); }}
-                    className={`text-sm sm:text-base font-black transition-all cursor-pointer relative pb-2 ${
+                    className={`text-sm sm:text-base font-bold transition-all cursor-pointer relative pb-1 ${
                       activeTab === 'signin'
-                        ? 'text-[#ea580c]'
-                        : 'text-slate-400 hover:text-slate-700'
+                        ? 'text-[#065f46] font-black'
+                        : 'text-slate-700 hover:text-slate-950 font-bold'
                     }`}
                   >
                     <span>login</span>
                     {activeTab === 'signin' && (
-                      <div className="absolute bottom-[-2px] left-0 right-0 h-[3px] bg-[#ea580c] rounded-full"></div>
+                      <div className="absolute bottom-[-4px] left-0 right-0 h-[2.5px] bg-[#065f46] rounded-full"></div>
                     )}
                   </button>
                 </div>
 
-                <div className="flex items-center space-x-1.5">
-                  <img src={logoImg} alt="E-RiKON Logo" className="h-6 w-auto object-contain rounded-md" />
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-orange-50 text-[#ea580c] border border-orange-200 uppercase">
+                {/* Logo & Active Role Badge matching Figma exactly */}
+                <div className="flex items-center space-x-2">
+                  <img src={logoImg} alt="E-RIKON GROUP Financial Services" className="h-7 w-auto object-contain" />
+                  <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#0a3866] text-white uppercase tracking-wider">
                     {selectedRole.replace(/_/g, ' ')}
                   </span>
                 </div>
@@ -358,7 +386,7 @@ export const LoginPage: React.FC = () => {
 
               {/* Error Alert Notification */}
               {errorMsg && (
-                <div className="mb-3 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs flex items-center justify-between gap-2 shadow-xs animate-pulse">
+                <div className="mb-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs flex items-center justify-between gap-2 shadow-xs animate-pulse">
                   <span className="flex-1 font-medium">{errorMsg}</span>
                   <button
                     type="button"
@@ -372,7 +400,7 @@ export const LoginPage: React.FC = () => {
 
               {/* Success Notification */}
               {signupSuccessMsg && (
-                <div className="mb-3 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium space-y-1.5">
+                <div className="mb-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium space-y-1.5">
                   <div className="flex items-start space-x-1.5 font-bold text-xs text-emerald-700">
                     <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
                     <span>{signupSuccessMsg}</span>
@@ -391,26 +419,29 @@ export const LoginPage: React.FC = () => {
                 /* ================= SIGN IN FORM ================= */
                 <form onSubmit={handleLoginSubmit} className="space-y-3.5 my-auto">
                   
-                  {/* Scope Pill Input */}
-                  <div className="rounded-full border-2 border-slate-300 hover:border-slate-400 focus-within:border-[#ea580c] px-4 py-2 flex items-center gap-2 transition-colors bg-white shadow-xs">
-                    <span className="font-bold text-slate-600 text-xs shrink-0 flex items-center gap-1">
-                      role <span className="text-[#ea580c]">▸</span>
-                    </span>
-                    <select
-                      value={selectedRole}
-                      onChange={(e) => setSelectedRole(e.target.value as RoleName)}
-                      className="w-full bg-transparent text-slate-900 text-xs font-semibold focus:outline-none cursor-pointer"
-                    >
-                      {rolesList.map((r) => (
-                        <option key={r.role} value={r.role}>{r.label} ({r.role})</option>
-                      ))}
-                    </select>
+                  {/* Role Selector Input matching Figma */}
+                  <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-4 py-2.5 flex items-center justify-between gap-2 transition-colors bg-white shadow-2xs">
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                      <span className="font-semibold text-slate-700 text-xs shrink-0 flex items-center gap-1">
+                        role <span className="text-[#ea580c] text-[10px]">▸</span>
+                      </span>
+                      <select
+                        value={selectedRole}
+                        onChange={(e) => handleRoleDropdownChange(e.target.value as RoleName)}
+                        className="w-full bg-transparent text-slate-900 text-xs font-semibold focus:outline-none cursor-pointer appearance-none truncate"
+                      >
+                        {rolesList.map((r) => (
+                          <option key={r.role} value={r.role}>{r.label} ({r.role})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-slate-500 shrink-0 pointer-events-none" />
                   </div>
 
-                  {/* Email / Login Pill Input */}
-                  <div className="rounded-full border-2 border-slate-300 hover:border-slate-400 focus-within:border-[#ea580c] px-4 py-2 flex items-center gap-2 transition-colors bg-white shadow-xs">
-                    <span className="font-bold text-slate-600 text-xs shrink-0 flex items-center gap-1">
-                      login <span className="text-[#ea580c]">▸</span>
+                  {/* Email / Login Input matching Figma */}
+                  <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-4 py-2.5 flex items-center gap-2 transition-colors bg-white shadow-2xs">
+                    <span className="font-semibold text-slate-700 text-xs shrink-0 flex items-center gap-1">
+                      login <span className="text-[#ea580c] text-[10px]">▸</span>
                     </span>
                     <input
                       required
@@ -422,18 +453,18 @@ export const LoginPage: React.FC = () => {
                     />
                   </div>
 
-                  {/* Password Pill Input */}
-                  <div className="rounded-full border-2 border-slate-300 hover:border-slate-400 focus-within:border-[#ea580c] px-4 py-2 flex items-center gap-2 transition-colors bg-white shadow-xs">
-                    <span className="font-bold text-slate-600 text-xs shrink-0 flex items-center gap-1">
-                      password <span className="text-[#ea580c]">▸</span>
+                  {/* Password Input matching Figma with Eye icon */}
+                  <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-4 py-2.5 flex items-center gap-2 transition-colors bg-white shadow-2xs">
+                    <span className="font-semibold text-slate-700 text-xs shrink-0 flex items-center gap-1">
+                      password <span className="text-[#ea580c] text-[10px]">▸</span>
                     </span>
                     <input
                       required
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••••••"
-                      className="w-full bg-transparent text-slate-900 placeholder-slate-400 text-xs font-medium focus:outline-none pr-2"
+                      placeholder="••••••••"
+                      className="w-full bg-transparent text-slate-900 placeholder-slate-400 text-xs font-medium focus:outline-none pr-1 tracking-widest"
                     />
                     <button
                       type="button"
@@ -444,22 +475,22 @@ export const LoginPage: React.FC = () => {
                     </button>
                   </div>
 
-                  {/* Bottom Action Bar (Matching Template Checkmark + Pill Button) */}
-                  <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <div className="flex items-center space-x-2 text-[11px] text-slate-500">
-                      <div className="w-5 h-5 rounded-full border-2 border-emerald-500 text-emerald-600 flex items-center justify-center font-black text-xs shrink-0">
+                  {/* Bottom Action Row: Checkmark & Forest Green Pill Button */}
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="flex items-center space-x-2 text-xs text-slate-600 font-medium">
+                      <div className="w-5 h-5 rounded-full border-2 border-emerald-600 text-emerald-600 flex items-center justify-center font-bold text-xs shrink-0">
                         ✓
                       </div>
                       <span>Encrypted Workstation Session Active</span>
                     </div>
 
-                    {/* Template Pill Action Button */}
+                    {/* Dark Forest Green Pill Button matching Figma */}
                     <button
                       type="submit"
-                      className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#ea580c] to-[#c2410c] hover:from-[#c2410c] hover:to-[#9a3412] text-white font-bold text-xs flex items-center space-x-2 transition-all shadow-md shadow-orange-500/25 cursor-pointer transform hover:scale-[1.02] active:scale-[0.98] shrink-0"
+                      className="px-6 py-2.5 rounded-full bg-[#166534] hover:bg-[#14532d] text-white font-bold text-xs flex items-center space-x-2 transition-all shadow-md shadow-emerald-900/20 cursor-pointer transform hover:scale-[1.02] active:scale-[0.98] shrink-0"
                     >
                       <span>login</span>
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
@@ -470,9 +501,9 @@ export const LoginPage: React.FC = () => {
                   
                   {/* Name Pill Input (2 Cols in 1 row) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div className="rounded-full border-2 border-slate-300 hover:border-slate-400 focus-within:border-[#ea580c] px-3.5 py-1.5 flex items-center gap-2 transition-colors bg-white shadow-xs">
-                      <span className="font-bold text-slate-600 text-[11px] shrink-0 flex items-center gap-1">
-                        first name <span className="text-[#ea580c]">▸</span>
+                    <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
+                      <span className="font-semibold text-slate-700 text-[11px] shrink-0 flex items-center gap-1">
+                        first name <span className="text-[#ea580c] text-[9px]">▸</span>
                       </span>
                       <input
                         required
@@ -484,9 +515,9 @@ export const LoginPage: React.FC = () => {
                       />
                     </div>
 
-                    <div className="rounded-full border-2 border-slate-300 hover:border-slate-400 focus-within:border-[#ea580c] px-3.5 py-1.5 flex items-center gap-2 transition-colors bg-white shadow-xs">
-                      <span className="font-bold text-slate-600 text-[11px] shrink-0 flex items-center gap-1">
-                        last name <span className="text-[#ea580c]">▸</span>
+                    <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
+                      <span className="font-semibold text-slate-700 text-[11px] shrink-0 flex items-center gap-1">
+                        last name <span className="text-[#ea580c] text-[9px]">▸</span>
                       </span>
                       <input
                         required
@@ -501,9 +532,9 @@ export const LoginPage: React.FC = () => {
 
                   {/* Email & Phone Pill Inputs */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div className="rounded-full border-2 border-slate-300 hover:border-slate-400 focus-within:border-[#ea580c] px-3.5 py-1.5 flex items-center gap-2 transition-colors bg-white shadow-xs">
-                      <span className="font-bold text-slate-600 text-[11px] shrink-0 flex items-center gap-1">
-                        e-mail <span className="text-[#ea580c]">▸</span>
+                    <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
+                      <span className="font-semibold text-slate-700 text-[11px] shrink-0 flex items-center gap-1">
+                        login <span className="text-[#ea580c] text-[9px]">▸</span>
                       </span>
                       <input
                         required
@@ -515,9 +546,9 @@ export const LoginPage: React.FC = () => {
                       />
                     </div>
 
-                    <div className="rounded-full border-2 border-slate-300 hover:border-slate-400 focus-within:border-[#ea580c] px-3.5 py-1.5 flex items-center gap-2 transition-colors bg-white shadow-xs">
-                      <span className="font-bold text-slate-600 text-[11px] shrink-0 flex items-center gap-1">
-                        phone <span className="text-[#ea580c]">▸</span>
+                    <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
+                      <span className="font-semibold text-slate-700 text-[11px] shrink-0 flex items-center gap-1">
+                        phone <span className="text-[#ea580c] text-[9px]">▸</span>
                       </span>
                       <div className="w-full">
                         <GhanaPhoneInput
@@ -533,9 +564,9 @@ export const LoginPage: React.FC = () => {
 
                   {/* Ghana Card & Role Pill Inputs */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div className="rounded-full border-2 border-slate-300 hover:border-slate-400 focus-within:border-[#ea580c] px-3.5 py-1.5 flex items-center gap-2 transition-colors bg-white shadow-xs">
-                      <span className="font-bold text-slate-600 text-[11px] shrink-0 flex items-center gap-1">
-                        card <span className="text-[#ea580c]">▸</span>
+                    <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
+                      <span className="font-semibold text-slate-700 text-[11px] shrink-0 flex items-center gap-1">
+                        card <span className="text-[#ea580c] text-[9px]">▸</span>
                       </span>
                       <div className="w-full">
                         <GhanaCardInput
@@ -548,26 +579,29 @@ export const LoginPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="rounded-full border-2 border-slate-300 hover:border-slate-400 focus-within:border-[#ea580c] px-3.5 py-1.5 flex items-center gap-2 transition-colors bg-white shadow-xs">
-                      <span className="font-bold text-slate-600 text-[11px] shrink-0 flex items-center gap-1">
-                        role <span className="text-[#ea580c]">▸</span>
-                      </span>
-                      <select
-                        value={signupRoleType}
-                        onChange={(e) => setSignupRoleType(e.target.value as RoleName)}
-                        className="w-full bg-transparent text-slate-900 text-xs font-semibold focus:outline-none cursor-pointer"
-                      >
-                        {rolesList.map((r) => (
-                          <option key={r.role} value={r.role}>{r.label}</option>
-                        ))}
-                      </select>
+                    <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center justify-between gap-1.5 transition-colors bg-white shadow-2xs">
+                      <div className="flex items-center gap-1 flex-1 min-w-0">
+                        <span className="font-semibold text-slate-700 text-[11px] shrink-0 flex items-center gap-1">
+                          role <span className="text-[#ea580c] text-[9px]">▸</span>
+                        </span>
+                        <select
+                          value={signupRoleType}
+                          onChange={(e) => setSignupRoleType(e.target.value as RoleName)}
+                          className="w-full bg-transparent text-slate-900 text-xs font-semibold focus:outline-none cursor-pointer appearance-none truncate"
+                        >
+                          {rolesList.map((r) => (
+                            <option key={r.role} value={r.role}>{r.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0 pointer-events-none" />
                     </div>
                   </div>
 
                   {/* Password Pill Input */}
-                  <div className="rounded-full border-2 border-slate-300 hover:border-slate-400 focus-within:border-[#ea580c] px-3.5 py-1.5 flex items-center gap-2 transition-colors bg-white shadow-xs">
-                    <span className="font-bold text-slate-600 text-[11px] shrink-0 flex items-center gap-1">
-                      password <span className="text-[#ea580c]">▸</span>
+                  <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
+                    <span className="font-semibold text-slate-700 text-[11px] shrink-0 flex items-center gap-1">
+                      password <span className="text-[#ea580c] text-[9px]">▸</span>
                     </span>
                     <input
                       required
@@ -588,27 +622,27 @@ export const LoginPage: React.FC = () => {
 
                   {/* Bottom Action Bar */}
                   <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-2">
-                    <div className="flex items-center space-x-2 text-[10px] text-slate-500">
-                      <div className="w-4 h-4 rounded-full border-2 border-emerald-500 text-emerald-600 flex items-center justify-center font-bold text-[10px] shrink-0">
+                    <div className="flex items-center space-x-2 text-[10px] text-slate-500 font-medium">
+                      <div className="w-4 h-4 rounded-full border-2 border-emerald-600 text-emerald-600 flex items-center justify-center font-bold text-[10px] shrink-0">
                         ✓
                       </div>
-                      <span>I accept the executive compliance and security terms</span>
+                      <span>I accept executive compliance terms</span>
                     </div>
 
                     <button
                       type="submit"
-                      className="px-6 py-2 rounded-full bg-gradient-to-r from-[#ea580c] to-[#c2410c] hover:from-[#c2410c] hover:to-[#9a3412] text-white font-bold text-xs flex items-center space-x-2 transition-all shadow-md shadow-orange-500/25 cursor-pointer transform hover:scale-[1.02] active:scale-[0.98] shrink-0"
+                      className="px-6 py-2 rounded-full bg-[#166534] hover:bg-[#14532d] text-white font-bold text-xs flex items-center space-x-2 transition-all shadow-md shadow-emerald-900/20 cursor-pointer transform hover:scale-[1.02] active:scale-[0.98] shrink-0"
                     >
                       <span>sign up</span>
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
                 </form>
               )}
 
-              {/* Bottom Card Footer */}
-              <div className="pt-2 text-center text-[10px] text-slate-400 font-mono border-t border-slate-100 mt-2">
+              {/* Bottom Card Footer Monospace matching Figma */}
+              <div className="pt-3 text-center text-[11px] text-slate-400 font-mono border-t border-slate-100 mt-2">
                 E-RiKON Financial Company PLC • 256-bit Encrypted Workstation
               </div>
 
@@ -618,17 +652,17 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {/* Bottom Clean Footer */}
-        <footer className="w-full max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 shrink-0 pt-1 text-center sm:text-left text-[11px] text-white/80">
+        <footer className="w-full max-w-[1020px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 shrink-0 pt-2 text-center sm:text-left text-xs text-slate-600 font-medium">
           <p>
             © {new Date().getFullYear()} E-RiKON Financial Company PLC. All rights reserved.
           </p>
 
           <button
             onClick={handleResetData}
-            className="text-[10px] font-bold text-white/90 hover:text-white flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/20 hover:bg-black/30 border border-white/20 transition-all cursor-pointer"
+            className="text-xs font-bold text-white flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#0c2340] hover:bg-[#07172c] transition-all cursor-pointer shadow-xs"
             title="Wipe all users, registered customers, accounts, and monies to start completely from scratch"
           >
-            <Trash2 className="w-3 h-3" />
+            <Trash2 className="w-3.5 h-3.5" />
             <span>Reset Records</span>
           </button>
         </footer>
