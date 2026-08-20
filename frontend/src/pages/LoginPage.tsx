@@ -632,19 +632,10 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {/* Bottom Clean Footer */}
-        <footer className="w-full max-w-[1020px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 shrink-0 pt-2 text-center sm:text-left text-xs text-slate-600 font-medium">
+        <footer className="w-full max-w-[1020px] mx-auto flex items-center justify-center shrink-0 pt-2 text-center text-xs text-slate-500 font-medium">
           <p>
             © {new Date().getFullYear()} E-RiKON Financial Company PLC. All rights reserved.
           </p>
-
-          <button
-            onClick={handleResetData}
-            className="text-xs font-bold text-white flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#0c2340] hover:bg-[#07172c] transition-all cursor-pointer shadow-xs"
-            title="Wipe all users, registered customers, accounts, and monies to start completely from scratch"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Reset Records</span>
-          </button>
         </footer>
 
       </div>
