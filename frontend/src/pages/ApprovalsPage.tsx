@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   getStoredApprovals, 
   saveStoredApprovals, 
   approveRequest, 
-  rejectRequest 
+  rejectRequest,
+  getRegisteredUsers,
+  saveRegisteredUsers,
+  apiClient
 } from '../services/api';
 import { useRealtimeSync } from '../services/realtimeSync';
-import { ApprovalRequest, ApprovalType } from '../types';
+import { ApprovalRequest, ApprovalType, RoleName } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   ShieldCheck, 
@@ -22,19 +25,59 @@ import {
   FileText,
   Lock,
   Sparkles,
-  ArrowUpRight
+  ArrowUpRight,
+  Users,
+  Building2,
+  Mail,
+  Smartphone,
+  CreditCard,
+  BadgeAlert,
+  UserX,
+  UserPlus
 } from 'lucide-react';
-
-import { apiClient } from '../services/api';
 
 export const ApprovalsPage: React.FC = () => {
   const { currentUser } = useAuth();
   const [approvals, setApprovals] = useState<ApprovalRequest[]>(getStoredApprovals());
+  const [registeredUsers, setRegisteredUsers] = useState(getRegisteredUsers());
+  const [viewMode, setViewMode] = useState<'CLEARANCE_QUEUE' | 'STAFF_DIRECTORY'>('CLEARANCE_QUEUE');
   const [selectedFilter, setSelectedFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Sync pending staff accounts from backend
+  // Sync pending staff accounts and all registered users from backend
   const syncPendingFromBackend = async () => {
+    try {
+      const { data } = await apiClient.get('/auth/users');
+      if (Array.isArray(data)) {
+        const localUsers = getRegisteredUsers();
+        const mergedUsers = [...localUsers];
+        data.forEach((u: any) => {
+          const idx = mergedUsers.findIndex((mu) => mu.id === u.id || mu.email.toLowerCase() === u.email.toLowerCase());
+          if (idx === -1) {
+            mergedUsers.push({
+              id: u.id,
+              employeeId: u.employeeId || `EMP-${Date.now().toString().slice(-4)}`,
+              firstName: u.firstName,
+              lastName: u.lastName,
+              email: u.email,
+              phone: u.phone || '—',
+              role: u.role,
+              ghanaCard: u.ghanaCard || '—',
+              branchId: u.branchId || 'br-01',
+              branch: u.branch || { id: 'br-01', name: 'Accra Central Main Branch' } as any,
+              isApproved: Boolean(u.isApproved),
+              createdAt: u.createdAt || new Date().toISOString(),
+              status: u.isApproved ? 'ACTIVE' : 'PENDING_APPROVAL',
+            });
+          }
+        });
+        saveRegisteredUsers(mergedUsers);
+        setRegisteredUsers(mergedUsers);
+      }
+    } catch {
+      setRegisteredUsers(getRegisteredUsers());
+    }
+
     try {
       const { data } = await apiClient.get('/auth/pending');
       if (Array.isArray(data)) {
@@ -74,13 +117,14 @@ export const ApprovalsPage: React.FC = () => {
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     syncPendingFromBackend();
   }, []);
 
   // Real-time multi-device subscription
   useRealtimeSync(() => {
-    syncPendingFromBackend();
+    setApprovals(getStoredApprovals());
+    setRegisteredUsers(getRegisteredUsers());
   });
   
   // Selected Action Modal
@@ -118,6 +162,7 @@ export const ApprovalsPage: React.FC = () => {
       }
 
       setApprovals(getStoredApprovals());
+      setRegisteredUsers(getRegisteredUsers());
       setSelectedItemForAction(null);
 
       setTimeout(() => {
@@ -125,6 +170,38 @@ export const ApprovalsPage: React.FC = () => {
       }, 4000);
     } catch (err: any) {
       alert(err.message || 'Error processing approval');
+    }
+  };
+
+  // Direct Staff Approval toggle
+  const handleToggleStaffApproval = (userId: string, targetStatus: boolean) => {
+    if (!isSuperAdmin || !currentUser) return;
+    const users = getRegisteredUsers();
+    const idx = users.findIndex((u) => u.id === userId);
+    if (idx !== -1) {
+      users[idx].isApproved = targetStatus;
+      users[idx].status = targetStatus ? 'ACTIVE' : 'PENDING_APPROVAL';
+      saveRegisteredUsers(users);
+      setRegisteredUsers(users);
+
+      // Also update any matching pending approval item
+      const apprs = getStoredApprovals();
+      const aIdx = apprs.findIndex((a) => a.targetId === userId || a.details?.email === users[idx].email);
+      if (aIdx !== -1) {
+        apprs[aIdx].status = targetStatus ? 'APPROVED' : 'REJECTED';
+        apprs[aIdx].reviewedByName = `${currentUser.firstName} ${currentUser.lastName}`;
+        apprs[aIdx].reviewedAt = new Date().toISOString();
+        saveStoredApprovals(apprs);
+        setApprovals(apprs);
+      }
+
+      // Sync to live backend
+      if (targetStatus) {
+        apiClient.patch(`/auth/approve/${userId}`).catch(() => {});
+      }
+
+      setFeedbackMsg(`✅ Clearance for ${users[idx].firstName} ${users[idx].lastName} (${users[idx].role}) updated to ${targetStatus ? 'ACTIVE (APPROVED)' : 'PENDING'}.`);
+      setTimeout(() => setFeedbackMsg(null), 4000);
     }
   };
 
@@ -138,303 +215,442 @@ export const ApprovalsPage: React.FC = () => {
     return matchesFilter && matchesSearch;
   });
 
+  const filteredRegisteredStaff = registeredUsers.filter((user) => {
+    const term = searchQuery.toLowerCase();
+    const matchesSearch = 
+      user.firstName.toLowerCase().includes(term) ||
+      user.lastName.toLowerCase().includes(term) ||
+      user.email.toLowerCase().includes(term) ||
+      user.role.toLowerCase().includes(term) ||
+      (user.phone && user.phone.includes(term)) ||
+      (user.ghanaCard && user.ghanaCard.toLowerCase().includes(term));
+    const matchesFilter = selectedFilter === 'ALL' || user.role === selectedFilter || user.status === selectedFilter;
+    return matchesSearch && matchesFilter;
+  });
+
+  const getTypeBadge = (type: ApprovalType) => {
+    switch (type) {
+      case 'STAFF_ROLE_SIGNUP':
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-teal-50 text-[#0d9488] border border-teal-200">
+            Staff Signup
+          </span>
+        );
+      case 'COMPANY_INTEREST_WITHDRAWAL':
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+            Interest Vault
+          </span>
+        );
+      case 'LOAN_APPROVAL':
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
+            Loan Credit
+          </span>
+        );
+      default:
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
+            Operation
+          </span>
+        );
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'APPROVED':
+      case 'ACTIVE':
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" />
+            <span>Approved / Active</span>
+          </span>
+        );
+      case 'REJECTED':
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
+            <XCircle className="w-3 h-3" />
+            <span>Declined</span>
+          </span>
+        );
+      default:
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1 animate-pulse">
+            <Clock className="w-3 h-3" />
+            <span>Pending Clearance</span>
+          </span>
+        );
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12">
       
-      {/* Header */}
+      {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-rose-500" />
-            Super Admin Approvals Hub & Executive Clearance
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Centralized Verification Center for Staff Role Signups, Interest Withdrawals & Loan Disbursements
-          </p>
+          <div className="flex items-center space-x-2">
+            <div className="p-2 rounded-2xl bg-teal-50 text-[#0d9488] border border-teal-200">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
+                Super Admin Approvals Hub & Staff Directory
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Executive Clearance Hub • View All Signed-Up Users, Authorize Workstation Roles & Approve Financial Payouts
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Security Badge */}
-        <div className={`flex items-center space-x-2 px-3.5 py-2 rounded-2xl border text-xs font-mono font-bold ${
-          isSuperAdmin
-            ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
-            : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-        }`}>
-          <Lock className="w-4 h-4" />
-          <span>{isSuperAdmin ? 'SUPER ADMIN AUTHORIZED TO APPROVE' : 'VIEW-ONLY: APPROVAL RESTRICTED TO SUPER ADMIN'}</span>
+        {/* View Switcher Tabs */}
+        <div className="flex items-center space-x-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700">
+          <button
+            type="button"
+            onClick={() => { setViewMode('CLEARANCE_QUEUE'); setSelectedFilter('ALL'); }}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+              viewMode === 'CLEARANCE_QUEUE'
+                ? 'bg-white dark:bg-slate-900 text-[#0d9488] shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            <span>Clearance Queue ({pendingCount})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setViewMode('STAFF_DIRECTORY'); setSelectedFilter('ALL'); }}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+              viewMode === 'STAFF_DIRECTORY'
+                ? 'bg-white dark:bg-slate-900 text-[#0d9488] shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>All Signed-Up Users ({registeredUsers.length})</span>
+          </button>
         </div>
       </div>
 
-      {/* Clearance Warning if not Super Admin */}
-      {!isSuperAdmin && (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
-          <div>
-            <span className="font-bold">Executive Clearance Notice:</span> You are currently logged in as <span className="font-mono font-bold">{currentUser?.role}</span>. Operations Administrators and staff can view and review items, but only the **Super Admin** has the authority to approve or reject requests.
-          </div>
-        </div>
-      )}
-
       {/* Feedback Banner */}
       {feedbackMsg && (
-        <div className="p-4 rounded-2xl bg-emerald-500 text-white font-bold text-xs flex items-center justify-between shadow-xl animate-fade-in">
+        <div className="p-4 rounded-2xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-between shadow-xl animate-fade-in">
           <div className="flex items-center space-x-2">
             <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
             <span>{feedbackMsg}</span>
           </div>
-          <button
-            onClick={() => setFeedbackMsg(null)}
-            className="text-white hover:text-slate-200 font-mono text-sm px-2 cursor-pointer"
-          >
-            ✕
-          </button>
+          <button onClick={() => setFeedbackMsg(null)} className="text-white font-mono cursor-pointer">✕</button>
         </div>
       )}
 
       {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        
-        <div 
-          onClick={() => setSelectedFilter('PENDING')}
-          className={`p-5 rounded-3xl border cursor-pointer transition-all ${
-            selectedFilter === 'PENDING'
-              ? 'bg-amber-500/10 border-amber-500 text-slate-900 dark:text-white shadow-md'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-          }`}
-        >
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Pending Approvals Queue</span>
-            <Clock className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="text-3xl font-black text-amber-500 font-mono mt-1">
-            {pendingCount}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-1">
-            Awaiting Super Admin Decision
-          </div>
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+          <span className="text-[10px] uppercase font-bold text-slate-400">Total Signed-Up Staff</span>
+          <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">{registeredUsers.length}</div>
+          <span className="text-[10px] text-slate-500 font-medium">Registered User Accounts in System</span>
         </div>
 
-        <div 
-          onClick={() => setSelectedFilter('APPROVED')}
-          className={`p-5 rounded-3xl border cursor-pointer transition-all ${
-            selectedFilter === 'APPROVED'
-              ? 'bg-emerald-500/10 border-emerald-500 text-slate-900 dark:text-white shadow-md'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-          }`}
-        >
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Approved & Cleared</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className="text-3xl font-black text-emerald-500 font-mono mt-1">
-            {approvedCount}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-1">
-            Successfully Disbursed / Cleared
-          </div>
+        <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+          <span className="text-[10px] uppercase font-bold text-slate-400">Pending Approvals</span>
+          <div className="text-2xl font-black text-amber-500 font-mono">{pendingCount}</div>
+          <span className="text-[10px] text-amber-600 font-medium">Awaiting Super Admin Decision</span>
         </div>
 
-        <div 
-          onClick={() => setSelectedFilter('REJECTED')}
-          className={`p-5 rounded-3xl border cursor-pointer transition-all ${
-            selectedFilter === 'REJECTED'
-              ? 'bg-rose-500/10 border-rose-500 text-slate-900 dark:text-white shadow-md'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-          }`}
-        >
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Declined / Rejected</span>
-            <XCircle className="w-4 h-4 text-rose-500" />
+        <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+          <span className="text-[10px] uppercase font-bold text-slate-400">Active Approved Staff</span>
+          <div className="text-2xl font-black text-emerald-600 font-mono">
+            {registeredUsers.filter((u) => u.isApproved || u.status === 'ACTIVE').length}
           </div>
-          <div className="text-3xl font-black text-rose-500 font-mono mt-1">
-            {rejectedCount}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-1">
-            Did Not Meet Policy Threshold
-          </div>
+          <span className="text-[10px] text-emerald-600 font-medium">Cleared for Workstation Operations</span>
         </div>
 
+        <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+          <span className="text-[10px] uppercase font-bold text-slate-400">Approved Decisions</span>
+          <div className="text-2xl font-black text-[#0d9488] font-mono">{approvedCount}</div>
+          <span className="text-[10px] text-teal-600 font-medium">Executive Clearances Granted</span>
+        </div>
       </div>
 
-      {/* Filter Tabs & Search */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-        
-        {/* Category Filters */}
-        <div className="flex items-center space-x-2 overflow-x-auto pb-1 sm:pb-0">
-          {[
-            { key: 'ALL', label: 'All Items' },
-            { key: 'STAFF_ROLE_SIGNUP', label: 'Staff Signups', icon: UserCheck },
-            { key: 'COMPANY_INTEREST_WITHDRAWAL', label: 'Interest Vault', icon: PiggyBank },
-            { key: 'LOAN_APPROVAL', label: 'Loan Approvals', icon: Calculator },
-          ].map((tab) => {
-            const isSelected = selectedFilter === tab.key;
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setSelectedFilter(tab.key)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                  isSelected
-                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                {Icon && <Icon className="w-3.5 h-3.5" />}
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Search */}
-        <div className="relative w-full sm:w-64">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+      {/* Search & Filter Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search approval requests..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
+            placeholder={viewMode === 'CLEARANCE_QUEUE' ? "Search clearance requests by name, title, or details..." : "Search registered staff by name, email, phone, role, Ghana Card..."}
+            className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/30"
           />
         </div>
 
+        <div className="flex items-center space-x-2">
+          <Filter className="w-4 h-4 text-slate-400 shrink-0" />
+          <select
+            value={selectedFilter}
+            onChange={(e) => setSelectedFilter(e.target.value)}
+            className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-900 dark:text-white cursor-pointer"
+          >
+            <option value="ALL">All Categories</option>
+            {viewMode === 'CLEARANCE_QUEUE' ? (
+              <>
+                <option value="PENDING">Pending Only</option>
+                <option value="APPROVED">Approved Only</option>
+                <option value="REJECTED">Declined Only</option>
+                <option value="STAFF_ROLE_SIGNUP">Staff Signups</option>
+                <option value="COMPANY_INTEREST_WITHDRAWAL">Company Interest</option>
+                <option value="LOAN_APPROVAL">Loan Approvals</option>
+              </>
+            ) : (
+              <>
+                <option value="PENDING_APPROVAL">Pending Clearance</option>
+                <option value="ACTIVE">Active Staff</option>
+                <option value="SUPER_ADMIN">Super Admin</option>
+                <option value="ADMIN">Operations Admin</option>
+                <option value="BRANCH_ADMIN">Branch Admin</option>
+                <option value="TELLER">Tellers</option>
+                <option value="FIELD_OFFICER">Field Officers</option>
+                <option value="LOAN_OFFICER">Loan Officers</option>
+                <option value="AUDITOR">Auditors</option>
+              </>
+            )}
+          </select>
+        </div>
       </div>
 
-      {/* Approvals List */}
-      <div className="space-y-4">
-        {filteredApprovals.length === 0 ? (
-          <div className="p-12 text-center rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-400 space-y-2">
-            <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500" />
-            <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300">All Approvals Clear</h4>
-            <p className="text-xs">No pending requests match the selected criteria.</p>
-          </div>
-        ) : (
-          filteredApprovals.map((item) => {
-            const isPending = item.status === 'PENDING';
-            const isApproved = item.status === 'APPROVED';
-            const isRejected = item.status === 'REJECTED';
-
-            return (
-              <div
-                key={item.id}
-                className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:border-slate-300 dark:hover:border-slate-700 space-y-4"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                  
-                  <div className="flex items-start space-x-3.5">
-                    <div className={`p-3 rounded-2xl flex-shrink-0 ${
-                      item.type === 'STAFF_ROLE_SIGNUP'
-                        ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
-                        : item.type === 'COMPANY_INTEREST_WITHDRAWAL'
-                        ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                        : 'bg-purple-500/10 text-purple-500 border border-purple-500/20'
-                    }`}>
-                      {item.type === 'STAFF_ROLE_SIGNUP' && <UserCheck className="w-5 h-5" />}
-                      {item.type === 'COMPANY_INTEREST_WITHDRAWAL' && <PiggyBank className="w-5 h-5" />}
-                      {item.type === 'LOAN_APPROVAL' && <Calculator className="w-5 h-5" />}
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                          {item.type.replace(/_/g, ' ')}
-                        </span>
-                        <span className="text-[10px] font-mono text-slate-400">
-                          #{item.id.slice(-8)}
-                        </span>
-                        <span className="text-[10px] text-slate-400">• {item.createdAt.slice(0, 16).replace('T', ' ')}</span>
-                      </div>
-
-                      <h4 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white">
-                        {item.title}
-                      </h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                        {item.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Status & Amount */}
-                  <div className="text-right flex sm:flex-col items-center sm:items-end justify-between gap-1">
-                    {item.amount && (
-                      <div className="text-lg font-black text-amber-500 font-mono">
-                        GHS {item.amount.toFixed(2)}
-                      </div>
-                    )}
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold border font-mono ${
-                      isApproved
-                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                        : isRejected
-                        ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
-                        : 'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse'
-                    }`}>
-                      {item.status}
-                    </span>
-                  </div>
-
-                </div>
-
-                {/* Details Breakdown */}
-                {item.details && (
-                  <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 text-xs font-mono text-slate-600 dark:text-slate-300 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                    {Object.entries(item.details).map(([k, v]) => (
-                      <div key={k}>
-                        <span className="text-[10px] uppercase text-slate-400 block">{k}</span>
-                        <span className="font-bold truncate block">{String(v)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Decision / Reviewer Footer */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
-                  <div className="text-xs text-slate-400 font-sans">
-                    Submitted by: <span className="font-bold text-slate-700 dark:text-slate-200">{item.requestedByName}</span> ({item.requestedRole})
-                    {item.reviewedByName && (
-                      <span className="ml-2 text-emerald-400">
-                        • Reviewed by Super Admin: <strong>{item.reviewedByName}</strong>
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Actions for Super Admin */}
-                  {isPending && (
+      {/* ================= VIEW 1: CLEARANCE QUEUE ================= */}
+      {viewMode === 'CLEARANCE_QUEUE' && (
+        <div className="space-y-3">
+          {filteredApprovals.length === 0 ? (
+            <div className="p-12 text-center rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
+              <ShieldCheck className="w-10 h-10 text-emerald-500 mx-auto" />
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-white">Clearance Queue Is Clear</h3>
+              <p className="text-xs text-slate-500">No approval requests match your search filter.</p>
+            </div>
+          ) : (
+            filteredApprovals.map((item) => {
+              const isPending = item.status === 'PENDING';
+              return (
+                <div 
+                  key={item.id}
+                  className={`p-5 rounded-3xl border transition-all space-y-3.5 shadow-2xs ${
+                    isPending 
+                      ? 'bg-white dark:bg-slate-900 border-amber-300 dark:border-amber-900/50 hover:border-amber-400' 
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                     <div className="flex items-center space-x-2">
-                      {isSuperAdmin ? (
-                        <>
-                          <button
-                            onClick={() => handleOpenActionModal(item, 'REJECT')}
-                            className="px-3.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs transition-all cursor-pointer flex items-center gap-1"
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                            <span>Decline</span>
-                          </button>
+                      {getTypeBadge(item.type)}
+                      <span className="font-extrabold text-sm text-slate-900 dark:text-white">{item.title}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {getStatusBadge(item.status)}
+                      <span className="text-[10px] font-mono text-slate-400">
+                        {item.createdAt ? new Date(item.createdAt).toLocaleString('en-GB') : '—'}
+                      </span>
+                    </div>
+                  </div>
 
-                          <button
-                            onClick={() => handleOpenActionModal(item, 'APPROVE')}
-                            className="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs transition-all shadow-md shadow-emerald-500/20 cursor-pointer flex items-center gap-1"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Approve Request</span>
-                          </button>
-                        </>
-                      ) : (
-                        <span className="text-[11px] font-mono text-slate-500 italic">
-                          Clearance restricted to Super Admin
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {item.description}
+                  </p>
+
+                  {/* Details Card */}
+                  {item.details && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 font-mono text-xs border border-slate-100 dark:border-slate-800">
+                      {Object.entries(item.details).map(([k, v]) => (
+                        <div key={k}>
+                          <span className="text-[10px] uppercase text-slate-400 block">{k}</span>
+                          <span className="font-bold truncate block">{String(v)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Actions Bar */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div className="text-xs text-slate-400">
+                      Submitted by: <span className="font-bold text-slate-700 dark:text-slate-200">{item.requestedByName}</span> ({item.requestedRole})
+                      {item.reviewedByName && (
+                        <span className="ml-2 text-emerald-600 font-bold">
+                          • Reviewed by Super Admin: {item.reviewedByName}
                         </span>
                       )}
                     </div>
-                  )}
-                </div>
 
-              </div>
-            );
-          })
-        )}
-      </div>
+                    {isPending && (
+                      <div className="flex items-center space-x-2">
+                        {isSuperAdmin ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenActionModal(item, 'REJECT')}
+                              className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-xs transition-all cursor-pointer flex items-center gap-1"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              <span>Decline</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenActionModal(item, 'APPROVE')}
+                              className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-[#0d9488] to-[#166534] hover:opacity-95 text-white font-black text-xs transition-all shadow-md shadow-teal-900/10 cursor-pointer flex items-center gap-1"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Approve Request</span>
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-[11px] font-mono text-slate-500 italic">
+                            Clearance restricted to Super Admin
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* ================= VIEW 2: ALL REGISTERED STAFF DIRECTORY ================= */}
+      {viewMode === 'STAFF_DIRECTORY' && (
+        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div>
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-[#0d9488]" />
+                Institutional Staff & Signed-Up Users Directory
+              </h3>
+              <p className="text-xs text-slate-500">
+                Complete roster of all personnel accounts created in the system with their clearance levels and contact info.
+              </p>
+            </div>
+            <span className="text-xs font-mono font-bold text-[#0d9488]">
+              Total Personnel: {filteredRegisteredStaff.length}
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 uppercase text-[10px] tracking-wider font-mono">
+                  <th className="py-3 px-3">Staff Member</th>
+                  <th className="py-3 px-3">Role / Workstation</th>
+                  <th className="py-3 px-3">Email Address</th>
+                  <th className="py-3 px-3">Phone Number</th>
+                  <th className="py-3 px-3">Ghana Card PIN</th>
+                  <th className="py-3 px-3">Branch</th>
+                  <th className="py-3 px-3">Status</th>
+                  {isSuperAdmin && <th className="py-3 px-3 text-center">Executive Action</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
+                {filteredRegisteredStaff.length > 0 ? (
+                  filteredRegisteredStaff.map((staff) => {
+                    const isApproved = staff.isApproved || staff.status === 'ACTIVE';
+                    const isSuperAdminRole = staff.role === 'SUPER_ADMIN';
+
+                    return (
+                      <tr key={staff.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                        <td className="py-3 px-3">
+                          <div className="flex items-center space-x-2.5">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#0a3866] via-[#0d9488] to-[#166534] flex items-center justify-center text-white text-xs font-black shadow-xs">
+                              {staff.firstName[0]}{staff.lastName[0]}
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-900 dark:text-white font-sans text-xs flex items-center gap-1">
+                                {staff.firstName} {staff.lastName}
+                                {isSuperAdminRole && <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 inline" />}
+                              </div>
+                              <div className="text-[10px] text-slate-400 font-mono">{staff.employeeId || 'STAFF'}</div>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="py-3 px-3">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            isSuperAdminRole 
+                              ? 'bg-[#0a3866] text-white border border-[#0e4b85]' 
+                              : 'bg-teal-50 dark:bg-teal-950/40 text-[#0d9488] border border-teal-200'
+                          }`}>
+                            {staff.role.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-3 font-sans text-slate-700 dark:text-slate-300">
+                          {staff.email}
+                        </td>
+
+                        <td className="py-3 px-3 text-slate-600 dark:text-slate-400">
+                          {staff.phone || '—'}
+                        </td>
+
+                        <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-200">
+                          {staff.ghanaCard || '—'}
+                        </td>
+
+                        <td className="py-3 px-3 font-sans text-slate-600 dark:text-slate-300">
+                          {staff.branch?.name || 'Accra Central Main'}
+                        </td>
+
+                        <td className="py-3 px-3">
+                          {getStatusBadge(isApproved ? 'ACTIVE' : 'PENDING_APPROVAL')}
+                        </td>
+
+                        {isSuperAdmin && (
+                          <td className="py-3 px-3 text-center">
+                            {isSuperAdminRole ? (
+                              <span className="text-[10px] text-slate-400 font-sans italic">Primary Exec</span>
+                            ) : isApproved ? (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleStaffApproval(staff.id, false)}
+                                className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-[10px] transition-all cursor-pointer inline-flex items-center gap-1"
+                                title="Revoke access"
+                              >
+                                <UserX className="w-3 h-3" />
+                                <span>Revoke</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleStaffApproval(staff.id, true)}
+                                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
+                                title="Grant immediate clearance"
+                              >
+                                <UserCheck className="w-3 h-3" />
+                                <span>Approve</span>
+                              </button>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-slate-400 font-sans">
+                      No signed-up users found matching your criteria.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Super Admin Action Confirmation Modal */}
       {selectedItemForAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
           <div className="max-w-md w-full p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl text-white space-y-4">
             
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -446,7 +662,7 @@ export const ApprovalsPage: React.FC = () => {
               </div>
               <button
                 onClick={() => setSelectedItemForAction(null)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-white cursor-pointer"
               >
                 ✕
               </button>
@@ -476,7 +692,7 @@ export const ApprovalsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSelectedItemForAction(null)}
-                className="w-1/2 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+                className="w-1/2 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer"
               >
                 Cancel
               </button>
@@ -486,8 +702,8 @@ export const ApprovalsPage: React.FC = () => {
                 onClick={handleConfirmAction}
                 className={`w-1/2 py-2.5 rounded-xl font-extrabold text-xs shadow-lg cursor-pointer ${
                   actionType === 'APPROVE'
-                    ? 'bg-emerald-500 hover:bg-emerald-600 text-slate-950 shadow-emerald-500/20'
-                    : 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/20'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20'
+                    : 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-500/20'
                 }`}
               >
                 {actionType === 'APPROVE' ? 'Confirm Approval' : 'Confirm Rejection'}
