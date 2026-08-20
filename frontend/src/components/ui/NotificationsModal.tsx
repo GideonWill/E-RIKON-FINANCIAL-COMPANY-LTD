@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { getStoredApprovals } from '../../services/api';
+import { useRealtimeSync } from '../../services/realtimeSync';
 import { RoleName } from '../../types';
 import { 
   BellRing, 
@@ -10,15 +12,14 @@ import {
   Clock, 
   Calculator, 
   Wallet, 
-  ArrowRight,
-  Filter,
-  Smartphone,
-  Landmark,
-  Building2,
-  ShieldCheck
+  ArrowRight, 
+  Filter, 
+  Smartphone, 
+  ShieldCheck,
+  CheckCircle2
 } from 'lucide-react';
 
-interface NotificationItem {
+export interface NotificationItem {
   id: string;
   title: string;
   message: string;
@@ -32,48 +33,113 @@ interface NotificationItem {
 interface NotificationsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onNotificationsUpdated?: () => void;
 }
 
-export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose }) => {
+export const getStoredReadNotificationIds = (): string[] => {
+  try {
+    const data = localStorage.getItem('erikon_read_notifications');
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveStoredReadNotificationIds = (ids: string[]) => {
+  localStorage.setItem('erikon_read_notifications', JSON.stringify(ids));
+  window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
+};
+
+export const getSystemNotifications = (role: RoleName): NotificationItem[] => {
+  const readIds = getStoredReadNotificationIds();
+  const approvals = getStoredApprovals();
+  const pendingApprovals = approvals.filter((a) => a.status === 'PENDING');
+
+  const approvalNotifications: NotificationItem[] = pendingApprovals.map((a) => ({
+    id: `appr-${a.id}`,
+    title: `Pending Approval: ${a.title}`,
+    message: `${a.description} • Submitted by ${a.requestedByName} (${a.requestedRole.replace(/_/g, ' ')})`,
+    time: a.createdAt ? new Date(a.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+    type: a.type === 'STAFF_ROLE_SIGNUP' ? 'AUDIT' : a.type === 'LOAN_APPROVAL' ? 'LOAN' : 'CYCLE',
+    targetRoute: '/approvals',
+    roles: ['SUPER_ADMIN', 'ADMIN'],
+    isRead: readIds.includes(`appr-${a.id}`),
+  }));
+
+  const staticSystemNotifications: NotificationItem[] = [
+    {
+      id: 'sys-policy-01',
+      title: 'Daily Collection Policy Active',
+      message: 'Day-31 management fee retention policy and 30-day package interest system is running.',
+      time: 'Live',
+      type: 'SYSTEM',
+      targetRoute: '/company-interest',
+      roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+      isRead: readIds.includes('sys-policy-01'),
+    }
+  ];
+
+  return [...approvalNotifications, ...staticSystemNotifications];
+};
+
+export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose, onNotificationsUpdated }) => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [filterMode, setFilterMode] = useState<'MY_ROLE' | 'ALL'>('MY_ROLE');
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   const activeRole = currentUser?.role || 'SUPER_ADMIN';
 
-  const [allNotifications, setAllNotifications] = useState<NotificationItem[]>([]);
+  const loadNotifications = () => {
+    setNotifications(getSystemNotifications(activeRole));
+  };
+
+  useEffect(() => {
+    loadNotifications();
+  }, [activeRole]);
+
+  useRealtimeSync(() => {
+    loadNotifications();
+  });
 
   if (!isOpen) return null;
 
-  // Filter notifications tailored for the active role
   const displayedNotifications = filterMode === 'MY_ROLE'
-    ? allNotifications.filter((n) => n.roles.includes(activeRole))
-    : allNotifications;
+    ? notifications.filter((n) => n.roles.includes(activeRole))
+    : notifications;
 
   const handleNotificationClick = (item: NotificationItem) => {
-    setAllNotifications((prev) =>
-      prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n))
-    );
+    const readIds = getStoredReadNotificationIds();
+    if (!readIds.includes(item.id)) {
+      saveStoredReadNotificationIds([...readIds, item.id]);
+    }
+    loadNotifications();
+    if (onNotificationsUpdated) onNotificationsUpdated();
     onClose();
     navigate(item.targetRoute);
   };
 
   const markAllAsRead = () => {
-    setAllNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    const allIds = notifications.map((n) => n.id);
+    const readIds = getStoredReadNotificationIds();
+    const merged = Array.from(new Set([...readIds, ...allIds]));
+    saveStoredReadNotificationIds(merged);
+    loadNotifications();
+    if (onNotificationsUpdated) onNotificationsUpdated();
   };
 
   const getIcon = (type: NotificationItem['type']) => {
     switch (type) {
       case 'LOAN':
-        return <Calculator className="w-4 h-4 text-purple-400" />;
+        return <Calculator className="w-4 h-4 text-purple-500" />;
       case 'CYCLE':
-        return <Sparkles className="w-4 h-4 text-amber-400" />;
+        return <Sparkles className="w-4 h-4 text-amber-500" />;
       case 'DEPOSIT':
-        return <Wallet className="w-4 h-4 text-emerald-400" />;
+        return <Wallet className="w-4 h-4 text-emerald-500" />;
       case 'FIELD':
-        return <Smartphone className="w-4 h-4 text-blue-400" />;
+        return <Smartphone className="w-4 h-4 text-blue-500" />;
       case 'AUDIT':
-        return <ShieldCheck className="w-4 h-4 text-rose-400" />;
+        return <ShieldCheck className="w-4 h-4 text-emerald-600" />;
       default:
         return <ShieldAlert className="w-4 h-4 text-slate-400" />;
     }
@@ -81,29 +147,29 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 select-none"
       onClick={onClose}
     >
       <div 
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2">
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
+            <div className="p-2 rounded-xl bg-teal-50 text-[#0d9488] border border-teal-200">
               <BellRing className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-1.5">
                 Workstation Alerts
-                <span className="text-[10px] bg-amber-500/20 text-amber-500 dark:text-amber-400 font-extrabold px-2 py-0.5 rounded-full border border-amber-500/30 uppercase">
-                  {activeRole.replace('_', ' ')}
+                <span className="text-[10px] bg-teal-50 text-[#0d9488] font-black px-2 py-0.5 rounded-full border border-teal-200 uppercase">
+                  {activeRole.replace(/_/g, ' ')}
                 </span>
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Tailored notification feed for your active role scope
+                Tailored notification feed for your active role
               </p>
             </div>
           </div>
@@ -117,11 +183,11 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
           </button>
         </div>
 
-        {/* Role Tailor Filter Bar */}
+        {/* Filter Bar */}
         <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-950 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
-          <div className="flex items-center space-x-1 font-bold text-slate-500 dark:text-slate-400 pl-2 text-[11px]">
-            <Filter className="w-3.5 h-3.5 text-amber-500" />
-            <span>Feed Filter:</span>
+          <div className="flex items-center space-x-1 font-bold text-slate-500 pl-2 text-[11px]">
+            <Filter className="w-3.5 h-3.5 text-[#0d9488]" />
+            <span>Scope:</span>
           </div>
 
           <div className="flex space-x-1">
@@ -130,31 +196,31 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
               onClick={() => setFilterMode('MY_ROLE')}
               className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer ${
                 filterMode === 'MY_ROLE'
-                  ? 'bg-amber-500 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-[#0d9488] text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              {activeRole.replace('_', ' ')} Scope ({allNotifications.filter((n) => n.roles.includes(activeRole)).length})
+              {activeRole.replace(/_/g, ' ')} ({notifications.filter((n) => n.roles.includes(activeRole)).length})
             </button>
             <button
               type="button"
               onClick={() => setFilterMode('ALL')}
               className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer ${
                 filterMode === 'ALL'
-                  ? 'bg-slate-900 dark:bg-slate-800 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              All Alerts ({allNotifications.length})
+              All ({notifications.length})
             </button>
           </div>
         </div>
 
         {/* Notifications List */}
-        <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+        <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
           {displayedNotifications.length === 0 ? (
             <div className="text-center py-8 text-xs text-slate-400 space-y-1">
-              <p className="font-bold">No active alerts for {activeRole.replace('_', ' ')} workstation.</p>
+              <p className="font-bold">No active alerts for {activeRole.replace(/_/g, ' ')} workstation.</p>
               <p className="text-[11px]">All system processes operating cleanly within policy parameters.</p>
             </div>
           ) : (
@@ -165,11 +231,11 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                 className={`p-3.5 rounded-2xl border text-xs space-y-1.5 transition-all cursor-pointer group hover:scale-[1.01] ${
                   n.isRead
                     ? 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-400'
-                    : 'bg-amber-500/10 dark:bg-amber-500/15 border-amber-500/30 text-slate-900 dark:text-white hover:border-amber-500'
+                    : 'bg-teal-50/80 dark:bg-teal-950/20 border-teal-300 dark:border-teal-700 text-slate-900 dark:text-white hover:border-[#0d9488] shadow-2xs'
                 }`}
               >
                 <div className="flex items-center justify-between font-bold">
-                  <span className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400 group-hover:underline">
+                  <span className="flex items-center gap-1.5 text-[#065f46] dark:text-teal-400 group-hover:underline">
                     {getIcon(n.type)}
                     {n.title}
                   </span>
@@ -182,8 +248,8 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                   {n.message}
                 </p>
 
-                <div className="pt-1 flex items-center justify-end text-[10px] text-amber-500 font-bold group-hover:translate-x-0.5 transition-transform">
-                  <span>Navigate to Module</span>
+                <div className="pt-1 flex items-center justify-end text-[10px] text-[#0d9488] font-bold group-hover:translate-x-0.5 transition-transform">
+                  <span>Take Action</span>
                   <ArrowRight className="w-3 h-3 ml-1" />
                 </div>
               </div>
@@ -196,14 +262,14 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
           <button
             type="button"
             onClick={markAllAsRead}
-            className="flex-1 py-2.5 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border border-amber-500/30 font-bold text-xs transition-all cursor-pointer"
+            className="flex-1 py-2.5 rounded-xl bg-teal-50 text-[#0d9488] hover:bg-teal-100 border border-teal-200 font-bold text-xs transition-all cursor-pointer"
           >
             Mark All as Read
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer"
           >
             Close
           </button>

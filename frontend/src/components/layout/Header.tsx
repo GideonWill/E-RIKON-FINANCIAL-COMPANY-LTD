@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { StaffProfileModal } from '../ui/StaffProfileModal';
-import { NotificationsModal } from '../ui/NotificationsModal';
+import { NotificationsModal, getSystemNotifications } from '../ui/NotificationsModal';
 import { LoadingScreen } from '../ui/LoadingScreen';
+import { useRealtimeSync } from '../../services/realtimeSync';
 import logoImg from '../../assets/logo.png';
 import { 
   Building2, 
@@ -25,6 +26,31 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const calculateUnreadCount = () => {
+    if (!currentUser) {
+      setUnreadCount(0);
+      return;
+    }
+    const notifs = getSystemNotifications(currentUser.role);
+    const unread = notifs.filter((n) => !n.isRead && n.roles.includes(currentUser.role)).length;
+    setUnreadCount(unread);
+  };
+
+  useEffect(() => {
+    calculateUnreadCount();
+    window.addEventListener('erikon_realtime_update', calculateUnreadCount);
+    window.addEventListener('storage', calculateUnreadCount);
+    return () => {
+      window.removeEventListener('erikon_realtime_update', calculateUnreadCount);
+      window.removeEventListener('storage', calculateUnreadCount);
+    };
+  }, [currentUser]);
+
+  useRealtimeSync(() => {
+    calculateUnreadCount();
+  });
 
   const handleLogoutClick = () => {
     setIsLoggingOut(true);
@@ -109,15 +135,17 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
             </button>
 
-            {/* System Notifications Bell Button */}
+            {/* System Notifications Bell Button - Only shows indicator if unreadCount > 0 */}
             <button
               type="button"
               onClick={() => setShowNotificationsModal(true)}
               className="relative p-1.5 sm:p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#0d9488] transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
-              title="View Live System Notifications"
+              title={unreadCount > 0 ? `${unreadCount} unread notification(s)` : 'No new notifications'}
             >
               <BellRing className="w-4 h-4" />
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#10b981] animate-pulse"></span>
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#10b981] animate-pulse"></span>
+              )}
             </button>
 
             {/* User Profile Badge (Clickable to open Staff Profile Modal) */}
@@ -168,6 +196,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       <NotificationsModal
         isOpen={showNotificationsModal}
         onClose={() => setShowNotificationsModal(false)}
+        onNotificationsUpdated={calculateUnreadCount}
       />
     </>
   );
