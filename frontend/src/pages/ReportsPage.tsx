@@ -67,7 +67,16 @@ export const ReportsPage: React.FC = () => {
   }, [accounts, selectedAccountId]);
 
   const selectedAccount: Account | undefined = accounts.find((a) => a.id === selectedAccountId) || accounts[0];
-  const packageRate = selectedAccount?.savingsPackage || 20;
+  
+  // Dynamically resolve client package rate and label based on the specific chosen client account
+  const packageRate = selectedAccount?.savingsPackage || 0;
+  const clientPackageLabel = selectedAccount 
+    ? (selectedAccount.savingsPackage 
+        ? `GH₵ ${selectedAccount.savingsPackage}.00 / Day`
+        : selectedAccount.type 
+        ? selectedAccount.type.replace(/_/g, ' ') 
+        : 'Standard Account')
+    : 'No Account Selected';
 
   // Retrieve all historical & active cycles for the chosen client account
   const availableCycles: DailyCollectionCycle[] = selectedAccount?.dailyCycles && selectedAccount.dailyCycles.length > 0
@@ -295,7 +304,7 @@ export const ReportsPage: React.FC = () => {
       `*Monthly Statement - ${getMonthTitle(selectedMonth)}*\n\n` +
       `👤 *Client:* ${selectedAccount.customer?.firstName || ''} ${selectedAccount.customer?.lastName || ''}\n` +
       `🔢 *Account No:* ${selectedAccount.accountNumber || '—'}\n` +
-      `📦 *Savings Package:* GHS ${packageRate}.00 / Day\n` +
+      `📦 *Savings Package:* ${clientPackageLabel}\n` +
       `📅 *Billing Month:* ${getMonthTitle(selectedMonth)}\n` +
       `💰 *Total Deposited in ${getMonthTitle(selectedMonth)}:* GHS ${monthDeposits.toFixed(2)}\n` +
       `🌟 *Company Fee (31 Days):* GHS ${monthCompanyFee.toFixed(2)}\n` +
@@ -343,7 +352,7 @@ export const ReportsPage: React.FC = () => {
       `• Client Name: ${cust?.firstName || ''} ${cust?.lastName || ''}\n` +
       `• Account Number: ${selectedAccount?.accountNumber || '—'}\n` +
       `• Ghana Card PIN: ${cust?.ghanaCardNumber || '—'}\n` +
-      `• Savings Package: GH₵ ${packageRate}.00 / Day\n` +
+      `• Savings Package: ${clientPackageLabel}\n` +
       `• Statement Period: ${monthTitle}\n\n` +
       `FINANCIAL SUMMARY:\n` +
       `-----------------------------------------------------\n` +
@@ -581,7 +590,9 @@ export const ReportsPage: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
             <span className="text-[10px] text-slate-400 uppercase font-bold block">Client Package</span>
-            <span className="text-base font-black text-[#0d9488] font-mono">GH₵ {packageRate}.00 / Day</span>
+            <span className="text-base font-black text-[#0d9488] font-mono">
+              {clientPackageLabel}
+            </span>
           </div>
 
           <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
@@ -831,7 +842,7 @@ export const ReportsPage: React.FC = () => {
               </div>
               <div className="p-1">
                 <span className="text-[10px] text-slate-500 block uppercase font-bold">Savings Package</span>
-                <span className="font-bold text-[#0d9488]">GH₵ {packageRate}.00 / Day</span>
+                <span className="font-bold text-[#0d9488]">{clientPackageLabel}</span>
               </div>
             </div>
 
