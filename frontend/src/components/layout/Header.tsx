@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { StaffProfileModal } from '../ui/StaffProfileModal';
+import { AppWalkthroughModal } from '../ui/AppWalkthroughModal';
 import { NotificationsModal, getSystemNotifications } from '../ui/NotificationsModal';
 import { LoadingScreen } from '../ui/LoadingScreen';
 import { triggerAppRefresh } from '../ui/SplashScreen';
@@ -15,7 +16,8 @@ import {
   LogOut,
   BellRing,
   Menu,
-  RotateCw
+  RotateCw,
+  Compass
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -27,8 +29,18 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const { theme, toggleTheme } = useTheme();
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showWalkthroughModal, setShowWalkthroughModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Auto-launch walkthrough for new users upon hopping in
+  useEffect(() => {
+    const isCompleted = localStorage.getItem('erikon_tour_completed');
+    if (!isCompleted && currentUser) {
+      const timer = setTimeout(() => setShowWalkthroughModal(true), 900);
+      return () => clearTimeout(timer);
+    }
+  }, [currentUser]);
 
   const calculateUnreadCount = () => {
     if (!currentUser) {
@@ -127,6 +139,19 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               </span>
             </button>
 
+            {/* App Walkthrough & Interactive Guide Button */}
+            <button
+              type="button"
+              onClick={() => setShowWalkthroughModal(true)}
+              className="p-1.5 sm:p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#0d9488] dark:hover:text-teal-400 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer flex items-center gap-1.5 shadow-2xs group"
+              title="Open System Walkthrough & Interactive Guide"
+            >
+              <Compass className="w-4 h-4 text-[#0d9488] group-hover:rotate-45 transition-transform duration-300" />
+              <span className="hidden xl:inline text-xs font-bold text-slate-700 dark:text-slate-200">
+                Guide
+              </span>
+            </button>
+
             {/* Instant Full System Refresh & Sync Button */}
             <button
               type="button"
@@ -196,6 +221,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           </div>
         </div>
       </header>
+
+      {/* App Onboarding & System Walkthrough Modal */}
+      <AppWalkthroughModal
+        isOpen={showWalkthroughModal}
+        onClose={() => setShowWalkthroughModal(false)}
+      />
 
       {/* Staff Identity Profile Modal */}
       <StaffProfileModal
