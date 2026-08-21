@@ -33,12 +33,15 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Auto-launch walkthrough for new users upon hopping in
+  // Auto-launch role-tailored walkthrough for every new user upon first hopping in
   useEffect(() => {
-    const isCompleted = localStorage.getItem('erikon_tour_completed');
-    if (!isCompleted && currentUser) {
-      const timer = setTimeout(() => setShowWalkthroughModal(true), 900);
-      return () => clearTimeout(timer);
+    if (currentUser) {
+      const userTourKey = `erikon_tour_completed_${currentUser.id || currentUser.email}`;
+      const isCompleted = localStorage.getItem(userTourKey);
+      if (!isCompleted) {
+        const timer = setTimeout(() => setShowWalkthroughModal(true), 800);
+        return () => clearTimeout(timer);
+      }
     }
   }, [currentUser]);
 
