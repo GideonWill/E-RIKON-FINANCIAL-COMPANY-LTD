@@ -274,6 +274,22 @@ export const LoansPage: React.FC = () => {
     }, 3000);
   };
 
+  // Portfolio Summary Calculations (All 0.00 / null when no loans exist)
+  const totalPrincipalDisbursed = loans
+    .filter((l) => l.status === 'DISBURSED' || l.status === 'ACTIVE' || l.status === 'FULLY_PAID')
+    .reduce((sum, l) => sum + l.amountApproved, 0);
+
+  const totalInterestAccrued = loans
+    .filter((l) => l.status !== 'REJECTED')
+    .reduce((sum, l) => sum + l.totalInterest, 0);
+
+  const totalOutstandingBal = loans
+    .filter((l) => l.status !== 'REJECTED' && l.status !== 'FULLY_PAID')
+    .reduce((sum, l) => sum + l.outstandingBal, 0);
+
+  const totalRepaymentsCollected = loans
+    .reduce((sum, l) => sum + Math.max(0, l.totalRepayable - l.outstandingBal), 0);
+
   return (
     <div className="space-y-6 pb-12">
       
@@ -298,6 +314,57 @@ export const LoansPage: React.FC = () => {
         </button>
       </div>
 
+      {/* Portfolio Financial Metrics Cards (Zero / Null State by Default) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+            Total Loans Disbursed
+          </span>
+          <div className="text-lg sm:text-xl font-black font-mono text-slate-900 dark:text-white">
+            GH₵ {totalPrincipalDisbursed.toFixed(2)}
+          </div>
+          <span className="text-[10px] text-slate-500 font-medium">
+            {loans.filter(l => l.status === 'DISBURSED' || l.status === 'ACTIVE').length} Active Credit Facilities
+          </span>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+            Total Interest Accrued
+          </span>
+          <div className="text-lg sm:text-xl font-black font-mono text-amber-500">
+            GH₵ {totalInterestAccrued.toFixed(2)}
+          </div>
+          <span className="text-[10px] text-slate-500 font-medium">
+            Tiered Tenor Yields (10% – 30%)
+          </span>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+            Principal Outstanding
+          </span>
+          <div className={`text-lg sm:text-xl font-black font-mono ${totalOutstandingBal === 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+            GH₵ {totalOutstandingBal.toFixed(2)}
+          </div>
+          <span className="text-[10px] text-slate-500 font-medium">
+            Active Balance Awaiting Recovery
+          </span>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+            Repayments Collected
+          </span>
+          <div className="text-lg sm:text-xl font-black font-mono text-emerald-600">
+            GH₵ {totalRepaymentsCollected.toFixed(2)}
+          </div>
+          <span className="text-[10px] text-slate-500 font-medium">
+            Total Recovered to Date
+          </span>
+        </div>
+      </div>
+
       {/* Success Notification Banner */}
       {successMessage && (
         <div className="p-4 rounded-2xl bg-emerald-500 text-white font-extrabold text-xs flex items-center justify-between shadow-xl animate-pulse">
@@ -314,65 +381,89 @@ export const LoansPage: React.FC = () => {
         </div>
       )}
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left Column: Loan Portfolio List */}
-        <div className="space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Loan Applications</h3>
-          {loans.map((loan) => {
-            const isSelected = selectedLoan?.id === loan.id;
-            return (
-              <div
-                key={loan.id}
-                onClick={() => setSelectedLoan(loan)}
-                className={`p-5 rounded-3xl border cursor-pointer transition-all ${
-                  isSelected
-                    ? 'bg-gradient-to-br from-slate-900 to-slate-950 text-white border-amber-500 shadow-xl ring-2 ring-amber-500/30'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold text-amber-500">{loan.applicationNo}</span>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                    loan.status === 'FULLY_PAID'
-                      ? 'bg-emerald-500 text-slate-950 font-black shadow-md'
-                      : loan.status === 'DISBURSED' || loan.status === 'ACTIVE'
-                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                      : loan.status === 'APPROVED'
-                      ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
-                      : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                  }`}>
-                    {loan.status.replace('_', ' ')}
-                  </span>
-                </div>
-
-                <h4 className={`font-extrabold text-sm mt-2 ${isSelected ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
-                  {loan.customer?.firstName} {loan.customer?.lastName}
-                </h4>
-
-                <div className="mt-3 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs font-mono">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block">Outstanding Bal</span>
-                    <span className={`font-extrabold ${loan.outstandingBal === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      GHS {loan.outstandingBal.toFixed(2)}
+      {/* Empty State when No Loans Exist */}
+      {loans.length === 0 ? (
+        <div className="p-12 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-4 shadow-sm my-6">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto border border-amber-500/20 shadow-inner">
+            <Calculator className="w-8 h-8" />
+          </div>
+          <div className="max-w-md mx-auto space-y-1.5">
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+              No Loan Portfolio Records Yet
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              All loan balances, interest amounts, and repayment schedules are currently zero (null). Once a borrower applies for and takes a new loan, all financial data and amortization schedules will populate automatically.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowApplyModal(true)}
+            className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs inline-flex items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer transition-all"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>Originate First Loan Application</span>
+          </button>
+        </div>
+      ) : (
+        /* Main Grid when Loans Exist */
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Left Column: Loan Portfolio List */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Loan Applications</h3>
+            {loans.map((loan) => {
+              const isSelected = selectedLoan?.id === loan.id;
+              return (
+                <div
+                  key={loan.id}
+                  onClick={() => setSelectedLoan(loan)}
+                  className={`p-5 rounded-3xl border cursor-pointer transition-all ${
+                    isSelected
+                      ? 'bg-gradient-to-br from-slate-900 to-slate-950 text-white border-amber-500 shadow-xl ring-2 ring-amber-500/30'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-amber-500">{loan.applicationNo}</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                      loan.status === 'FULLY_PAID'
+                        ? 'bg-emerald-500 text-slate-950 font-black shadow-md'
+                        : loan.status === 'DISBURSED' || loan.status === 'ACTIVE'
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                        : loan.status === 'APPROVED'
+                        ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+                        : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                    }`}>
+                      {loan.status.replace('_', ' ')}
                     </span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-[10px] text-slate-400 block">Tenor Rate</span>
-                    <span className="font-bold text-amber-400">{loan.interestRate}% ({loan.tenorValueDays}d)</span>
+
+                  <h4 className={`font-extrabold text-sm mt-2 ${isSelected ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
+                    {loan.customer?.firstName} {loan.customer?.lastName}
+                  </h4>
+
+                  <div className="mt-3 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs font-mono">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Outstanding Bal</span>
+                      <span className={`font-extrabold ${loan.outstandingBal === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        GHS {loan.outstandingBal.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 block">Tenor Rate</span>
+                      <span className="font-bold text-amber-400">{loan.interestRate}% ({loan.tenorValueDays}d)</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
-        {/* Right Column: Loan Details & Repayment Schedule */}
-        {selectedLoan && (
-          <div className="lg:col-span-2 space-y-6">
-            
-            <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+          {/* Right Column: Loan Details & Repayment Schedule */}
+          {selectedLoan && (
+            <div className="lg:col-span-2 space-y-6">
+              
+              <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
               
               {/* Selected Loan Banner & Actions */}
               <div className="p-5 rounded-2xl bg-slate-900 text-white border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -487,6 +578,7 @@ export const LoansPage: React.FC = () => {
         )}
 
       </div>
+      )}
 
       {/* Record Loan Repayment Modal */}
       {showRepayModal && selectedLoan && (

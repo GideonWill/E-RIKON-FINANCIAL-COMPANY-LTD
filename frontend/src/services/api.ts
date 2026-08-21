@@ -156,6 +156,11 @@ export const saveStoredLoans = (loans: LoanApplication[]) => {
   broadcastRealtimeEvent('LOAN_CREATED', loans);
 };
 
+export const clearStoredLoans = () => {
+  localStorage.removeItem('erikon_loans');
+  broadcastRealtimeEvent('LOAN_CREATED', []);
+};
+
 export const getStoredTransactions = (): Transaction[] => {
   const data = localStorage.getItem('erikon_transactions');
   if (!data) return [];

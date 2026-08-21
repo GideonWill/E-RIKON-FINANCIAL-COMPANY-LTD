@@ -52,6 +52,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       const finishTimer = setTimeout(() => {
         setIsVisible(false);
         if (onFinish) onFinish();
+        window.dispatchEvent(new CustomEvent('erikon_splash_completed'));
       }, 400);
 
       return () => clearTimeout(finishTimer);
