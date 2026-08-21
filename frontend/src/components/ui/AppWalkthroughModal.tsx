@@ -642,7 +642,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-fade-in"
+      className="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-fade-in"
       onClick={onClose}
     >
       <div 
