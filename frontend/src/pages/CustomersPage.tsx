@@ -12,7 +12,7 @@ import {
   accumulateCompanyInterest,
   MOCK_BRANCHES 
 } from '../services/api';
-import { subscribeRealtimeEvents, broadcastRealtimeEvent } from '../services/realtimeSync';
+import { subscribeRealtimeEvents, broadcastRealtimeEvent, useRealtimeSync } from '../services/realtimeSync';
 import { Customer, Account, SavingsPackage, SAVINGS_PACKAGES, Transaction, DailyCollectionCycle } from '../types';
 import { GhanaCardModal } from '../components/ui/GhanaCardModal';
 import { GhanaCardInput } from '../components/ui/GhanaCardInput';
@@ -78,13 +78,10 @@ export const CustomersPage: React.FC = () => {
   }, [searchParams]);
 
   // Subscribe to multi-device real-time sync
-  useEffect(() => {
-    const unsub = subscribeRealtimeEvents(() => {
-      setCustomers(getStoredCustomers());
-      setAccounts(getStoredAccounts());
-    });
-    return unsub;
-  }, []);
+  useRealtimeSync(() => {
+    setCustomers(getStoredCustomers());
+    setAccounts(getStoredAccounts());
+  });
 
   // Helper to calculate comprehensive financial summary for any customer (and specific cycle)
   const getCustomerFinancialSummary = (cust: Customer, targetCycleNo?: number | null) => {

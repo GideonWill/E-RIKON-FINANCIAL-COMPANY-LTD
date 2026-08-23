@@ -9,7 +9,7 @@ import {
   splitPaymentIntoDays,
   toDecimal
 } from '../services/api';
-import { subscribeRealtimeEvents, broadcastRealtimeEvent } from '../services/realtimeSync';
+import { useRealtimeSync } from '../services/realtimeSync';
 import { Account, Transaction, PaymentMode, SavingsPackage, SAVINGS_PACKAGES, User } from '../types';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
 import { 
@@ -50,13 +50,16 @@ export const TellerPage: React.FC = () => {
   }, [selectedAccount?.id, selectedAccount?.savingsPackage]);
 
   // Subscribe to real-time events from other devices/tabs
-  useEffect(() => {
-    const unsub = subscribeRealtimeEvents(() => {
-      const freshAccs = getStoredAccounts();
-      setAccounts(freshAccs);
-    });
-    return unsub;
-  }, []);
+  useRealtimeSync(() => {
+    const freshAccs = getStoredAccounts();
+    setAccounts(freshAccs);
+    if (selectedAccount) {
+      const found = freshAccs.find((a) => a.id === selectedAccount.id);
+      if (found) setSelectedAccount(found);
+    } else if (freshAccs.length > 0) {
+      setSelectedAccount(freshAccs[0]);
+    }
+  });
 
   const filteredAccounts = accounts.filter(
     (acc) =>

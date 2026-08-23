@@ -17,6 +17,7 @@ import { AuditController } from './audit/audit.controller';
 import { BranchesService } from './branches/branches.service';
 import { BranchesController } from './branches/branches.controller';
 import { EventsModule } from './events/events.module';
+import { SyncModule } from './sync/sync.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { EventsModule } from './events/events.module';
       signOptions: { expiresIn: '12h' },
     }),
     EventsModule,
+    SyncModule,
   ],
   controllers: [
     AuthController,

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { getStoredBranches, saveStoredBranches } from '../services/api';
+import { useRealtimeSync } from '../services/realtimeSync';
 import { Branch } from '../types';
 import {
   GitBranch,
@@ -66,6 +67,11 @@ export const BranchesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
+
+  // Real-time synchronization
+  useRealtimeSync(() => {
+    setBranches(getStoredBranches());
+  });
 
   // Notification state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
