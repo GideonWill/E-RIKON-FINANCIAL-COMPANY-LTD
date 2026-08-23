@@ -129,7 +129,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                 alt="E-RiKON Logo" 
                 className="h-7 sm:h-8 md:h-9 w-auto object-contain shrink-0"
               />
-              <span className="hidden sm:inline-flex text-[#0d9488] font-black text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/40 font-mono shrink-0">
+              <span className="hidden lg:inline-flex text-[#0d9488] font-black text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/40 font-mono shrink-0">
                 ECFMS v2.0
               </span>
             </div>
@@ -155,11 +155,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               </span>
             </button>
 
-            {/* App Walkthrough & Interactive Guide Button (Desktop / Tablet) */}
+            {/* App Walkthrough & Interactive Guide Button (Desktop Only) */}
             <button
               type="button"
               onClick={() => setShowWalkthroughModal(true)}
-              className="hidden sm:flex w-8 h-8 sm:w-9 sm:h-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#0d9488] dark:hover:text-teal-400 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs group shrink-0"
+              className="hidden lg:flex w-8 h-8 sm:w-9 sm:h-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#0d9488] dark:hover:text-teal-400 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs group shrink-0"
               title="Open System Walkthrough & Interactive Guide"
             >
               <Compass className="w-4 h-4 text-[#0d9488] group-hover:rotate-45 transition-transform duration-300" />

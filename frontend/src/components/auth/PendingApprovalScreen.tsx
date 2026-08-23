@@ -100,7 +100,7 @@ export const PendingApprovalScreen: React.FC = () => {
             alt="E-RiKON Logo" 
             className="h-8 sm:h-10 md:h-12 w-auto object-contain shrink-0"
           />
-          <span className="text-[9px] sm:text-[10px] font-black font-mono px-2 py-0.5 rounded-full bg-teal-50 text-[#0d9488] border border-teal-200 shrink-0">
+          <span className="hidden sm:inline-flex text-[9px] sm:text-[10px] font-black font-mono px-2 py-0.5 rounded-full bg-teal-50 text-[#0d9488] border border-teal-200 shrink-0">
             ECFMS v2.0
           </span>
         </div>
