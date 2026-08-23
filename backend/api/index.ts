@@ -12,6 +12,7 @@ export const createApp = async (expressInstance: any) => {
     new ExpressAdapter(expressInstance)
   );
 
+
   app.enableCors({
     origin: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
