@@ -209,17 +209,13 @@ export const CustomersPage: React.FC = () => {
       return;
     }
 
-    // 2. Ghana Card Validation (Strictly 10 numeric digits, no alphabets)
-    let rawCard = formData.ghanaCardNumber.trim().toUpperCase();
-    if (rawCard.startsWith('GHA-')) rawCard = rawCard.slice(4);
-    else if (rawCard.startsWith('GHA')) rawCard = rawCard.slice(3);
-
-    const digitsOnly = rawCard.replace(/\D/g, '');
-    if (!digitsOnly || digitsOnly.length !== 10) {
-      setFormError('⚠️ Ghana Card Number must contain exactly 10 numeric digits (e.g. 722104918-3). Alphabets and letters are not allowed.');
+    // 2. Ghana ID Validation (Numbers only, no enforced format)
+    const digitsOnly = formData.ghanaCardNumber.replace(/\D/g, '');
+    if (!digitsOnly) {
+      setFormError('⚠️ Ghana ID Number must contain numbers only.');
       return;
     }
-    const finalGhanaCard = `GHA-${digitsOnly.slice(0, 9)}-${digitsOnly.slice(9, 10)}`;
+    const finalGhanaCard = digitsOnly;
 
     // 3. Phone Number Validation (Must be exactly 10 digits starting with 0)
     const cleanPhone = formatGhanaianPhoneNumber(formData.phone);
@@ -582,7 +578,7 @@ export const CustomersPage: React.FC = () => {
           <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
           <input
             type="text"
-            placeholder="Search by name, phone, Ghana Card PIN (GHA-XXXXXXXXX-X), or customer number..."
+            placeholder="Search by name, phone, Ghana ID number, or customer number..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 font-medium"
@@ -1119,15 +1115,15 @@ export const CustomersPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 flex justify-between">
-                    <span>Ghana Card Number *</span>
-                    <span className="text-[10px] text-amber-500 font-mono">Format: GHA-XXXXXXXXX-X</span>
+                    <span>Ghana ID Number *</span>
+                    <span className="text-[10px] text-teal-600 dark:text-teal-400 font-mono">Numbers only</span>
                   </label>
                   <div className="mt-1">
                     <GhanaCardInput
                       required
                       value={formData.ghanaCardNumber}
-                      onChange={(formatted) => updateFormField('ghanaCardNumber', formatted)}
-                      placeholder="722104918-3"
+                      onChange={(val) => updateFormField('ghanaCardNumber', val)}
+                      placeholder="Enter Ghana ID (numbers only)"
                     />
                   </div>
                 </div>

@@ -160,11 +160,11 @@ export const LoginPage: React.FC = () => {
     }
 
     const cleanGhanaDigits = signupGhanaCard.replace(/\D/g, '');
-    if (cleanGhanaDigits.length !== 10) {
-      setErrorMsg('Ghana Card Number must contain exactly 10 numeric digits (e.g. 722104918-3). Alphabets are not allowed.');
+    if (!cleanGhanaDigits) {
+      setErrorMsg('Please enter your Ghana ID number (numbers only).');
       return;
     }
-    const finalGhanaCard = `GHA-${cleanGhanaDigits.slice(0, 9)}-${cleanGhanaDigits.slice(9, 10)}`;
+    const finalGhanaCard = cleanGhanaDigits;
 
     setIsLoading(true);
     try {
