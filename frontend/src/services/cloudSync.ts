@@ -176,6 +176,45 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
     }
   }
 
+  // Merge Approvals
+  if (Array.isArray(cloudData.approvals) && cloudData.approvals.length > 0) {
+    const localAppr = getStoredApprovals();
+    const apprMap = new Map<string, any>();
+    localAppr.forEach(a => apprMap.set(a.id, a));
+    cloudData.approvals.forEach(a => apprMap.set(a.id, a));
+    const mergedAppr = Array.from(apprMap.values());
+    if (mergedAppr.length !== localAppr.length || JSON.stringify(mergedAppr) !== JSON.stringify(localAppr)) {
+      saveStoredApprovals(mergedAppr);
+      hasUpdates = true;
+    }
+  }
+
+  // Merge Loans
+  if (Array.isArray(cloudData.loans) && cloudData.loans.length > 0) {
+    const localLoans = getStoredLoans();
+    const loanMap = new Map<string, any>();
+    localLoans.forEach(l => loanMap.set(l.id, l));
+    cloudData.loans.forEach(l => loanMap.set(l.id, l));
+    const mergedLoans = Array.from(loanMap.values());
+    if (mergedLoans.length !== localLoans.length || JSON.stringify(mergedLoans) !== JSON.stringify(localLoans)) {
+      saveStoredLoans(mergedLoans);
+      hasUpdates = true;
+    }
+  }
+
+  // Merge Company Interest
+  if (Array.isArray(cloudData.companyInterest) && cloudData.companyInterest.length > 0) {
+    const localInt = getStoredCompanyInterest();
+    const intMap = new Map<string, any>();
+    localInt.forEach(i => intMap.set(i.id, i));
+    cloudData.companyInterest.forEach(i => intMap.set(i.id, i));
+    const mergedInt = Array.from(intMap.values());
+    if (mergedInt.length !== localInt.length || JSON.stringify(mergedInt) !== JSON.stringify(localInt)) {
+      saveStoredCompanyInterest(mergedInt);
+      hasUpdates = true;
+    }
+  }
+
   if (hasUpdates) {
     broadcastRealtimeEvent('MANUAL_SYNC', { source: 'CLOUD_PULL' });
   }
@@ -186,9 +225,9 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
 
 /**
  * Initializes background cloud synchronization.
- * - Pulls latest state from cloud on app launch (data hydration fallback)
- * - Pushes to cloud whenever a write event occurs (customers, deposits, loans, etc.)
- * - SSE (EventSource) now handles the real-time cross-device push — no polling needed
+ * - Pulls latest state from cloud on app launch and every 3.5s
+ * - Pushes to cloud whenever a write event occurs (customers, accounts, approvals, etc.)
+ * - Re-syncs immediately on screen focus or tab visibility change
  */
 export const initCloudSync = () => {
   // Initial pull on app launch
@@ -198,11 +237,39 @@ export const initCloudSync = () => {
   const unsubscribeEvents = subscribeRealtimeEvents((event) => {
     if (event.type !== 'MANUAL_SYNC') {
       pushLocalToCloud().catch(() => {});
+    } else {
+      pullCloudToLocal().catch(() => {});
     }
   });
 
+  // Background poller (ensures cross-device sync even if mobile WebSocket/SSE was asleep)
+  const pollTimer = setInterval(() => {
+    pullCloudToLocal().catch(() => {});
+  }, 3500);
+
+  // Instant sync on screen resume / tab focus
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      pullCloudToLocal().catch(() => {});
+    }
+  };
+
+  const handleFocus = () => {
+    pullCloudToLocal().catch(() => {});
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+  }
+
   return () => {
     unsubscribeEvents();
+    clearInterval(pollTimer);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    }
   };
 };
 

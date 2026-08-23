@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import logoImg from '../../assets/logo.png';
 import { 
@@ -10,20 +10,43 @@ import {
   Sparkles,
   ChevronRight
 } from 'lucide-react';
-import { apiClient } from '../../services/api';
+import { apiClient, getRegisteredUsers } from '../../services/api';
+import { useRealtimeSync } from '../../services/realtimeSync';
+import { pullCloudToLocal } from '../../services/cloudSync';
 
 export const PendingApprovalScreen: React.FC = () => {
   const { currentUser, logout } = useAuth();
   const [isChecking, setIsChecking] = useState(false);
   const [statusNote, setStatusNote] = useState<string | null>(null);
 
-  const handleManualCheck = async () => {
-    setIsChecking(true);
-    setStatusNote(null);
+  const checkApprovalStatus = async (silent = false) => {
+    if (!silent) setIsChecking(true);
     try {
+      // 1. Pull latest cloud data
+      await pullCloudToLocal().catch(() => {});
+
+      // 2. Check local registered users first
+      const localUsers = getRegisteredUsers();
+      if (currentUser) {
+        const localMatch = localUsers.find(
+          (u) => u.id === currentUser.id || u.email?.toLowerCase() === currentUser.email?.toLowerCase()
+        );
+        if (localMatch && (localMatch.isApproved || localMatch.role === 'SUPER_ADMIN')) {
+          const updated = {
+            ...currentUser,
+            isApproved: true,
+            status: 'ACTIVE' as const,
+          };
+          localStorage.setItem('erikon_current_user', JSON.stringify(updated));
+          window.location.reload();
+          return;
+        }
+      }
+
+      // 3. Check Live Backend API
       const { data } = await apiClient.get('/auth/users');
       if (Array.isArray(data) && currentUser) {
-        const found = data.find((u: any) => u.id === currentUser.id || u.email === currentUser.email);
+        const found = data.find((u: any) => u.id === currentUser.id || u.email?.toLowerCase() === currentUser.email?.toLowerCase());
         if (found && (found.isApproved || found.role === 'SUPER_ADMIN')) {
           const updated = {
             ...currentUser,
@@ -35,13 +58,34 @@ export const PendingApprovalScreen: React.FC = () => {
           return;
         }
       }
-      setStatusNote('Account is still awaiting Super Admin approval. You will gain instant access once approved.');
+      if (!silent) {
+        setStatusNote('Account is still awaiting Super Admin approval. You will gain instant access once approved.');
+      }
     } catch {
-      setStatusNote('Connecting to authorization server...');
+      if (!silent) setStatusNote('Connecting to authorization server...');
     } finally {
-      setIsChecking(false);
-      setTimeout(() => setStatusNote(null), 5000);
+      if (!silent) {
+        setIsChecking(false);
+        setTimeout(() => setStatusNote(null), 5000);
+      }
     }
+  };
+
+  // Continuous auto-poller (every 2.5s) to guarantee instant entry when approved on laptop
+  useEffect(() => {
+    const timer = setInterval(() => {
+      checkApprovalStatus(true);
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [currentUser]);
+
+  // Real-time SSE / BroadcastChannel listener
+  useRealtimeSync(() => {
+    checkApprovalStatus(true);
+  });
+
+  const handleManualCheck = () => {
+    checkApprovalStatus(false);
   };
 
   return (
@@ -49,21 +93,21 @@ export const PendingApprovalScreen: React.FC = () => {
       className="min-h-screen bg-[#f8fafc] flex flex-col justify-between p-3 sm:p-5 lg:p-6 select-none overflow-y-auto lg:overflow-hidden font-sans"
     >
       {/* Top Header Bar */}
-      <header className="relative z-10 w-full max-w-4xl mx-auto flex items-center justify-between gap-4 shrink-0 pb-2">
-        <div className="flex items-center space-x-3">
+      <header className="relative z-10 w-full max-w-4xl mx-auto flex items-center justify-between gap-3 shrink-0 pb-2">
+        <div className="flex items-center space-x-2 sm:space-x-3">
           <img 
             src={logoImg} 
             alt="E-RiKON Logo" 
-            className="h-10 sm:h-12 w-auto object-contain"
+            className="h-8 sm:h-10 md:h-12 w-auto object-contain shrink-0"
           />
-          <span className="text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-full bg-teal-50 text-[#0d9488] border border-teal-200">
+          <span className="text-[9px] sm:text-[10px] font-black font-mono px-2 py-0.5 rounded-full bg-teal-50 text-[#0d9488] border border-teal-200 shrink-0">
             ECFMS v2.0
           </span>
         </div>
 
         <button
           onClick={logout}
-          className="px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-slate-200 shadow-2xs"
+          className="h-8 sm:h-9 px-3 sm:px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-slate-200 shadow-2xs shrink-0"
         >
           <LogOut className="w-3.5 h-3.5" />
           <span>Sign Out</span>

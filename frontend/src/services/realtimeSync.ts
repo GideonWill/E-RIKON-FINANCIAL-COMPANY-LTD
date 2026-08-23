@@ -67,15 +67,16 @@ const notifyAllSubscribers = (payload: RealtimeSyncPayload) => {
 
 /**
  * Connect to the Render backend SSE endpoint.
- * Called once after successful login.
+ * Can be called with token or guest mode.
  */
-export const connectSSE = (token: string): void => {
+export const connectSSE = (token?: string): void => {
   if (sseSource) {
     // Already connected
     return;
   }
 
-  const url = `${SSE_BASE_URL}/events?token=${encodeURIComponent(token)}`;
+  const activeToken = token || localStorage.getItem('erikon_access_token') || 'guest';
+  const url = `${SSE_BASE_URL}/events?token=${encodeURIComponent(activeToken)}`;
 
   console.log('[SSE] Connecting to real-time event stream...');
   sseSource = new EventSource(url);

@@ -51,10 +51,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentUser]);
 
-  // Real-time listener: when Super Admin approves this account, unlock immediately
+  // Real-time listener: when Super Admin approves this account on laptop, unlock immediately
   useRealtimeSync((payload) => {
-    if (payload.type === 'APPROVAL_DECISION_MADE' && currentUser) {
-      if (payload.data?.userId === currentUser.id) {
+    if (!currentUser) return;
+
+    // 1. Direct SSE payload: { userId, action, role }
+    if (payload.type === 'APPROVAL_DECISION_MADE') {
+      if (payload.data?.userId === currentUser.id || payload.data?.name?.toLowerCase() === `${currentUser.firstName} ${currentUser.lastName}`.toLowerCase()) {
         if (payload.data?.action === 'APPROVED') {
           const updated: User = {
             ...currentUser,
@@ -63,30 +66,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
           setCurrentUser(updated);
           localStorage.setItem('erikon_current_user', JSON.stringify(updated));
+          return;
         } else if (payload.data?.action === 'REJECTED') {
           logout();
           alert('Your registration was declined by the Super Admin.');
+          return;
         }
+      }
+
+      // If payload data is an array of approvals
+      if (Array.isArray(payload.data)) {
+        const matchingAppr = payload.data.find(
+          (a) => (a.targetId === currentUser.id || a.details?.email?.toLowerCase() === currentUser.email?.toLowerCase())
+        );
+        if (matchingAppr) {
+          if (matchingAppr.status === 'APPROVED' && !currentUser.isApproved) {
+            const updated: User = {
+              ...currentUser,
+              isApproved: true,
+              status: 'ACTIVE',
+            };
+            setCurrentUser(updated);
+            localStorage.setItem('erikon_current_user', JSON.stringify(updated));
+            return;
+          } else if (matchingAppr.status === 'REJECTED') {
+            logout();
+            alert('Your registration was declined by the Super Admin.');
+            return;
+          }
+        }
+      }
+    }
+
+    // 2. Check registered users list on sync
+    if (payload.type === 'STAFF_REGISTERED' || payload.type === 'MANUAL_SYNC' || payload.type === 'APPROVAL_DECISION_MADE') {
+      const allUsers = getRegisteredUsers();
+      const myRecord = allUsers.find((u) => u.id === currentUser.id || u.email?.toLowerCase() === currentUser.email?.toLowerCase());
+      if (myRecord && myRecord.isApproved && !currentUser.isApproved) {
+        const updated: User = {
+          ...currentUser,
+          isApproved: true,
+          status: 'ACTIVE',
+        };
+        setCurrentUser(updated);
+        localStorage.setItem('erikon_current_user', JSON.stringify(updated));
       }
     }
   });
 
-  // Launch background cloud sync
+  // Launch background cloud sync & SSE stream
   useEffect(() => {
     const cleanup = initCloudSync();
-    return () => cleanup();
-  }, []);
-
-  // Reconnect SSE stream on page refresh if user is already logged in
-  useEffect(() => {
-    const existingToken = localStorage.getItem('erikon_access_token');
-    if (existingToken && currentUser) {
-      connectSSE(existingToken);
-    }
+    connectSSE();
     return () => {
+      cleanup();
       disconnectSSE();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (email?: string, password?: string, role?: RoleName): Promise<{ success: boolean; error?: string }> => {

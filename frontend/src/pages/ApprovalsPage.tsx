@@ -10,6 +10,7 @@ import {
   apiClient
 } from '../services/api';
 import { useRealtimeSync } from '../services/realtimeSync';
+import { pushLocalToCloud, pullCloudToLocal } from '../services/cloudSync';
 import { ApprovalRequest, ApprovalType, RoleName, RegisteredUserRecord } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -168,6 +169,7 @@ export const ApprovalsPage: React.FC = () => {
       setApprovals(getStoredApprovals());
       setRegisteredUsers(getRegisteredUsers());
       setSelectedItemForAction(null);
+      pushLocalToCloud().catch(() => {});
 
       setTimeout(() => {
         setFeedbackMsg(null);
@@ -202,7 +204,11 @@ export const ApprovalsPage: React.FC = () => {
       // Sync to live backend
       if (targetStatus) {
         apiClient.patch(`/auth/approve/${userId}`).catch(() => {});
+      } else {
+        apiClient.delete(`/auth/reject/${userId}`).catch(() => {});
       }
+
+      pushLocalToCloud().catch(() => {});
 
       setFeedbackMsg(`✅ Clearance for ${users[idx].firstName} ${users[idx].lastName} (${users[idx].role}) updated to ${targetStatus ? 'ACTIVE (APPROVED)' : 'PENDING'}.`);
       setTimeout(() => setFeedbackMsg(null), 4000);

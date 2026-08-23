@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { resetToCleanLiveState } from '../services/api';
+import { resetToCleanLiveState, getRegisteredUsers } from '../services/api';
+import { useRealtimeSync } from '../services/realtimeSync';
+import { pullCloudToLocal } from '../services/cloudSync';
 import { RoleName } from '../types';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
 import { GhanaCardInput } from '../components/ui/GhanaCardInput';
@@ -51,6 +53,16 @@ export const LoginPage: React.FC = () => {
   const [signupPassword, setSignupPassword] = useState('');
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [signupSuccessMsg, setSignupSuccessMsg] = useState<string | null>(null);
+
+  // Sync latest cloud data on mount
+  useEffect(() => {
+    pullCloudToLocal().catch(() => {});
+  }, []);
+
+  // Listen to real-time events across devices
+  useRealtimeSync(() => {
+    pullCloudToLocal().catch(() => {});
+  });
 
   // Auto-dismiss error & alert messages after 4 seconds
   useEffect(() => {
