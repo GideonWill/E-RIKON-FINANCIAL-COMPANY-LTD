@@ -408,8 +408,18 @@ export const createNewCustomer = (customerData: Omit<Customer, 'id' | 'customerN
   };
 
   const packageRate = customerData.savingsPackage || 20;
-  const initialDepositAmount = customerData.initialDeposit || 0;
-  const initialDayCount = initialDepositAmount >= packageRate ? Math.floor(initialDepositAmount / packageRate) : 0;
+  const packageFee = packageRate; // Upfront 1-day package fee retained by company
+  const initialDepositAmount = customerData.initialDeposit !== undefined ? customerData.initialDeposit : packageRate;
+
+  if (initialDepositAmount > 0 && initialDepositAmount < packageRate) {
+    throw new Error(`Initial deposit amount (GH₵ ${initialDepositAmount.toFixed(2)}) cannot be lower than the chosen package (GH₵ ${packageRate}.00). Minimum deposit is GH₵ ${packageRate}.00.`);
+  }
+
+  if (initialDepositAmount > 0 && initialDepositAmount % packageRate !== 0) {
+    throw new Error(`Initial deposit amount (GH₵ ${initialDepositAmount.toFixed(2)}) must be an exact multiple of the GH₵ ${packageRate}.00 package (e.g. GH₵ ${packageRate}, GH₵ ${packageRate * 2}, etc.) to split evenly across days.`);
+  }
+
+  const initialDayCount = Math.floor(initialDepositAmount / packageRate);
 
   const newAccount: Account = {
     id: `acc-${Date.now()}`,
@@ -433,8 +443,8 @@ export const createNewCustomer = (customerData: Omit<Customer, 'id' | 'customerN
         currentDayCount: initialDayCount,
         dailyTargetAmount: packageRate,
         totalDeposited: initialDepositAmount,
-        feeDeducted: false,
-        companyFeeAmount: 0,
+        feeDeducted: true, // Upfront fee is retained upon onboarding
+        companyFeeAmount: packageFee,
         isCompleted: false,
         startDate: new Date().toISOString().split('T')[0],
         dailySplits: initialDayCount > 0 ? Array.from({ length: initialDayCount }, (_, i) => ({
@@ -451,9 +461,14 @@ export const createNewCustomer = (customerData: Omit<Customer, 'id' | 'customerN
   saveStoredCustomers([newCustomer, ...customers]);
   saveStoredAccounts([newAccount, ...accounts]);
 
+  // Record Company Interest Accumulation for the upfront package fee
+  accumulateCompanyInterest(newAccount, 1, packageFee);
+
+  const txs = getStoredTransactions();
+  const newTxs: Transaction[] = [];
+
   if (initialDepositAmount > 0) {
-    const txs = getStoredTransactions();
-    const newTx: Transaction = {
+    const depTx: Transaction = {
       id: `tx-init-${Date.now()}`,
       referenceNo: `TX-INIT-${Date.now().toString().slice(-8)}`,
       receiptNo: `RCP-INIT-${Date.now().toString().slice(-8)}`,
@@ -464,11 +479,30 @@ export const createNewCustomer = (customerData: Omit<Customer, 'id' | 'customerN
       amount: initialDepositAmount,
       previousBal: 0,
       newBal: initialDepositAmount,
-      remarks: `Initial account opening deposit on GH₵ ${packageRate} daily savings package`,
+      remarks: `Initial account opening deposit on GH₵ ${packageRate} daily savings package (Days covered: ${initialDayCount})`,
       createdAt: new Date().toISOString(),
     };
-    saveStoredTransactions([newTx, ...txs]);
+    newTxs.push(depTx);
   }
+
+  // Upfront package fee transaction record
+  const feeTx: Transaction = {
+    id: `tx-fee-${Date.now()}`,
+    referenceNo: `TX-FEE-${Date.now().toString().slice(-8)}`,
+    receiptNo: `RCP-FEE-${Date.now().toString().slice(-8)}`,
+    accountId: newAccount.id,
+    account: newAccount,
+    type: 'COMPANY_FEE_DEDUCTION',
+    paymentMode: 'PHYSICAL_CASH',
+    amount: packageFee,
+    previousBal: initialDepositAmount,
+    newBal: initialDepositAmount,
+    remarks: `Upfront package fee (GH₵ ${packageFee}) collected & retained for GH₵ ${packageRate}/day package cycle`,
+    createdAt: new Date().toISOString(),
+  };
+  newTxs.push(feeTx);
+
+  saveStoredTransactions([...newTxs, ...txs]);
 
   return { customer: newCustomer, account: newAccount };
 };
@@ -600,6 +634,14 @@ export const recordPackageDeposit = (
   const acc = { ...accounts[accIndex] };
   const packageRate = acc.savingsPackage || 20;
 
+  if (amountPaid < packageRate) {
+    throw new Error(`Deposit amount (GH₵ ${amountPaid.toFixed(2)}) cannot be lower than the chosen package (GH₵ ${packageRate}.00). Minimum deposit is GH₵ ${packageRate}.00.`);
+  }
+
+  if (amountPaid % packageRate !== 0) {
+    throw new Error(`Deposit amount (GH₵ ${amountPaid.toFixed(2)}) must be an exact multiple of the GH₵ ${packageRate}.00 package (e.g. GH₵ ${packageRate}, GH₵ ${packageRate * 2}, GH₵ ${packageRate * 3}, etc.) to split evenly across days.`);
+  }
+
   let cycles = acc.dailyCycles ? [...acc.dailyCycles] : [];
   let activeCycle = cycles[0];
 
@@ -611,13 +653,14 @@ export const recordPackageDeposit = (
       currentDayCount: 0,
       dailyTargetAmount: packageRate,
       totalDeposited: 0,
-      feeDeducted: false,
-      companyFeeAmount: 0,
+      feeDeducted: true, // Upfront fee policy applied to cycle
+      companyFeeAmount: packageRate,
       isCompleted: false,
       startDate: customStartDate || new Date().toISOString().split('T')[0],
       dailySplits: [],
     };
     cycles = [activeCycle, ...cycles];
+    accumulateCompanyInterest(acc, nextCycleNo, toDecimal(packageRate));
   }
 
   const splitResult = splitPaymentIntoDays(
@@ -632,17 +675,12 @@ export const recordPackageDeposit = (
   activeCycle.currentDayCount = newDayCount;
   activeCycle.totalDeposited += amountPaid;
   activeCycle.dailySplits = [...(activeCycle.dailySplits || []), ...splitResult.entries];
-
-  let addedAvailable = amountPaid;
-  if (splitResult.isDay31Included) {
-    activeCycle.feeDeducted = true;
-    activeCycle.companyFeeAmount += splitResult.companyFeeIncluded;
+  if (newDayCount >= 31) {
     activeCycle.isCompleted = true;
-    addedAvailable -= splitResult.companyFeeIncluded;
-
-    // Pile up company interest
-    accumulateCompanyInterest(acc, activeCycle.cycleNumber, toDecimal(packageRate));
   }
+
+  // With upfront fee secured at inception, 100% of daily savings deposits are credited to available savings balance
+  const addedAvailable = amountPaid;
 
   acc.dailyCycles = cycles;
   acc.currentBalance = toDecimal(acc.currentBalance + amountPaid);
@@ -655,7 +693,7 @@ export const recordPackageDeposit = (
     receiptNo: `RCP-${Date.now().toString().slice(-8)}`,
     accountId: acc.id,
     account: acc,
-    type: splitResult.isDay31Included ? 'COMPANY_FEE_DEDUCTION' : 'DEPOSIT',
+    type: 'DEPOSIT',
     paymentMode: 'PHYSICAL_CASH',
     amount: toDecimal(amountPaid),
     previousBal: toDecimal(acc.availableBalance - addedAvailable),

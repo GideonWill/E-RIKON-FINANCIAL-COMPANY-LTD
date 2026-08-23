@@ -90,6 +90,16 @@ export const TellerPage: React.FC = () => {
     };
 
     if (operationType === 'DEPOSIT') {
+      if (numAmount < chosenPackage) {
+        alert(`❌ Deposit amount (GH₵ ${numAmount.toFixed(2)}) cannot be lower than the chosen package rate (GH₵ ${chosenPackage}.00). Minimum deposit is GH₵ ${chosenPackage}.00.`);
+        return;
+      }
+
+      if (numAmount % chosenPackage !== 0) {
+        alert(`❌ Deposit amount (GH₵ ${numAmount.toFixed(2)}) must be an exact multiple of the GH₵ ${chosenPackage}.00 package (e.g. GH₵ ${chosenPackage}, GH₵ ${chosenPackage * 2}, GH₵ ${chosenPackage * 3}) to split evenly across days.`);
+        return;
+      }
+
       // Ensure account package matches chosen package
       const allAccs = getStoredAccounts();
       const currentAccIndex = allAccs.findIndex((a) => a.id === selectedAccount.id);
@@ -413,14 +423,76 @@ export const TellerPage: React.FC = () => {
                           ⚠️ Remainder: GH₵ {splitPreview.remainder}.00 will remain as surplus balance.
                         </p>
                       )}
-                      {splitPreview.isDay31Included && (
-                        <div className="mt-1 p-2 rounded-lg bg-amber-500 text-slate-950 font-extrabold text-[11px] flex items-center gap-1">
-                          <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                          <span>Day 31 Reached: GH₵ {chosenPackage}.00 will be retained as E-RIKON management fee. Cycle #{targetCycleNo} marked 31/31 complete!</span>
-                        </div>
-                      )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Withdrawal Fee Settlement & Presets Banner */}
+              {operationType === 'WITHDRAWAL' && (
+                <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h4 className="font-extrabold text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1.5 uppercase tracking-wider">
+                        <ArrowDownLeft className="w-4 h-4 text-rose-500" />
+                        Early Withdrawal & Savings Liquidation
+                      </h4>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Withdraw accumulated savings at any time within the 31-day cycle with 1-day fee retention.
+                      </p>
+                    </div>
+
+                    <span className="font-mono text-xs font-black text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-xl border border-emerald-500/30 w-fit">
+                      Net Withdrawable: GHS {selectedAccount.availableBalance.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* Net Payout Calculation Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-slate-900 text-white border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block font-medium">Daily Package</span>
+                      <span className="font-mono font-black text-amber-400 text-sm">GH₵ {selectedAccount.savingsPackage || 20}.00 / day</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-slate-900 text-white border border-slate-800">
+                      <span className="text-[10px] text-rose-400 block font-medium">1-Day Retained Fee</span>
+                      <span className="font-mono font-black text-rose-400 text-sm">- GH₵ {selectedAccount.savingsPackage || 20}.00</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-white">
+                      <span className="text-[10px] text-emerald-300 block font-medium">Client Net Payout</span>
+                      <span className="font-mono font-black text-emerald-400 text-sm">GH₵ {selectedAccount.availableBalance.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {/* Quick Withdrawal Presets */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-rose-500/20">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold">Quick Select:</span>
+                    <button
+                      type="button"
+                      onClick={() => setAmount(String(selectedAccount.availableBalance))}
+                      className="px-2.5 py-1 rounded-lg bg-rose-500 text-white font-mono font-bold text-[11px] shadow-sm hover:bg-rose-600 cursor-pointer"
+                    >
+                      Withdraw All (GHS {selectedAccount.availableBalance.toFixed(2)})
+                    </button>
+                    {selectedAccount.availableBalance >= 100 && (
+                      <button
+                        type="button"
+                        onClick={() => setAmount(String(Math.floor(selectedAccount.availableBalance / 2)))}
+                        className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 hover:border-rose-500 cursor-pointer"
+                      >
+                        50% (GHS {Math.floor(selectedAccount.availableBalance / 2).toFixed(2)})
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Fee Settlement Assurance */}
+                  <div className="p-2.5 rounded-xl bg-slate-900 text-white border border-slate-800 text-[11px] flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="text-slate-300 leading-relaxed">
+                      <b>1-Day Retained Fee Rule:</b> For instance, if a client on the <b>GH₵ 5 package</b> has deposited <b>GH₵ 25.00 (5 days)</b>, 1 day (<b>GH₵ 5.00</b>) is retained as the company fee, and <b>GH₵ 20.00 (4 days)</b> is paid out to the client.
+                    </div>
+                  </div>
                 </div>
               )}
 

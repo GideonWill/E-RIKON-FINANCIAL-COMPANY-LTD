@@ -46,7 +46,7 @@ export const AccountsPage: React.FC = () => {
           Savings Accounts & 31-Day Policy Tracker
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Monitor customer savings schemes, available balances, and automatic 31st day company fee deductions
+          Monitor customer savings schemes, available balances, upfront package fees, and early withdrawal protections
         </p>
       </div>
 
@@ -232,10 +232,10 @@ export const AccountsPage: React.FC = () => {
                 <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 text-xs space-y-1">
                   <div className="font-extrabold flex items-center gap-1.5">
                     <ShieldAlert className="w-4 h-4 text-amber-500" />
-                    31-Day Physical Savings Deduction Policy
+                    Package Fee Retention & Early Withdrawal Settlement Policy
                   </div>
                   <p className="text-[11px] opacity-90 leading-relaxed">
-                    Days 1 through 30 deposits are credited immediately to the client's available balance. On Day 31, the daily contribution amount (GHS {selectedAccount.savingsPackage || selectedAccount.dailyCycles?.[0]?.dailyTargetAmount || 20}.00) is retained as the E-RIKON management fee, credited to the Company Interest Vault, and the account automatically initiates Cycle #{selectedAccount.dailyCycles?.[0] ? selectedAccount.dailyCycles[0].cycleNumber + 1 : 2}.
+                    Upon account opening and for each savings cycle, 1 day's contribution is retained as the E-RIKON management fee. If a client deposits across any number of days before completing 31 days (for example, depositing <b>GH₵ 25.00 across 5 days on the GH₵ 5/day package</b>), 1 day (<b>GH₵ 5.00</b>) is retained as the fee, and <b>GH₵ 20.00 (4 days)</b> is paid out to the client.
                   </p>
                 </div>
 

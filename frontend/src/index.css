@@ -44,10 +44,17 @@ input, textarea, select, option {
 .dark-auth input,
 .dark-auth select,
 .dark-auth textarea,
+.bg-slate-800 input,
+.bg-slate-800 textarea,
+.bg-slate-850 input,
+.bg-slate-850 textarea,
 .bg-slate-900 textarea,
 .bg-slate-950 textarea,
 .bg-slate-900 input,
-.bg-slate-950 input {
+.bg-slate-950 input,
+input.text-white,
+input[type="number"].text-white,
+input[type="text"].text-white {
   color: #ffffff !important;
 }
 

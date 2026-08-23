@@ -9,6 +9,7 @@ import {
   splitPaymentIntoDays,
   getStoredTransactions,
   saveStoredTransactions,
+  accumulateCompanyInterest,
   MOCK_BRANCHES 
 } from '../services/api';
 import { subscribeRealtimeEvents, broadcastRealtimeEvent } from '../services/realtimeSync';
@@ -160,7 +161,7 @@ export const CustomersPage: React.FC = () => {
 
   const [formError, setFormError] = useState<string | null>(null);
   const [chosenPackage, setChosenPackage] = useState<SavingsPackage>(20);
-  const [initialDepositAmount, setInitialDepositAmount] = useState<string>('100');
+  const [initialDepositAmount, setInitialDepositAmount] = useState<string>('20');
 
   // Auto-dismiss error banner after 4 seconds
   useEffect(() => {
@@ -178,8 +179,10 @@ export const CustomersPage: React.FC = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Dynamic preview of multi-day split calculation
+  // Dynamic calculations for deposit & upfront package fee
   const depositNum = Number(initialDepositAmount) || 0;
+  const packageFee = chosenPackage;
+  const totalPayable = depositNum + packageFee;
   const splitPreview = depositNum > 0 ? splitPaymentIntoDays(chosenPackage, depositNum, 0) : null;
 
   const filteredCustomers = customers.filter((c) => {
@@ -236,6 +239,17 @@ export const CustomersPage: React.FC = () => {
       return;
     }
 
+    // 5. Package Deposit Validation (Must be >= chosenPackage and exact multiple)
+    if (depositNum < chosenPackage) {
+      setFormError(`⚠️ Deposit amount cannot be lower than the chosen package rate (GH₵ ${chosenPackage}.00). Minimum deposit is GH₵ ${chosenPackage}.00.`);
+      return;
+    }
+
+    if (depositNum % chosenPackage !== 0) {
+      setFormError(`⚠️ Deposit amount (GH₵ ${depositNum}.00) must be an exact multiple of the GH₵ ${chosenPackage}.00 package (e.g. GH₵ ${chosenPackage}, GH₵ ${chosenPackage * 2}, GH₵ ${chosenPackage * 3}) to split evenly across days.`);
+      return;
+    }
+
     try {
       const newCustId = `cust-${Date.now()}`;
       const newCustNo = `CUST-2026-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -267,12 +281,10 @@ export const CustomersPage: React.FC = () => {
         },
       };
 
-      // Calculate multi-day split if initial deposit is made
-      const splitResult = depositNum > 0 ? splitPaymentIntoDays(chosenPackage, depositNum, 0) : null;
-      const currentDayCount = splitResult ? splitResult.daysCovered : 0;
+      // Multi-day split calculation for savings deposit
+      const currentDayCount = splitPreview ? splitPreview.daysCovered : (depositNum >= chosenPackage ? Math.floor(depositNum / chosenPackage) : (depositNum > 0 ? 1 : 0));
       const totalDeposited = depositNum;
-      const companyFeeDeducted = splitResult?.companyFeeIncluded || 0;
-      const availableBalance = Math.max(0, totalDeposited - companyFeeDeducted);
+      const availableBalance = depositNum;
 
       const initialCycle: DailyCollectionCycle = {
         id: `cyc-${Date.now()}`,
@@ -280,10 +292,16 @@ export const CustomersPage: React.FC = () => {
         currentDayCount: currentDayCount,
         dailyTargetAmount: chosenPackage,
         totalDeposited: totalDeposited,
-        feeDeducted: splitResult?.isDay31Included || false,
-        companyFeeAmount: companyFeeDeducted,
+        feeDeducted: true, // Upfront package fee policy applied
+        companyFeeAmount: packageFee,
         isCompleted: currentDayCount >= 31,
-        dailySplits: splitResult?.entries || [],
+        dailySplits: splitPreview?.entries || (depositNum > 0 ? [{
+          dayNumber: 1,
+          date: new Date().toISOString().split('T')[0],
+          amount: depositNum,
+          receiptNo: `RCP-INIT-${Date.now().toString().slice(-4)}-1`,
+          isCompanyFee: false,
+        }] : []),
       };
 
       // Create Savings Account on the chosen package
@@ -312,10 +330,15 @@ export const CustomersPage: React.FC = () => {
       const existingAccs = getStoredAccounts();
       saveStoredAccounts([newAcc, ...existingAccs]);
 
-      // Record initial ledger deposit transaction if deposit paid
+      // Automatically accumulate the upfront package fee for E-RIKON Company Interest
+      accumulateCompanyInterest(newAcc, 1, packageFee);
+
+      // Record ledger deposit transaction & upfront fee transaction
+      const txs = getStoredTransactions();
+      const newTxs: Transaction[] = [];
+
       if (depositNum > 0) {
-        const txs = getStoredTransactions();
-        const newTx: Transaction = {
+        const depTx: Transaction = {
           id: `tx-init-${Date.now()}`,
           referenceNo: `TX-INIT-${Date.now().toString().slice(-8)}`,
           receiptNo: `RCP-INIT-${Date.now().toString().slice(-8)}`,
@@ -326,11 +349,29 @@ export const CustomersPage: React.FC = () => {
           amount: depositNum,
           previousBal: 0,
           newBal: availableBalance,
-          remarks: `Opening deposit on GH₵ ${chosenPackage}/day savings package. Spread across ${splitResult?.daysCovered || 0} days.`,
+          remarks: `Opening savings deposit on GH₵ ${chosenPackage}/day package (Days covered: ${currentDayCount}). Upfront fee of GH₵ ${packageFee} settled.`,
           createdAt: new Date().toISOString(),
         };
-        saveStoredTransactions([newTx, ...txs]);
+        newTxs.push(depTx);
       }
+
+      const feeTx: Transaction = {
+        id: `tx-fee-${Date.now()}`,
+        referenceNo: `TX-FEE-${Date.now().toString().slice(-8)}`,
+        receiptNo: `RCP-FEE-${Date.now().toString().slice(-8)}`,
+        accountId: newAcc.id,
+        account: newAcc,
+        type: 'COMPANY_FEE_DEDUCTION',
+        paymentMode: 'PHYSICAL_CASH',
+        amount: packageFee,
+        previousBal: depositNum,
+        newBal: depositNum,
+        remarks: `Upfront package enrollment fee (GH₵ ${packageFee}) collected & retained for GH₵ ${chosenPackage}/day package cycle`,
+        createdAt: new Date().toISOString(),
+      };
+      newTxs.push(feeTx);
+
+      saveStoredTransactions([...newTxs, ...txs]);
 
       // Broadcast across all connected staff devices in real-time
       broadcastRealtimeEvent('CUSTOMER_CREATED', newCust);
@@ -343,8 +384,8 @@ export const CustomersPage: React.FC = () => {
         customerName: `${newCust.firstName} ${newCust.lastName}`,
         customerNumber: newCustNo,
         packageRate: chosenPackage,
-        amountPaid: depositNum,
-        daysCovered: splitResult ? splitResult.daysCovered : 0,
+        amountPaid: totalPayable,
+        daysCovered: currentDayCount,
       });
 
       setFormData({
@@ -364,7 +405,7 @@ export const CustomersPage: React.FC = () => {
         nokRelation: '',
         nokPhone: '',
       });
-      setInitialDepositAmount('100');
+      setInitialDepositAmount(chosenPackage.toString());
 
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
@@ -1189,6 +1230,7 @@ export const CustomersPage: React.FC = () => {
                         onClick={() => {
                           if (formError) setFormError(null);
                           setChosenPackage(pkg);
+                          setInitialDepositAmount(pkg.toString());
                         }}
                         className={`py-2 px-1 rounded-xl font-mono text-xs font-extrabold border transition-all cursor-pointer text-center ${
                           isSelected
@@ -1202,39 +1244,89 @@ export const CustomersPage: React.FC = () => {
                   })}
                 </div>
 
-                {/* Initial Opening Deposit */}
-                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 space-y-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs">
-                      <CalendarCheck className="w-3.5 h-3.5 text-emerald-500" />
-                      Initial Deposit / Multi-Day Advance (GH₵)
-                    </label>
-                    <div className="relative w-full sm:w-48">
-                      <span className="absolute left-3 top-2.5 font-bold text-slate-400 text-xs">GH₵</span>
+                {/* Upfront Package Fee & Initial Savings Breakdown Card */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 text-white space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                    <div>
+                      <label className="font-bold text-slate-200 flex items-center gap-1.5 text-xs">
+                        <CalendarCheck className="w-4 h-4 text-emerald-400" />
+                        Savings Deposit (Day 1 / Multi-Day Advance)
+                      </label>
+                      <span className="text-[10px] text-slate-400">Credited to customer's available savings balance</span>
+                    </div>
+                    <div className="relative w-full sm:w-44">
+                      <span className="absolute left-3 top-2.5 font-bold text-amber-400 text-xs">GH₵</span>
                       <input
                         type="number"
-                        min="0"
-                        step="1"
+                        min={chosenPackage}
+                        step={chosenPackage}
                         value={initialDepositAmount}
                         onChange={(e) => {
                           if (formError) setFormError(null);
                           setInitialDepositAmount(e.target.value);
                         }}
-                        className="w-full pl-11 pr-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white font-mono font-bold text-xs focus:outline-none focus:border-amber-500"
-                        placeholder="e.g. 100"
+                        style={{ color: '#ffffff' }}
+                        className={`w-full pl-11 pr-3 py-2 rounded-xl bg-slate-800 border text-white font-mono font-black text-sm focus:outline-none ${
+                          depositNum < chosenPackage || depositNum % chosenPackage !== 0
+                            ? 'border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
+                            : 'border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500'
+                        }`}
+                        placeholder={chosenPackage.toString()}
                       />
                     </div>
                   </div>
 
-                  {/* Live Splitting Preview */}
-                  {splitPreview && splitPreview.daysCovered > 0 && (
-                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[11px] font-medium flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 shrink-0 text-amber-500" />
+                  {/* Live Splittability Feedback */}
+                  {depositNum > 0 && depositNum < chosenPackage && (
+                    <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-[11px] font-bold flex items-center gap-2 animate-in fade-in">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+                      <span>Deposit cannot be lower than the GH₵ {chosenPackage}.00 package rate. Minimum deposit is GH₵ {chosenPackage}.00.</span>
+                    </div>
+                  )}
+
+                  {depositNum >= chosenPackage && depositNum % chosenPackage !== 0 && (
+                    <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-[11px] font-bold flex items-center gap-2 animate-in fade-in">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
                       <span>
-                        Paying <b>GH₵ {splitPreview.totalPaid}.00</b> on the <b>GH₵ {chosenPackage}.00</b> package will spread across <b>{splitPreview.daysCovered} consecutive days</b> (Days 1 to {splitPreview.daysCovered})!
+                        GH₵ {depositNum}.00 cannot split evenly into GH₵ {chosenPackage}/day. Must be an exact multiple (e.g. GH₵ {chosenPackage}, GH₵ {chosenPackage * 2}, GH₵ {chosenPackage * 3}).
                       </span>
                     </div>
                   )}
+
+                  {depositNum >= chosenPackage && depositNum % chosenPackage === 0 && (
+                    <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-semibold flex items-center gap-2">
+                      <Sparkles className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                      <span>
+                        ✓ GH₵ {depositNum}.00 splits perfectly into <b>{depositNum / chosenPackage} day(s)</b> ({depositNum / chosenPackage} × GH₵ {chosenPackage}.00/day).
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Summary Breakdown Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+                    <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80">
+                      <span className="text-[10px] text-slate-400 block font-medium">Daily Savings Package</span>
+                      <span className="font-mono font-black text-amber-400 text-sm">GH₵ {chosenPackage}.00 / day</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80">
+                      <span className="text-[10px] text-amber-400/90 block font-medium">Upfront Cycle Fee</span>
+                      <span className="font-mono font-black text-amber-300 text-sm">GH₵ {packageFee}.00 (Retained)</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40">
+                      <span className="text-[10px] text-emerald-300 block font-medium">Total Cash Required</span>
+                      <span className="font-mono font-black text-emerald-400 text-sm">GH₵ {totalPayable}.00</span>
+                    </div>
+                  </div>
+
+                  {/* Early Withdrawal Guarantee Policy Note */}
+                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] leading-relaxed flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                    <div>
+                      <b>1-Day Retained Fee Rule:</b> 1 day's package contribution is retained as the E-RIKON management fee. If a client deposits across any days and withdraws before Day 31 (e.g., <b>GH₵ 25.00 for 5 days on the GH₵ 5 package</b>), 1 day (<b>GH₵ 5.00</b>) is retained as the fee and <b>GH₵ 20.00 (4 days)</b> is paid out to the client.
+                    </div>
+                  </div>
                 </div>
               </div>
 

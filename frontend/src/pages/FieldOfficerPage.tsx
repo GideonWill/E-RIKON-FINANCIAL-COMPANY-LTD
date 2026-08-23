@@ -99,6 +99,16 @@ export const FieldOfficerPage: React.FC = () => {
     e.preventDefault();
     if (!numAmount || numAmount <= 0 || !selectedAccount) return;
 
+    if (numAmount < currentPackage) {
+      alert(`❌ Deposit amount (GH₵ ${numAmount.toFixed(2)}) cannot be lower than the chosen package rate (GH₵ ${currentPackage}.00). Minimum deposit is GH₵ ${currentPackage}.00.`);
+      return;
+    }
+
+    if (numAmount % currentPackage !== 0) {
+      alert(`❌ Deposit amount (GH₵ ${numAmount.toFixed(2)}) must be an exact multiple of the GH₵ ${currentPackage}.00 package (e.g. GH₵ ${currentPackage}, GH₵ ${currentPackage * 2}, GH₵ ${currentPackage * 3}) to split evenly across days.`);
+      return;
+    }
+
     const officer = currentUser || {
       id: 'user-05',
       employeeId: 'EMP-009',

@@ -118,7 +118,9 @@ export class CustomersService {
         data: {
           customerId: customer.id,
           accountId: account.id,
-          dailyTargetAmount: 50.00,
+          dailyTargetAmount: 20.00,
+          feeDeducted: true,
+          companyFeeAmount: 20.00,
         },
       });
 
