@@ -212,18 +212,17 @@ export const CustomersPage: React.FC = () => {
       return;
     }
 
-    // 2. Ghana Card Validation
-    let rawCard = formData.ghanaCardNumber.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (rawCard.startsWith('GHA')) rawCard = rawCard.slice(3);
-    if (!rawCard) {
-      setFormError('⚠️ Please enter the Customer Ghana Card PIN (e.g. 722104918-3).');
+    // 2. Ghana Card Validation (Strictly 10 numeric digits, no alphabets)
+    let rawCard = formData.ghanaCardNumber.trim().toUpperCase();
+    if (rawCard.startsWith('GHA-')) rawCard = rawCard.slice(4);
+    else if (rawCard.startsWith('GHA')) rawCard = rawCard.slice(3);
+
+    const digitsOnly = rawCard.replace(/\D/g, '');
+    if (!digitsOnly || digitsOnly.length !== 10) {
+      setFormError('⚠️ Ghana Card Number must contain exactly 10 numeric digits (e.g. 722104918-3). Alphabets and letters are not allowed.');
       return;
     }
-    const finalGhanaCard = rawCard.length === 10
-      ? `GHA-${rawCard.slice(0, 9)}-${rawCard.slice(9, 10)}`
-      : formData.ghanaCardNumber.startsWith('GHA-')
-      ? formData.ghanaCardNumber
-      : `GHA-${formData.ghanaCardNumber}`;
+    const finalGhanaCard = `GHA-${digitsOnly.slice(0, 9)}-${digitsOnly.slice(9, 10)}`;
 
     // 3. Phone Number Validation (Must be exactly 10 digits starting with 0)
     const cleanPhone = formatGhanaianPhoneNumber(formData.phone);

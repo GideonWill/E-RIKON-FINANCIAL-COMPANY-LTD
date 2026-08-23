@@ -147,6 +147,13 @@ export const LoginPage: React.FC = () => {
       return;
     }
 
+    const cleanGhanaDigits = signupGhanaCard.replace(/\D/g, '');
+    if (cleanGhanaDigits.length !== 10) {
+      setErrorMsg('Ghana Card Number must contain exactly 10 numeric digits (e.g. 722104918-3). Alphabets are not allowed.');
+      return;
+    }
+    const finalGhanaCard = `GHA-${cleanGhanaDigits.slice(0, 9)}-${cleanGhanaDigits.slice(9, 10)}`;
+
     setIsLoading(true);
     try {
       const { user, isApproved } = await signupRole({
@@ -155,7 +162,7 @@ export const LoginPage: React.FC = () => {
         email: signupEmail,
         phone: signupPhone,
         role: signupRoleType,
-        ghanaCard: signupGhanaCard,
+        ghanaCard: finalGhanaCard,
         employeeId: signupEmployeeId,
         password: signupPassword,
       });
@@ -397,10 +404,10 @@ export const LoginPage: React.FC = () => {
 
               {activeTab === 'signin' ? (
                 /* ================= SIGN IN FORM ================= */
-                <form onSubmit={handleLoginSubmit} className="space-y-3.5 my-auto">
+                <form onSubmit={handleLoginSubmit} className="auth-form space-y-3.5 my-auto">
                   
                   {/* Role Selector Input matching Figma */}
-                  <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-4 py-2.5 flex items-center justify-between gap-2 transition-colors bg-white shadow-2xs">
+                  <div className="auth-pill-input rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-4 py-2.5 flex items-center justify-between gap-2 transition-colors bg-white shadow-2xs">
                     <div className="flex items-center gap-1.5 flex-1 min-w-0">
                       <span className="font-semibold text-slate-700 text-xs shrink-0 flex items-center gap-1">
                         role <span className="text-[#ea580c] text-[10px]">▸</span>
@@ -408,10 +415,11 @@ export const LoginPage: React.FC = () => {
                       <select
                         value={selectedRole}
                         onChange={(e) => handleRoleDropdownChange(e.target.value as RoleName)}
-                        className="w-full bg-transparent text-slate-900 text-xs font-semibold focus:outline-none cursor-pointer appearance-none truncate"
+                        style={{ color: '#0f172a' }}
+                        className="w-full bg-transparent text-slate-900 !text-slate-900 text-xs font-semibold focus:outline-none cursor-pointer appearance-none truncate"
                       >
                         {rolesList.map((r) => (
-                          <option key={r.role} value={r.role}>{r.label} ({r.role})</option>
+                          <option key={r.role} value={r.role} className="text-slate-900 bg-white">{r.label} ({r.role})</option>
                         ))}
                       </select>
                     </div>
@@ -419,7 +427,7 @@ export const LoginPage: React.FC = () => {
                   </div>
 
                   {/* Email / Login Input matching Figma */}
-                  <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-4 py-2.5 flex items-center gap-2 transition-colors bg-white shadow-2xs">
+                  <div className="auth-pill-input rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-4 py-2.5 flex items-center gap-2 transition-colors bg-white shadow-2xs">
                     <span className="font-semibold text-slate-700 text-xs shrink-0 flex items-center gap-1">
                       login <span className="text-[#ea580c] text-[10px]">▸</span>
                     </span>
@@ -429,12 +437,13 @@ export const LoginPage: React.FC = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@erikon.com"
-                      className="w-full bg-transparent text-slate-900 placeholder-slate-400 text-xs font-medium focus:outline-none"
+                      style={{ color: '#0f172a' }}
+                      className="w-full bg-transparent text-slate-900 !text-slate-900 placeholder:!text-slate-500 placeholder-slate-500 text-xs font-medium focus:outline-none"
                     />
                   </div>
 
                   {/* Password Input matching Figma with Eye icon */}
-                  <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-4 py-2.5 flex items-center gap-2 transition-colors bg-white shadow-2xs">
+                  <div className="auth-pill-input rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-4 py-2.5 flex items-center gap-2 transition-colors bg-white shadow-2xs">
                     <span className="font-semibold text-slate-700 text-xs shrink-0 flex items-center gap-1">
                       password <span className="text-[#ea580c] text-[10px]">▸</span>
                     </span>
@@ -444,7 +453,8 @@ export const LoginPage: React.FC = () => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full bg-transparent text-slate-900 placeholder-slate-400 text-xs font-medium focus:outline-none pr-1 tracking-widest"
+                      style={{ color: '#0f172a' }}
+                      className="w-full bg-transparent text-slate-900 !text-slate-900 placeholder:!text-slate-500 placeholder-slate-500 text-xs font-medium focus:outline-none pr-1 tracking-widest"
                     />
                     <button
                       type="button"
@@ -477,11 +487,11 @@ export const LoginPage: React.FC = () => {
                 </form>
               ) : (
                 /* ================= SIGN UP FORM ================= */
-                <form onSubmit={handleSignupSubmit} className="space-y-2.5 my-auto">
+                <form onSubmit={handleSignupSubmit} className="auth-form space-y-2.5 my-auto">
                   
                   {/* Name Pill Input (2 Cols in 1 row) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
+                    <div className="auth-pill-input rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
                       <span className="font-semibold text-slate-700 text-[11px] shrink-0 flex items-center gap-1">
                         first name <span className="text-[#ea580c] text-[9px]">▸</span>
                       </span>
@@ -491,11 +501,12 @@ export const LoginPage: React.FC = () => {
                         value={signupFirstName}
                         onChange={(e) => setSignupFirstName(e.target.value)}
                         placeholder="Kwame"
-                        className="w-full bg-transparent text-slate-900 placeholder-slate-400 text-xs font-medium focus:outline-none"
+                        style={{ color: '#0f172a' }}
+                        className="w-full bg-transparent text-slate-900 !text-slate-900 placeholder:!text-slate-500 placeholder-slate-500 text-xs font-medium focus:outline-none"
                       />
                     </div>
 
-                    <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
+                    <div className="auth-pill-input rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
                       <span className="font-semibold text-slate-700 text-[11px] shrink-0 flex items-center gap-1">
                         last name <span className="text-[#ea580c] text-[9px]">▸</span>
                       </span>
@@ -505,14 +516,15 @@ export const LoginPage: React.FC = () => {
                         value={signupLastName}
                         onChange={(e) => setSignupLastName(e.target.value)}
                         placeholder="Mensah"
-                        className="w-full bg-transparent text-slate-900 placeholder-slate-400 text-xs font-medium focus:outline-none"
+                        style={{ color: '#0f172a' }}
+                        className="w-full bg-transparent text-slate-900 !text-slate-900 placeholder:!text-slate-500 placeholder-slate-500 text-xs font-medium focus:outline-none"
                       />
                     </div>
                   </div>
 
                   {/* Email & Phone Pill Inputs */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
+                    <div className="auth-pill-input rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
                       <span className="font-semibold text-slate-700 text-[11px] shrink-0 flex items-center gap-1">
                         login <span className="text-[#ea580c] text-[9px]">▸</span>
                       </span>
@@ -522,15 +534,16 @@ export const LoginPage: React.FC = () => {
                         value={signupEmail}
                         onChange={(e) => setSignupEmail(e.target.value)}
                         placeholder="name@erikon.com"
-                        className="w-full bg-transparent text-slate-900 placeholder-slate-400 text-xs font-medium focus:outline-none font-mono"
+                        style={{ color: '#0f172a' }}
+                        className="w-full bg-transparent text-slate-900 !text-slate-900 placeholder:!text-slate-500 placeholder-slate-500 text-xs font-medium focus:outline-none font-mono"
                       />
                     </div>
 
-                    <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
+                    <div className="auth-pill-input rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
                       <span className="font-semibold text-slate-700 text-[11px] shrink-0 flex items-center gap-1">
                         phone <span className="text-[#ea580c] text-[9px]">▸</span>
                       </span>
-                      <div className="w-full">
+                      <div className="w-full auth-light-input">
                         <GhanaPhoneInput
                           required
                           dark={false}
@@ -544,11 +557,11 @@ export const LoginPage: React.FC = () => {
 
                   {/* Ghana Card & Role Pill Inputs */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
+                    <div className="auth-pill-input rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
                       <span className="font-semibold text-slate-700 text-[11px] shrink-0 flex items-center gap-1">
                         card <span className="text-[#ea580c] text-[9px]">▸</span>
                       </span>
-                      <div className="w-full">
+                      <div className="w-full auth-light-input">
                         <GhanaCardInput
                           required
                           dark={false}
@@ -559,7 +572,7 @@ export const LoginPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center justify-between gap-1.5 transition-colors bg-white shadow-2xs">
+                    <div className="auth-pill-input rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center justify-between gap-1.5 transition-colors bg-white shadow-2xs">
                       <div className="flex items-center gap-1 flex-1 min-w-0">
                         <span className="font-semibold text-slate-700 text-[11px] shrink-0 flex items-center gap-1">
                           role <span className="text-[#ea580c] text-[9px]">▸</span>
@@ -567,10 +580,11 @@ export const LoginPage: React.FC = () => {
                         <select
                           value={signupRoleType}
                           onChange={(e) => setSignupRoleType(e.target.value as RoleName)}
-                          className="w-full bg-transparent text-slate-900 text-xs font-semibold focus:outline-none cursor-pointer appearance-none truncate"
+                          style={{ color: '#0f172a' }}
+                          className="w-full bg-transparent text-slate-900 !text-slate-900 text-xs font-semibold focus:outline-none cursor-pointer appearance-none truncate"
                         >
                           {rolesList.map((r) => (
-                            <option key={r.role} value={r.role}>{r.label}</option>
+                            <option key={r.role} value={r.role} className="text-slate-900 bg-white">{r.label}</option>
                           ))}
                         </select>
                       </div>
@@ -579,7 +593,7 @@ export const LoginPage: React.FC = () => {
                   </div>
 
                   {/* Password Pill Input */}
-                  <div className="rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
+                  <div className="auth-pill-input rounded-full border border-slate-300 hover:border-slate-400 focus-within:border-[#065f46] px-3.5 py-1.5 flex items-center gap-1.5 transition-colors bg-white shadow-2xs">
                     <span className="font-semibold text-slate-700 text-[11px] shrink-0 flex items-center gap-1">
                       password <span className="text-[#ea580c] text-[9px]">▸</span>
                     </span>
@@ -589,7 +603,8 @@ export const LoginPage: React.FC = () => {
                       value={signupPassword}
                       onChange={(e) => setSignupPassword(e.target.value)}
                       placeholder="confirm password"
-                      className="w-full bg-transparent text-slate-900 placeholder-slate-400 text-xs font-medium focus:outline-none pr-2 font-mono"
+                      style={{ color: '#0f172a' }}
+                      className="w-full bg-transparent text-slate-900 !text-slate-900 placeholder:!text-slate-500 placeholder-slate-500 text-xs font-medium focus:outline-none pr-2 font-mono"
                     />
                     <button
                       type="button"

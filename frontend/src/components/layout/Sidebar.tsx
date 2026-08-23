@@ -21,10 +21,17 @@ import {
 
 interface SidebarProps {
   isOpen?: boolean;
+  isDragging?: boolean;
+  dragOffset?: number | null;
   onClose?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ 
+  isOpen = false, 
+  isDragging = false,
+  dragOffset = null,
+  onClose 
+}) => {
   const { currentUser } = useAuth();
   const [approvals, setApprovals] = useState(getStoredApprovals());
 
@@ -198,6 +205,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
     </div>
   );
 
+  const isVisible = isOpen || isDragging;
+  const currentTranslate = isDragging && dragOffset !== null
+    ? dragOffset
+    : isOpen ? 0 : -280;
+
+  const backdropOpacity = isDragging && dragOffset !== null
+    ? Math.max(0, Math.min(0.6, ((280 + dragOffset) / 280) * 0.6))
+    : isOpen ? 0.6 : 0;
+
   return (
     <>
       {/* Desktop Sidebar */}
@@ -205,24 +221,40 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
         {sidebarContent}
       </aside>
 
-      {/* Mobile Drawer with Swipe-to-Close and Safe Top Padding */}
-      {isOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex animate-fade-in">
-          <div 
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"
-            onClick={onClose}
-          />
-          <div 
-            className="relative flex-1 flex flex-col max-w-xs w-full bg-white dark:bg-slate-900 shadow-2xl z-10 animate-slide-right"
-            style={{
-              paddingTop: 'max(env(safe-area-inset-top, 0px), 1rem)',
-              paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
-            }}
-          >
-            {sidebarContent}
-          </div>
+      {/* Mobile Drawer with Edge-Drag Gestures and Smooth Sliding Effect */}
+      <div 
+        className={`fixed inset-0 z-50 lg:hidden ${
+          isVisible ? 'pointer-events-auto' : 'pointer-events-none'
+        }`}
+        style={{
+          visibility: isVisible ? 'visible' : 'hidden',
+          transition: isDragging ? 'none' : 'visibility 0.28s',
+        }}
+      >
+        {/* Backdrop Overlay */}
+        <div 
+          className="fixed inset-0 bg-slate-950 backdrop-blur-xs"
+          style={{
+            opacity: backdropOpacity,
+            transition: isDragging ? 'none' : 'opacity 0.28s ease',
+            pointerEvents: isOpen ? 'auto' : 'none',
+          }}
+          onClick={onClose}
+        />
+
+        {/* Sliding Drawer Container */}
+        <div 
+          className="relative flex flex-col w-[280px] max-w-[85vw] h-full bg-white dark:bg-slate-900 shadow-2xl z-10"
+          style={{
+            transform: `translateX(${currentTranslate}px)`,
+            transition: isDragging ? 'none' : 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)',
+            paddingTop: 'max(env(safe-area-inset-top, 0px), 1rem)',
+            paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
+          }}
+        >
+          {sidebarContent}
         </div>
-      )}
+      </div>
     </>
   );
 };

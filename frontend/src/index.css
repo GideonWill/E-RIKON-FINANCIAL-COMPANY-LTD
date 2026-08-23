@@ -39,7 +39,7 @@ input, textarea, select, option {
   color: #f8fafc;
 }
 
-/* Dedicated dark input styling (e.g. Workstation login/signup on dark canvas) */
+/* Dedicated dark input styling (e.g. Workstation dashboard/tables on dark canvas) */
 .auth-dark-input,
 .dark-auth input,
 .dark-auth select,
@@ -56,6 +56,45 @@ input.text-white,
 input[type="number"].text-white,
 input[type="text"].text-white {
   color: #ffffff !important;
+}
+
+/* Authentication Page / Pill Input Styles: Force dark text and crisp placeholders on light pills */
+.auth-page input,
+.auth-form input,
+.auth-pill-input input,
+.auth-page select,
+.auth-form select,
+.auth-pill-input select {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+.auth-page input::placeholder,
+.auth-form input::placeholder,
+.auth-pill-input input::placeholder,
+.auth-page input::-webkit-input-placeholder,
+.auth-form input::-webkit-input-placeholder {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+  opacity: 0.9 !important;
+}
+
+.dark .auth-page input,
+.dark .auth-form input,
+.dark .auth-pill-input input,
+.dark .auth-page select,
+.dark .auth-form select,
+.dark .auth-pill-input select {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+.dark .auth-page input::placeholder,
+.dark .auth-form input::placeholder,
+.dark .auth-pill-input input::placeholder {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+  opacity: 0.9 !important;
 }
 
 input::placeholder, textarea::placeholder {

@@ -12,31 +12,32 @@ interface GhanaCardInputProps {
 export const GhanaCardInput: React.FC<GhanaCardInputProps> = ({
   value,
   onChange,
-  placeholder = '123456789-0',
+  placeholder = '722104918-3',
   required = false,
   className = '',
   dark = false,
 }) => {
-  // Helper to format raw text into GHA-XXXXXXXXX-X
+  // Helper to format raw numeric text into GHA-XXXXXXXXX-X (STRICTLY NUMERIC DIGITS, NO ALPHABETS)
   const formatGhanaCard = (inputStr: string): string => {
-    // Strip everything except alphanumeric characters
-    let raw = inputStr.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    let raw = inputStr.toUpperCase();
 
-    // If starts with GHA, strip GHA prefix
-    if (raw.startsWith('GHA')) {
+    // Strip leading GHA- or GHA
+    if (raw.startsWith('GHA-')) {
+      raw = raw.slice(4);
+    } else if (raw.startsWith('GHA')) {
       raw = raw.slice(3);
     }
 
-    // Keep only alphanumeric characters for the body (up to 10 chars)
-    const cleanChars = raw.slice(0, 10);
+    // Strip ALL characters that are not numbers (0-9) - NO ALPHABETS!
+    const digitsOnly = raw.replace(/\D/g, '').slice(0, 10);
 
-    if (cleanChars.length === 0) {
+    if (digitsOnly.length === 0) {
       return '';
-    } else if (cleanChars.length <= 9) {
-      return `GHA-${cleanChars}`;
+    } else if (digitsOnly.length <= 9) {
+      return `GHA-${digitsOnly}`;
     } else {
       // 9 digits + '-' + 1 check digit
-      return `GHA-${cleanChars.slice(0, 9)}-${cleanChars.slice(9, 10)}`;
+      return `GHA-${digitsOnly.slice(0, 9)}-${digitsOnly.slice(9, 10)}`;
     }
   };
 
@@ -45,8 +46,12 @@ export const GhanaCardInput: React.FC<GhanaCardInputProps> = ({
     onChange(formatted);
   };
 
-  // Get raw value without leading 'GHA-' for input display
-  const displayValue = value.startsWith('GHA-') ? value.slice(4) : value;
+  // Get raw numeric value without leading 'GHA-' for display
+  let rawBody = value.startsWith('GHA-') ? value.slice(4) : (value.startsWith('GHA') ? value.slice(3) : value);
+  const digitsOnly = rawBody.replace(/\D/g, '');
+  const displayValue = digitsOnly.length === 10 
+    ? `${digitsOnly.slice(0, 9)}-${digitsOnly.slice(9, 10)}`
+    : digitsOnly;
 
   return (
     <div className="relative flex items-center">
@@ -55,7 +60,9 @@ export const GhanaCardInput: React.FC<GhanaCardInputProps> = ({
       </div>
       <input
         required={required}
-        type="text"
+        type="tel"
+        inputMode="numeric"
+        pattern="[0-9]*"
         value={displayValue}
         onChange={handleChange}
         placeholder={placeholder}
