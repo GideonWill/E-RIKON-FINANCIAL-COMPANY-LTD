@@ -31,26 +31,80 @@ export class SyncService {
     updatedAt: new Date().toISOString(),
   };
 
-  constructor(private readonly eventsService: EventsService) { }
+  constructor(private readonly eventsService: EventsService) {}
 
   getVault(): CloudVaultPayload {
     return this.vault;
   }
 
   updateVault(incoming: Partial<CloudVaultPayload>): CloudVaultPayload {
-    // Merge or replace collections if provided
-    if (Array.isArray(incoming.registeredUsers)) {
-      this.vault.registeredUsers = incoming.registeredUsers;
+    // 1. Merge registered users by email and preserve approval status
+    if (Array.isArray(incoming.registeredUsers) && incoming.registeredUsers.length > 0) {
+      const existingUsersMap = new Map<string, any>();
+      (this.vault.registeredUsers || []).forEach(u => existingUsersMap.set(u.email.toLowerCase(), u));
+      
+      incoming.registeredUsers.forEach(incomingUser => {
+        const key = incomingUser.email.toLowerCase();
+        const existingUser = existingUsersMap.get(key);
+        if (existingUser) {
+          const isApproved = Boolean(existingUser.isApproved || incomingUser.isApproved || incomingUser.role === 'SUPER_ADMIN');
+          existingUsersMap.set(key, {
+            ...existingUser,
+            ...incomingUser,
+            isApproved,
+            status: isApproved ? 'ACTIVE' : (existingUser.status === 'ACTIVE' ? 'ACTIVE' : incomingUser.status || 'PENDING_APPROVAL'),
+          });
+        } else {
+          existingUsersMap.set(key, incomingUser);
+        }
+      });
+      this.vault.registeredUsers = Array.from(existingUsersMap.values());
     }
+
+    // 2. Merge approvals by id and preserve reviewed state
+    if (Array.isArray(incoming.approvals)) {
+      const apprMap = new Map<string, any>();
+      (this.vault.approvals || []).forEach(a => apprMap.set(a.id, a));
+      
+      incoming.approvals.forEach(incomingAppr => {
+        const existingAppr = apprMap.get(incomingAppr.id);
+        if (existingAppr) {
+          if (existingAppr.status === 'APPROVED' || existingAppr.status === 'REJECTED') {
+            apprMap.set(incomingAppr.id, existingAppr);
+          } else {
+            apprMap.set(incomingAppr.id, incomingAppr);
+          }
+        } else {
+          apprMap.set(incomingAppr.id, incomingAppr);
+        }
+      });
+      this.vault.approvals = Array.from(apprMap.values());
+    }
+
+    // 3. Customers
     if (Array.isArray(incoming.customers)) {
-      this.vault.customers = incoming.customers;
+      const custMap = new Map<string, any>();
+      (this.vault.customers || []).forEach(c => custMap.set(c.id, c));
+      incoming.customers.forEach(c => custMap.set(c.id, c));
+      this.vault.customers = Array.from(custMap.values());
     }
+
+    // 4. Accounts
     if (Array.isArray(incoming.accounts)) {
-      this.vault.accounts = incoming.accounts;
+      const accMap = new Map<string, any>();
+      (this.vault.accounts || []).forEach(a => accMap.set(a.id, a));
+      incoming.accounts.forEach(a => accMap.set(a.id, a));
+      this.vault.accounts = Array.from(accMap.values());
     }
+
+    // 5. Transactions
     if (Array.isArray(incoming.transactions)) {
-      this.vault.transactions = incoming.transactions;
+      const txMap = new Map<string, any>();
+      (this.vault.transactions || []).forEach(t => txMap.set(t.id, t));
+      incoming.transactions.forEach(t => txMap.set(t.id, t));
+      this.vault.transactions = Array.from(txMap.values());
     }
+
     if (Array.isArray(incoming.loans)) {
       this.vault.loans = incoming.loans;
     }
@@ -59,9 +113,6 @@ export class SyncService {
     }
     if (Array.isArray(incoming.companyWithdrawals)) {
       this.vault.companyWithdrawals = incoming.companyWithdrawals;
-    }
-    if (Array.isArray(incoming.approvals)) {
-      this.vault.approvals = incoming.approvals;
     }
     if (Array.isArray(incoming.auditLogs)) {
       this.vault.auditLogs = incoming.auditLogs;

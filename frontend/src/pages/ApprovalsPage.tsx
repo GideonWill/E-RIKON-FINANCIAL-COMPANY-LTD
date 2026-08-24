@@ -49,33 +49,41 @@ export const ApprovalsPage: React.FC = () => {
   const [userToDelete, setUserToDelete] = useState<RegisteredUserRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
-  // Sync pending staff accounts and all registered users from backend
+  // Sync pending staff accounts and all registered users from cloud relay & backend
   const syncPendingFromBackend = async () => {
+    // 1. Pull latest cross-device cloud vault state
+    await pullCloudToLocal().catch(() => {});
+
+    // 2. Fetch latest registered staff from backend API
     try {
       const { data } = await apiClient.get('/auth/users');
       if (Array.isArray(data)) {
         const localUsers = getRegisteredUsers();
-        const mergedUsers = [...localUsers];
+        const userMap = new Map<string, RegisteredUserRecord>();
+        localUsers.forEach((u) => userMap.set(u.email.toLowerCase(), u));
+
         data.forEach((u: any) => {
-          const idx = mergedUsers.findIndex((mu) => mu.id === u.id || mu.email.toLowerCase() === u.email.toLowerCase());
-          if (idx === -1) {
-            mergedUsers.push({
-              id: u.id,
-              employeeId: u.employeeId || `EMP-${Date.now().toString().slice(-4)}`,
-              firstName: u.firstName,
-              lastName: u.lastName,
-              email: u.email,
-              phone: u.phone || '—',
-              role: u.role,
-              ghanaCard: u.ghanaCard || '—',
-              branchId: u.branchId || 'br-01',
-              branch: u.branch || { id: 'br-01', name: 'Accra Central Main Branch' } as any,
-              isApproved: Boolean(u.isApproved),
-              createdAt: u.createdAt || new Date().toISOString(),
-              status: u.isApproved ? 'ACTIVE' : 'PENDING_APPROVAL',
-            });
-          }
+          const key = u.email.toLowerCase();
+          const existing = userMap.get(key);
+          const isApproved = Boolean(existing?.isApproved || u.isApproved || u.role === 'SUPER_ADMIN');
+          userMap.set(key, {
+            id: u.id || existing?.id || `user-${Date.now()}`,
+            employeeId: u.employeeId || existing?.employeeId || `EMP-${Date.now().toString().slice(-4)}`,
+            firstName: u.firstName,
+            lastName: u.lastName,
+            email: u.email,
+            phone: u.phone || existing?.phone || '—',
+            role: u.role,
+            ghanaCard: u.ghanaCard || existing?.ghanaCard || '—',
+            branchId: u.branchId || existing?.branchId || 'br-01',
+            branch: u.branch || existing?.branch || { id: 'br-01', name: 'Accra Central Main Branch' } as any,
+            isApproved,
+            createdAt: u.createdAt || existing?.createdAt || new Date().toISOString(),
+            status: isApproved ? 'ACTIVE' : (existing?.status === 'ACTIVE' ? 'ACTIVE' : 'PENDING_APPROVAL'),
+          });
         });
+
+        const mergedUsers = Array.from(userMap.values());
         saveRegisteredUsers(mergedUsers);
         setRegisteredUsers(mergedUsers);
       }
@@ -83,20 +91,57 @@ export const ApprovalsPage: React.FC = () => {
       setRegisteredUsers(getRegisteredUsers());
     }
 
+    // 3. Ensure all pending staff users have active approval tickets in the Clearance Queue
     try {
-      const { data } = await apiClient.get('/auth/pending');
-      if (Array.isArray(data)) {
-        const localApprovals = getStoredApprovals();
-        const merged = [...localApprovals];
+      const currentUsers = getRegisteredUsers();
+      const localApprovals = getStoredApprovals();
+      const apprMap = new Map<string, ApprovalRequest>();
+      localApprovals.forEach((a) => apprMap.set(a.id, a));
 
-        data.forEach((user: any) => {
-          const exists = merged.some((a) => a.targetId === user.id || a.details?.email === user.email);
-          if (!exists) {
-            merged.unshift({
-              id: `appr-${user.id}`,
+      // Also incorporate backend pending queue if reachable
+      try {
+        const { data } = await apiClient.get('/auth/pending');
+        if (Array.isArray(data)) {
+          data.forEach((u: any) => {
+            const appId = `appr-${u.id}`;
+            if (!apprMap.has(appId)) {
+              apprMap.set(appId, {
+                id: appId,
+                type: 'STAFF_ROLE_SIGNUP',
+                title: `New ${u.role?.replace(/_/g, ' ')} Registration: ${u.firstName} ${u.lastName}`,
+                description: `Application received for ${u.role?.replace(/_/g, ' ')} position. Contact: ${u.phone || 'N/A'} | Ghana Card: ${u.ghanaCard || 'N/A'}`,
+                targetId: u.id,
+                requestedById: u.id,
+                requestedByName: `${u.firstName} ${u.lastName}`,
+                requestedRole: u.role,
+                details: {
+                  email: u.email,
+                  phone: u.phone,
+                  ghanaCard: u.ghanaCard,
+                  role: u.role,
+                  branch: u.branch?.name || 'Accra Central Main Branch',
+                },
+                status: 'PENDING',
+                createdAt: u.createdAt || new Date().toISOString(),
+              });
+            }
+          });
+        }
+      } catch {}
+
+      // Cross-check all registered users
+      currentUsers.forEach((user) => {
+        if (!user.isApproved && user.role !== 'SUPER_ADMIN') {
+          const matchingAppr = Array.from(apprMap.values()).find(
+            (a) => a.targetId === user.id || a.details?.email?.toLowerCase() === user.email.toLowerCase()
+          );
+          if (!matchingAppr) {
+            const newAppId = `appr-${user.id}`;
+            apprMap.set(newAppId, {
+              id: newAppId,
               type: 'STAFF_ROLE_SIGNUP',
-              title: `New ${user.role?.replace(/_/g, ' ')} Registration: ${user.firstName} ${user.lastName}`,
-              description: `Application received for ${user.role?.replace(/_/g, ' ')} position. Contact: ${user.phone || 'N/A'} | Ghana Card: ${user.ghanaCard || 'N/A'}`,
+              title: `New ${user.role.replace(/_/g, ' ')} Registration: ${user.firstName} ${user.lastName}`,
+              description: `Application received for ${user.role.replace(/_/g, ' ')} position. Contact: ${user.phone || 'N/A'} | Ghana Card: ${user.ghanaCard || 'N/A'}`,
               targetId: user.id,
               requestedById: user.id,
               requestedByName: `${user.firstName} ${user.lastName}`,
@@ -112,11 +157,12 @@ export const ApprovalsPage: React.FC = () => {
               createdAt: user.createdAt || new Date().toISOString(),
             });
           }
-        });
+        }
+      });
 
-        saveStoredApprovals(merged);
-        setApprovals(merged);
-      }
+      const finalApprovals = Array.from(apprMap.values());
+      saveStoredApprovals(finalApprovals);
+      setApprovals(finalApprovals);
     } catch {
       setApprovals(getStoredApprovals());
     }
