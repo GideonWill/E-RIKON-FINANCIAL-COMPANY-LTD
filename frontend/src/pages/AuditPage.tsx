@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { getStoredAuditLogs } from '../services/api';
+import { getStoredAuditLogs, clearStoredAuditLogs } from '../services/api';
+import { pushLocalToCloud } from '../services/cloudSync';
+import { useAuth } from '../contexts/AuthContext';
 import { useRealtimeSync } from '../services/realtimeSync';
 import { AuditLog } from '../types';
 import { StaffInfoPopupModal } from '../components/ui/StaffInfoPopupModal';
-import { ShieldAlert, ShieldCheck, UserCheck, Laptop, Globe, Clock, FileText } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, UserCheck, Laptop, Globe, Clock, FileText, Trash2 } from 'lucide-react';
 
 export const AuditPage: React.FC = () => {
+  const { currentUser } = useAuth();
   const [logs, setLogs] = useState<AuditLog[]>(getStoredAuditLogs());
   const [selectedStaffName, setSelectedStaffName] = useState<string | null>(null);
 
@@ -13,6 +16,14 @@ export const AuditPage: React.FC = () => {
   useRealtimeSync(() => {
     setLogs(getStoredAuditLogs());
   });
+
+  const handleClearAuditLogs = () => {
+    if (window.confirm('Are you sure you want to permanently clear all immutable audit logs from the system?')) {
+      clearStoredAuditLogs();
+      setLogs([]);
+      pushLocalToCloud().catch(() => {});
+    }
+  };
 
   return (
     <div className="space-y-6 pb-12">
@@ -29,8 +40,19 @@ export const AuditPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center space-x-2 bg-slate-900 text-white px-3.5 py-1.5 rounded-xl border border-slate-800 text-xs font-mono w-fit">
-          <ShieldCheck className="w-4 h-4 text-emerald-400" /> Audit Log Lock: IMMUTABLE
+        <div className="flex items-center gap-3">
+          {currentUser?.role === 'SUPER_ADMIN' && logs.length > 0 && (
+            <button
+              onClick={handleClearAuditLogs}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold transition-all cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Clear Audit Trail
+            </button>
+          )}
+          <div className="flex items-center space-x-2 bg-slate-900 text-white px-3.5 py-1.5 rounded-xl border border-slate-800 text-xs font-mono w-fit">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" /> Audit Log Lock: IMMUTABLE
+          </div>
         </div>
       </div>
 

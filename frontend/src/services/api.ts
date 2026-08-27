@@ -305,6 +305,12 @@ export const getStoredAuditLogs = (): AuditLog[] => {
 
 export const saveStoredAuditLogs = (logs: AuditLog[]) => {
   localStorage.setItem('erikon_audit_logs', JSON.stringify(logs));
+  broadcastRealtimeEvent('AUDIT_LOG_RECORDED', logs);
+};
+
+export const clearStoredAuditLogs = () => {
+  localStorage.setItem('erikon_audit_logs', JSON.stringify([]));
+  broadcastRealtimeEvent('AUDIT_LOG_RECORDED', []);
 };
 
 export interface RegisteredUserRecord extends User {
