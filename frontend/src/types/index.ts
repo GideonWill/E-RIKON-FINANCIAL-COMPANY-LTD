@@ -62,8 +62,12 @@ export interface User {
   branch?: Branch;
   ghanaCard?: string;
   isApproved?: boolean;
+  isBlocked?: boolean;
+  blockedAt?: string;
+  blockedReason?: string;
+  blockedBy?: string;
   createdAt?: string;
-  status?: 'ACTIVE' | 'PENDING_APPROVAL' | 'REJECTED';
+  status?: 'ACTIVE' | 'PENDING_APPROVAL' | 'REJECTED' | 'BLOCKED';
 }
 
 export interface Customer {

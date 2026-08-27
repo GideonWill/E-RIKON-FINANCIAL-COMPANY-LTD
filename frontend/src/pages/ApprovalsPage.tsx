@@ -8,6 +8,9 @@ import {
   saveRegisteredUsers,
   deleteRegisteredUser,
   removeDeletedUserEmail,
+  blockUserAccount,
+  unblockUserAccount,
+  isUserBlocked,
   apiClient
 } from '../services/api';
 import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
@@ -38,7 +41,9 @@ import {
   UserX,
   UserPlus,
   Trash2,
-  RotateCw
+  RotateCw,
+  Ban,
+  ShieldAlert
 } from 'lucide-react';
 
 export const ApprovalsPage: React.FC = () => {
@@ -51,6 +56,9 @@ export const ApprovalsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [userToDelete, setUserToDelete] = useState<RegisteredUserRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [userToBlock, setUserToBlock] = useState<RegisteredUserRecord | null>(null);
+  const [blockReason, setBlockReason] = useState<string>('Administrative Suspension by Super Administrator');
+  const [isBlocking, setIsBlocking] = useState<boolean>(false);
 
   // Sync pending staff accounts and all registered users from cloud relay & backend
   const syncPendingFromBackend = async () => {
@@ -320,6 +328,36 @@ export const ApprovalsPage: React.FC = () => {
       alert(err.message || 'Failed to delete user.');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Block User Workstation Access by Super Admin
+  const handleConfirmBlockUser = async () => {
+    if (!userToBlock || !currentUser || !isSuperAdmin) return;
+    setIsBlocking(true);
+    try {
+      await blockUserAccount(userToBlock.id, currentUser, blockReason);
+      setRegisteredUsers(getRegisteredUsers());
+      setFeedbackMsg(`⛔ User ${userToBlock.firstName} ${userToBlock.lastName} (${userToBlock.role}) access BLOCKED successfully.`);
+      setUserToBlock(null);
+      setTimeout(() => setFeedbackMsg(null), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to block user.');
+    } finally {
+      setIsBlocking(false);
+    }
+  };
+
+  // Unblock User Workstation Access by Super Admin
+  const handleUnblockUser = async (staff: RegisteredUserRecord) => {
+    if (!currentUser || !isSuperAdmin) return;
+    try {
+      await unblockUserAccount(staff.id, currentUser);
+      setRegisteredUsers(getRegisteredUsers());
+      setFeedbackMsg(`✅ User ${staff.firstName} ${staff.lastName} (${staff.role}) access UNBLOCKED & RESTORED.`);
+      setTimeout(() => setFeedbackMsg(null), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to unblock user.');
     }
   };
 
@@ -751,18 +789,51 @@ export const ApprovalsPage: React.FC = () => {
                         </td>
 
                         <td className="py-3 px-3">
-                          {getStatusBadge(isApproved ? 'ACTIVE' : 'PENDING_APPROVAL')}
+                          {isUserBlocked(staff) ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/10 text-rose-500 border border-rose-500/30 flex items-center gap-1 w-fit shadow-xs">
+                              <Ban className="w-3 h-3 text-rose-500" />
+                              BLOCKED
+                            </span>
+                          ) : (
+                            getStatusBadge(isApproved ? 'ACTIVE' : 'PENDING_APPROVAL')
+                          )}
                         </td>
 
                         {isSuperAdmin && (
                           <td className="py-3 px-3 text-center">
                             {staff.id === currentUser?.id || staff.email?.toLowerCase() === currentUser?.email?.toLowerCase() ? (
                               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold font-sans italic bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                                You (Active Session)
+                                You (Super Admin)
                               </span>
                             ) : (
                               <div className="flex items-center justify-center space-x-1.5">
-                                {!isSuperAdminRole && (
+                                {/* Block / Unblock Toggle Button (Super Admin Exclusive) */}
+                                {isUserBlocked(staff) ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUnblockUser(staff)}
+                                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
+                                    title="Unblock user and restore workstation access"
+                                  >
+                                    <ShieldCheck className="w-3 h-3" />
+                                    <span>Unblock</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setUserToBlock(staff);
+                                      setBlockReason('Administrative Suspension by Super Administrator');
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
+                                    title="Block user from accessing any workstation page"
+                                  >
+                                    <Ban className="w-3 h-3" />
+                                    <span>Block</span>
+                                  </button>
+                                )}
+
+                                {!isSuperAdminRole && !isUserBlocked(staff) && (
                                   isApproved ? (
                                     <button
                                       type="button"
@@ -777,7 +848,7 @@ export const ApprovalsPage: React.FC = () => {
                                     <button
                                       type="button"
                                       onClick={() => handleToggleStaffApproval(staff.id, true)}
-                                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
+                                      className="px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold text-[10px] transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
                                       title="Grant immediate clearance"
                                     >
                                       <UserCheck className="w-3 h-3" />
@@ -789,7 +860,7 @@ export const ApprovalsPage: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => setUserToDelete(staff)}
-                                  className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-[10px] transition-all cursor-pointer inline-flex items-center gap-1"
+                                  className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 text-rose-600 border border-slate-200 dark:border-slate-700 font-bold text-[10px] transition-all cursor-pointer inline-flex items-center gap-1"
                                   title="Permanently delete user from system"
                                 >
                                   <Trash2 className="w-3 h-3" />
@@ -938,6 +1009,86 @@ export const ApprovalsPage: React.FC = () => {
               >
                 <Trash2 className="w-4 h-4" />
                 <span>{isDeleting ? 'Deleting...' : 'Delete Permanently'}</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Super Admin Block User Workstation Access Modal */}
+      {userToBlock && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+          <div className="max-w-md w-full p-6 rounded-3xl bg-slate-900 border border-rose-900/60 shadow-2xl text-white space-y-4">
+            
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center space-x-2 text-rose-500">
+                <Ban className="w-5 h-5 stroke-[2.5]" />
+                <h3 className="font-extrabold text-base text-white">
+                  Block Personnel Workstation Access
+                </h3>
+              </div>
+              <button
+                onClick={() => setUserToBlock(null)}
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3.5 rounded-2xl bg-rose-950/40 border border-rose-900/50 space-y-1">
+                <div className="text-rose-300 font-bold flex items-center gap-1.5">
+                  <ShieldAlert className="w-4 h-4 text-rose-400" />
+                  <span>Executive Workstation Lockout</span>
+                </div>
+                <div className="text-slate-300 text-[11px]">
+                  You are about to block this user from accessing any workstation pages:
+                </div>
+                <div className="pt-2 font-mono text-xs text-white space-y-0.5">
+                  <div><strong>Name:</strong> {userToBlock.firstName} {userToBlock.lastName}</div>
+                  <div><strong>Email:</strong> {userToBlock.email}</div>
+                  <div><strong>Role:</strong> {userToBlock.role.replace(/_/g, ' ')}</div>
+                  <div><strong>Ghana Card:</strong> {userToBlock.ghanaCard || 'N/A'}</div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                  Suspension Reason (Displayed to User on Locked Screen)
+                </label>
+                <input
+                  type="text"
+                  value={blockReason}
+                  onChange={(e) => setBlockReason(e.target.value)}
+                  placeholder="e.g. Administrative Suspension, Disciplinary Review"
+                  className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-medium text-xs focus:outline-none focus:border-rose-500"
+                />
+              </div>
+
+              <p className="text-slate-400 text-[11px] leading-relaxed">
+                While blocked, this user's active session will immediately lock on all devices (mobile, laptop, tablet). They will have zero access until you click <b>Unblock</b>.
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setUserToBlock(null)}
+                disabled={isBlocking}
+                className="w-1/2 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmBlockUser}
+                disabled={isBlocking}
+                className="w-1/2 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-lg shadow-rose-600/30 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Ban className="w-4 h-4" />
+                <span>{isBlocking ? 'Blocking...' : 'Block Workstation'}</span>
               </button>
             </div>
 

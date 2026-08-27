@@ -4,6 +4,7 @@ import {
   registerNewUserRole, 
   getRegisteredUsers, 
   RegisteredUserRecord,
+  isUserBlocked,
   apiClient
 } from '../services/api';
 import { initCloudSync, pushLocalToCloud } from '../services/cloudSync';
@@ -98,15 +99,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // 2. Check registered users list on sync
-    if (payload.type === 'STAFF_REGISTERED' || payload.type === 'MANUAL_SYNC' || payload.type === 'APPROVAL_DECISION_MADE') {
+    // 2. Check registered users list and blocked status on sync
+    if (
+      payload.type === 'STAFF_REGISTERED' || 
+      payload.type === 'MANUAL_SYNC' || 
+      payload.type === 'APPROVAL_DECISION_MADE' ||
+      payload.type === 'USER_STATUS_CHANGED'
+    ) {
       const allUsers = getRegisteredUsers();
       const myRecord = allUsers.find((u) => u.id === currentUser.id || u.email?.toLowerCase() === currentUser.email?.toLowerCase());
+      const currentlyBlocked = isUserBlocked(myRecord || currentUser);
+
+      if (currentlyBlocked && !currentUser.isBlocked && currentUser.role !== 'SUPER_ADMIN') {
+        const updated: User = {
+          ...currentUser,
+          isBlocked: true,
+          status: 'BLOCKED',
+          blockedReason: myRecord?.blockedReason || (payload.data?.reason as string) || 'Suspended by Super Administrator',
+        };
+        setCurrentUser(updated);
+        localStorage.setItem('erikon_current_user', JSON.stringify(updated));
+        return;
+      } else if (!currentlyBlocked && currentUser.isBlocked) {
+        const updated: User = {
+          ...currentUser,
+          isBlocked: false,
+          status: currentUser.isApproved ? 'ACTIVE' : 'PENDING_APPROVAL',
+          blockedReason: undefined,
+        };
+        setCurrentUser(updated);
+        localStorage.setItem('erikon_current_user', JSON.stringify(updated));
+        return;
+      }
+
       if (myRecord && myRecord.isApproved && !currentUser.isApproved) {
         const updated: User = {
           ...currentUser,
           isApproved: true,
-          status: 'ACTIVE',
+          status: currentlyBlocked ? 'BLOCKED' : 'ACTIVE',
+          isBlocked: currentlyBlocked,
         };
         setCurrentUser(updated);
         localStorage.setItem('erikon_current_user', JSON.stringify(updated));

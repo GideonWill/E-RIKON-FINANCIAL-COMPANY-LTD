@@ -4,6 +4,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { RoleName } from '../../types';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 import { PendingApprovalScreen } from '../auth/PendingApprovalScreen';
+import { BlockedAccountScreen } from '../auth/BlockedAccountScreen';
+import { isUserBlocked } from '../../services/api';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -17,7 +19,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     return <Navigate to="/login" replace />;
   }
 
-  // If user is not Super Admin and is not approved, lock access completely
+  // 1. If user is blocked, display BlockedAccountScreen immediately
+  const isBlocked = isUserBlocked(currentUser) || Boolean(currentUser.isBlocked);
+  if (isBlocked && currentUser.role !== 'SUPER_ADMIN') {
+    return <BlockedAccountScreen user={currentUser} />;
+  }
+
+  // 2. If user is not Super Admin and is not approved, lock access completely
   const isApproved = currentUser.isApproved ?? (currentUser.role === 'SUPER_ADMIN');
   if (!isApproved && currentUser.role !== 'SUPER_ADMIN') {
     return <PendingApprovalScreen />;

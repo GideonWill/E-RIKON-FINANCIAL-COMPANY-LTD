@@ -470,6 +470,172 @@ export const deleteRegisteredUser = async (userId: string, currentSuperAdmin: Us
   return true;
 };
 
+export const getBlockedUserEmails = (): string[] => {
+  const data = localStorage.getItem('erikon_blocked_user_emails');
+  if (!data) return [];
+  try {
+    const parsed = JSON.parse(data);
+    if (Array.isArray(parsed)) {
+      return parsed.map((e) => String(e).toLowerCase());
+    }
+  } catch {}
+  return [];
+};
+
+export const isUserBlocked = (userOrEmail?: string | User | null): boolean => {
+  if (!userOrEmail) return false;
+  if (typeof userOrEmail !== 'string' && userOrEmail.isBlocked) return true;
+  const emailOrId = typeof userOrEmail === 'string' 
+    ? userOrEmail.trim().toLowerCase() 
+    : (userOrEmail.email || userOrEmail.id || '').toLowerCase();
+  const blockedList = getBlockedUserEmails();
+  return blockedList.includes(emailOrId);
+};
+
+/**
+ * Block a User from Workstation Access (Super Admin Only)
+ */
+export const blockUserAccount = async (
+  userId: string,
+  currentSuperAdmin: User,
+  reason: string = 'Administrative Suspension by Super Administrator'
+): Promise<boolean> => {
+  if (currentSuperAdmin.role !== 'SUPER_ADMIN') {
+    throw new Error('Security Clearance Violation: Only the Super Admin can block user accounts.');
+  }
+
+  const users = getRegisteredUsers();
+  const targetUser = users.find((u) => u.id === userId || u.email?.toLowerCase() === userId.toLowerCase());
+  if (targetUser?.role === 'SUPER_ADMIN') {
+    throw new Error('Security Guard: Super Administrator accounts cannot be blocked.');
+  }
+
+  const emailKey = (targetUser?.email || userId).toLowerCase();
+  const blockedEmails = getBlockedUserEmails();
+  if (!blockedEmails.includes(emailKey)) {
+    localStorage.setItem('erikon_blocked_user_emails', JSON.stringify([...blockedEmails, emailKey]));
+  }
+
+  // Update in registered users
+  const updatedUsers = users.map((u) => {
+    if (u.id === userId || u.email?.toLowerCase() === emailKey) {
+      return {
+        ...u,
+        isBlocked: true,
+        status: 'BLOCKED' as const,
+        blockedAt: new Date().toISOString(),
+        blockedReason: reason,
+        blockedBy: `${currentSuperAdmin.firstName} ${currentSuperAdmin.lastName}`,
+      };
+    }
+    return u;
+  });
+  saveRegisteredUsers(updatedUsers);
+
+  // Log to Audit Trail
+  const auditLogs = getStoredAuditLogs();
+  const newLog: AuditLog = {
+    id: `audit-${Date.now()}`,
+    userId: currentSuperAdmin.id,
+    userEmail: currentSuperAdmin.email,
+    userRole: currentSuperAdmin.role,
+    branchName: currentSuperAdmin.branch?.name || 'Accra Central Main Branch',
+    action: 'USER_ACCESS_BLOCKED',
+    resource: 'AUTH',
+    newValue: `User ${targetUser?.firstName || ''} ${targetUser?.lastName || ''} (${targetUser?.email || userId}, Role: ${targetUser?.role || 'STAFF'}) access BLOCKED by Super Admin ${currentSuperAdmin.firstName} ${currentSuperAdmin.lastName}. Reason: "${reason}".`,
+    ipAddress: '127.0.0.1',
+    createdAt: new Date().toISOString(),
+  };
+  saveStoredAuditLogs([newLog, ...auditLogs]);
+
+  broadcastRealtimeEvent('USER_STATUS_CHANGED', {
+    userId,
+    email: targetUser?.email,
+    isBlocked: true,
+    status: 'BLOCKED',
+    reason,
+  });
+
+  setTimeout(() => {
+    try {
+      import('./cloudSync').then(({ pushLocalToCloud }) => {
+        pushLocalToCloud().catch(() => {});
+      });
+    } catch {}
+  }, 50);
+
+  return true;
+};
+
+/**
+ * Unblock a User and Restore Workstation Access (Super Admin Only)
+ */
+export const unblockUserAccount = async (
+  userId: string,
+  currentSuperAdmin: User
+): Promise<boolean> => {
+  if (currentSuperAdmin.role !== 'SUPER_ADMIN') {
+    throw new Error('Security Clearance Violation: Only the Super Admin can unblock user accounts.');
+  }
+
+  const users = getRegisteredUsers();
+  const targetUser = users.find((u) => u.id === userId || u.email?.toLowerCase() === userId.toLowerCase());
+  const emailKey = (targetUser?.email || userId).toLowerCase();
+
+  const blockedEmails = getBlockedUserEmails();
+  const filteredBlocked = blockedEmails.filter((e) => e !== emailKey && e !== userId.toLowerCase());
+  localStorage.setItem('erikon_blocked_user_emails', JSON.stringify(filteredBlocked));
+
+  // Update in registered users
+  const updatedUsers = users.map((u) => {
+    if (u.id === userId || u.email?.toLowerCase() === emailKey) {
+      return {
+        ...u,
+        isBlocked: false,
+        status: u.isApproved ? ('ACTIVE' as const) : ('PENDING_APPROVAL' as const),
+        blockedAt: undefined,
+        blockedReason: undefined,
+        blockedBy: undefined,
+      };
+    }
+    return u;
+  });
+  saveRegisteredUsers(updatedUsers);
+
+  // Log to Audit Trail
+  const auditLogs = getStoredAuditLogs();
+  const newLog: AuditLog = {
+    id: `audit-${Date.now()}`,
+    userId: currentSuperAdmin.id,
+    userEmail: currentSuperAdmin.email,
+    userRole: currentSuperAdmin.role,
+    branchName: currentSuperAdmin.branch?.name || 'Accra Central Main Branch',
+    action: 'USER_ACCESS_UNBLOCKED',
+    resource: 'AUTH',
+    newValue: `User ${targetUser?.firstName || ''} ${targetUser?.lastName || ''} (${targetUser?.email || userId}, Role: ${targetUser?.role || 'STAFF'}) access UNBLOCKED and restored by Super Admin ${currentSuperAdmin.firstName} ${currentSuperAdmin.lastName}.`,
+    ipAddress: '127.0.0.1',
+    createdAt: new Date().toISOString(),
+  };
+  saveStoredAuditLogs([newLog, ...auditLogs]);
+
+  broadcastRealtimeEvent('USER_STATUS_CHANGED', {
+    userId,
+    email: targetUser?.email,
+    isBlocked: false,
+    status: targetUser?.isApproved ? 'ACTIVE' : 'PENDING_APPROVAL',
+  });
+
+  setTimeout(() => {
+    try {
+      import('./cloudSync').then(({ pushLocalToCloud }) => {
+        pushLocalToCloud().catch(() => {});
+      });
+    } catch {}
+  }, 50);
+
+  return true;
+};
+
 // Aliases for live state
 export const MOCK_CUSTOMERS = getStoredCustomers();
 export const MOCK_ACCOUNTS = getStoredAccounts();
