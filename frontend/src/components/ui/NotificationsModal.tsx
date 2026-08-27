@@ -55,16 +55,19 @@ export const getSystemNotifications = (role: RoleName): NotificationItem[] => {
   const approvals = getStoredApprovals();
   const pendingApprovals = approvals.filter((a) => a.status === 'PENDING');
 
-  const approvalNotifications: NotificationItem[] = pendingApprovals.map((a) => ({
-    id: `appr-${a.id}`,
-    title: `Pending Approval: ${a.title}`,
-    message: `${a.description} • Submitted by ${a.requestedByName} (${a.requestedRole.replace(/_/g, ' ')})`,
-    time: a.createdAt ? new Date(a.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
-    type: a.type === 'STAFF_ROLE_SIGNUP' ? 'AUDIT' : a.type === 'LOAN_APPROVAL' ? 'LOAN' : 'CYCLE',
-    targetRoute: '/approvals',
-    roles: ['SUPER_ADMIN', 'ADMIN'],
-    isRead: readIds.includes(`appr-${a.id}`),
-  }));
+  // Approval notifications are strictly restricted to SUPER_ADMIN
+  const approvalNotifications: NotificationItem[] = role === 'SUPER_ADMIN'
+    ? pendingApprovals.map((a) => ({
+        id: `appr-${a.id}`,
+        title: `Pending Clearance: ${a.title}`,
+        message: `${a.description} • Requester: ${a.requestedByName} (${a.requestedRole.replace(/_/g, ' ')})`,
+        time: a.createdAt ? new Date(a.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+        type: a.type === 'STAFF_ROLE_SIGNUP' ? 'AUDIT' : a.type === 'LOAN_APPROVAL' ? 'LOAN' : 'CYCLE',
+        targetRoute: '/approvals',
+        roles: ['SUPER_ADMIN'] as RoleName[],
+        isRead: readIds.includes(`appr-${a.id}`),
+      }))
+    : [];
 
   const staticSystemNotifications: NotificationItem[] = [
     {

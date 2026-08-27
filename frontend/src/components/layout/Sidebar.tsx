@@ -70,8 +70,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       to: '/approvals',
       label: 'Approvals Hub',
       icon: ShieldCheck,
-      badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined,
-      roles: ['SUPER_ADMIN', 'ADMIN'],
+      badge: activeRole === 'SUPER_ADMIN' && pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined,
+      roles: ['SUPER_ADMIN'],
     },
     {
       to: '/company-interest',

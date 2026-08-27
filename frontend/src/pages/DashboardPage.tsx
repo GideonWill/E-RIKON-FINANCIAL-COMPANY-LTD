@@ -155,8 +155,8 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Pending Approvals Alert for Super Admin & Admin */}
-      {pendingApprovalsCount > 0 && (
+      {/* Pending Approvals Alert Strictly for Super Admin */}
+      {currentUser?.role === 'SUPER_ADMIN' && pendingApprovalsCount > 0 && (
         <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-500/20 via-amber-500/10 to-slate-900 border border-rose-500/40 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
           <div className="flex items-center space-x-3">
             <div className="p-2 rounded-xl bg-rose-500 text-white">
