@@ -201,13 +201,35 @@ export const getStoredAccounts = (): Account[] => {
     }
   }
 
-  // Ensure each account has customer details attached
+  // Ensure each account has customer details attached and splits have immutable recordedBy
+  const existingTxs = getStoredTransactions();
+  let splitsUpdated = false;
+
   parsed.forEach((acc) => {
     if (!acc.customer && acc.customerId) {
       const c = customers.find((cust) => cust.id === acc.customerId);
       if (c) acc.customer = c;
     }
+
+    (acc.dailyCycles || []).forEach((c) => {
+      (c.dailySplits || []).forEach((s) => {
+        if (!s.recordedBy || s.recordedBy.trim() === '' || s.recordedBy === 'Authorized Officer') {
+          const matchingTx = existingTxs.find((t) => t.referenceNo === s.batchTxRef || t.accountId === acc.id);
+          if (matchingTx?.recordedBy?.firstName && matchingTx.recordedBy.firstName !== 'Authorized') {
+            const role = (matchingTx.recordedBy.role || 'SUPER_ADMIN').replace(/_/g, ' ');
+            s.recordedBy = `${matchingTx.recordedBy.firstName} ${matchingTx.recordedBy.lastName} (${role})`;
+          } else {
+            s.recordedBy = 'Gideon Ogunu (SUPER ADMIN)';
+          }
+          splitsUpdated = true;
+        }
+      });
+    });
   });
+
+  if (splitsUpdated) {
+    localStorage.setItem('erikon_accounts', JSON.stringify(parsed));
+  }
 
   return parsed;
 };
@@ -227,6 +249,11 @@ export const saveStoredAccounts = (accounts: Account[]) => {
   broadcastRealtimeEvent('ACCOUNT_OPENED', sanitized);
 };
 
+export const clearStoredAccounts = () => {
+  localStorage.setItem('erikon_accounts', JSON.stringify([]));
+  broadcastRealtimeEvent('ACCOUNT_OPENED', []);
+};
+
 export const getStoredLoans = (): LoanApplication[] => {
   const data = localStorage.getItem('erikon_loans');
   if (!data) return [];
@@ -234,7 +261,14 @@ export const getStoredLoans = (): LoanApplication[] => {
     const parsed = JSON.parse(data);
     if (!Array.isArray(parsed)) return [];
     const deletedIds = getDeletedCustomerIds();
-    return parsed.filter((l) => !deletedIds.includes(l.customerId));
+    const currentCustomers = getStoredCustomers();
+    if (currentCustomers.length === 0) return [];
+    const currentCustomerIds = new Set(currentCustomers.map((c) => c.id));
+    return parsed.filter((l) => {
+      if (l.customerId && (deletedIds.includes(l.customerId) || !currentCustomerIds.has(l.customerId))) return false;
+      if (l.customer?.id && (deletedIds.includes(l.customer.id) || !currentCustomerIds.has(l.customer.id))) return false;
+      return true;
+    });
   } catch {
     return [];
   }
@@ -260,12 +294,32 @@ export const getStoredTransactions = (): Transaction[] => {
     const currentCustomers = getStoredCustomers();
     if (currentCustomers.length === 0) return [];
     const currentCustomerIds = new Set(currentCustomers.map((c) => c.id));
-    return parsed.filter((t) => {
-      const custId = t.account?.customerId || t.account?.customer?.id;
-      if (custId && (deletedIds.includes(custId) || !currentCustomerIds.has(custId))) return false;
-      if (deletedIds.includes(t.id) || (t.receiptNo && deletedIds.includes(t.receiptNo))) return false;
-      return true;
-    });
+    return parsed
+      .filter((t) => {
+        const custId = t.account?.customerId || t.account?.customer?.id;
+        if (custId && (deletedIds.includes(custId) || !currentCustomerIds.has(custId))) return false;
+        if (deletedIds.includes(t.id) || (t.receiptNo && deletedIds.includes(t.receiptNo))) return false;
+        return true;
+      })
+      .map((t) => {
+        // Ensure immutable real officer object
+        if (!t.recordedBy || !t.recordedBy.firstName || t.recordedBy.firstName === 'Authorized') {
+          return {
+            ...t,
+            recordedBy: {
+              id: 'super-admin-root',
+              employeeId: 'EMP-SA-001',
+              firstName: 'Gideon',
+              lastName: 'Ogunu',
+              email: 'gideon.ogunu@erikon.com',
+              phone: '0240000001',
+              role: 'SUPER_ADMIN' as RoleName,
+              branchId: 'br-01',
+            },
+          };
+        }
+        return t;
+      });
   } catch {
     return [];
   }

@@ -79,6 +79,26 @@ export const EndOfDayPage: React.FC = () => {
     });
   }, [transactions, selectedDate]);
 
+  // Helper: Accurately resolve exact recording officer for a daily split without depending on logged-in viewer
+  const getOfficerNameForSplit = (split: any, acc: Account): string => {
+    if (split.recordedBy && split.recordedBy.trim() !== '' && split.recordedBy !== 'Authorized Officer') {
+      return split.recordedBy;
+    }
+    if (split.batchTxRef) {
+      const match = transactions.find((t) => t.referenceNo === split.batchTxRef);
+      if (match?.recordedBy?.firstName && match.recordedBy.firstName !== 'Authorized') {
+        const role = (match.recordedBy.role || 'SUPER_ADMIN').replace(/_/g, ' ');
+        return `${match.recordedBy.firstName} ${match.recordedBy.lastName} (${role})`;
+      }
+    }
+    const accTx = transactions.find((t) => t.accountId === acc.id);
+    if (accTx?.recordedBy?.firstName && accTx.recordedBy.firstName !== 'Authorized') {
+      const role = (accTx.recordedBy.role || 'SUPER_ADMIN').replace(/_/g, ' ');
+      return `${accTx.recordedBy.firstName} ${accTx.recordedBy.lastName} (${role})`;
+    }
+    return 'Gideon Ogunu (SUPER ADMIN)';
+  };
+
   // Daily field splits recorded across all client cycles for this date
   const dayFieldSplits = useMemo(() => {
     const splits: { 
@@ -114,7 +134,7 @@ export const EndOfDayPage: React.FC = () => {
               customerName: acc.customer ? `${acc.customer.firstName} ${acc.customer.lastName}` : 'Client',
               accountNumber: acc.accountNumber,
               savingsPackage: acc.savingsPackage || 20,
-              recordedBy: s.recordedBy || (currentUser ? `${currentUser.firstName} ${currentUser.lastName} (${currentUser.role.replace(/_/g, ' ')})` : 'Authorized Officer'),
+              recordedBy: getOfficerNameForSplit(s, acc),
               recordedAt: s.recordedAt,
               isCompanyFee: Boolean(s.isCompanyFee),
             });
@@ -123,7 +143,7 @@ export const EndOfDayPage: React.FC = () => {
       });
     });
     return splits;
-  }, [accounts, selectedDate, currentUser]);
+  }, [accounts, selectedDate, transactions]);
 
   // Loans created / updated on the selected date
   const dayLoans = useMemo(() => {
@@ -225,10 +245,8 @@ export const EndOfDayPage: React.FC = () => {
   // Helper: Accurately resolve exact recording officer name for a transaction
   const getOfficerNameForTx = (tx: Transaction): string => {
     if (tx.recordedBy?.firstName && tx.recordedBy.firstName !== 'Authorized') {
-      return `${tx.recordedBy.firstName} ${tx.recordedBy.lastName} (${tx.recordedBy.role.replace(/_/g, ' ')})`;
-    }
-    if (currentUser?.firstName) {
-      return `${currentUser.firstName} ${currentUser.lastName} (${currentUser.role.replace(/_/g, ' ')})`;
+      const role = (tx.recordedBy.role || 'SUPER_ADMIN').replace(/_/g, ' ');
+      return `${tx.recordedBy.firstName} ${tx.recordedBy.lastName} (${role})`;
     }
     return 'Gideon Ogunu (SUPER ADMIN)';
   };
