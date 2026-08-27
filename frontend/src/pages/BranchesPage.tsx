@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getStoredBranches, saveStoredBranches, getStoredTransactions } from '../services/api';
+import { getStoredBranches, saveStoredBranches, getStoredTransactions, getRegisteredUsers } from '../services/api';
 import { useRealtimeSync } from '../services/realtimeSync';
 import { Branch, Transaction } from '../types';
 import {
@@ -24,34 +24,6 @@ import {
   Briefcase
 } from 'lucide-react';
 
-interface StaffMember {
-  id: string;
-  name: string;
-  role: string;
-  phone: string;
-  status: 'ACTIVE' | 'ON_LEAVE';
-}
-
-const MOCK_STAFF_BY_BRANCH: Record<string, StaffMember[]> = {
-  'br-01': [
-    { id: 'st-101', name: 'Esi Quansah', role: 'Branch Manager', phone: '+233 24 333 4455', status: 'ACTIVE' },
-    { id: 'st-102', name: 'Abena Osei', role: 'Head Teller', phone: '+233 24 555 6677', status: 'ACTIVE' },
-    { id: 'st-103', name: 'Kofi Appiah', role: 'Senior Field Officer', phone: '+233 24 999 8877', status: 'ACTIVE' },
-    { id: 'st-104', name: 'Ama Sarpong', role: 'Loan Administrator', phone: '+233 20 123 4567', status: 'ACTIVE' },
-    { id: 'st-105', name: 'Emmanuel Boateng', role: 'Vault Specialist', phone: '+233 24 888 1122', status: 'ACTIVE' },
-  ],
-  'br-02': [
-    { id: 'st-201', name: 'Kwaku Bonsu', role: 'Branch Manager', phone: '+233 32 111 2233', status: 'ACTIVE' },
-    { id: 'st-202', name: 'Yaa Asantewaa', role: 'Lead Teller', phone: '+233 32 444 5566', status: 'ACTIVE' },
-    { id: 'st-203', name: 'Kwabena Owusu', role: 'Field Officer', phone: '+233 32 777 8899', status: 'ACTIVE' },
-  ],
-  'br-03': [
-    { id: 'st-301', name: 'Josephine Mensah', role: 'Branch Manager', phone: '+233 31 999 0011', status: 'ACTIVE' },
-    { id: 'st-302', name: 'Kojo Antwi', role: 'Teller', phone: '+233 31 222 3344', status: 'ACTIVE' },
-    { id: 'st-303', name: 'Patricia Addo', role: 'Field Officer', phone: '+233 31 555 6677', status: 'ON_LEAVE' },
-  ],
-};
-
 interface VaultTransferLog {
   id: string;
   sourceBranch: string;
@@ -68,11 +40,13 @@ export const BranchesPage: React.FC = () => {
   const [selectedRegion, setSelectedRegion] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [transactions, setTransactions] = useState<Transaction[]>(getStoredTransactions());
+  const [registeredUsers, setRegisteredUsers] = useState(() => getRegisteredUsers());
 
   // Real-time synchronization
   useRealtimeSync(() => {
     setBranches(getStoredBranches());
     setTransactions(getStoredTransactions());
+    setRegisteredUsers(getRegisteredUsers());
   });
 
   // Notification state
@@ -446,10 +420,9 @@ export const BranchesPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredBranches.map((b) => {
-            const staffList = MOCK_STAFF_BY_BRANCH[b.id] || [
-              { id: `st-gen1-${b.id}`, name: 'Branch Officer In Charge', role: 'Supervisor', phone: b.phone, status: 'ACTIVE' },
-              { id: `st-gen2-${b.id}`, name: 'Field Collection Lead', role: 'Field Officer', phone: b.phone, status: 'ACTIVE' },
-            ];
+            const staffList = registeredUsers.filter(
+              (u) => u.branchId === b.id || u.branch?.id === b.id || u.branch?.name === b.name
+            );
 
             // Dynamic branch vault cash calculated from actual recorded branch transactions
             const branchTxs = transactions.filter((t) => t.recordedBy?.branchId === b.id);
@@ -871,35 +844,53 @@ export const BranchesPage: React.FC = () => {
             </div>
 
             <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-              {(MOCK_STAFF_BY_BRANCH[selectedBranchForRoster.id] || [
-                { id: 'st-def1', name: 'Kwame Mensah', role: 'Branch Lead', phone: selectedBranchForRoster.phone, status: 'ACTIVE' },
-                { id: 'st-def2', name: 'Abena Appiah', role: 'Field Officer', phone: selectedBranchForRoster.phone, status: 'ACTIVE' },
-              ]).map((staff) => (
-                <div
-                  key={staff.id}
-                  className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-amber-500/10 text-amber-500 font-extrabold flex items-center justify-center">
-                      {staff.name.charAt(0)}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 dark:text-white">{staff.name}</h4>
-                      <span className="text-[11px] text-slate-400 font-medium">{staff.role} • {staff.phone}</span>
-                    </div>
-                  </div>
+              {(() => {
+                const branchStaff = registeredUsers.filter(
+                  (u) =>
+                    u.branchId === selectedBranchForRoster.id ||
+                    u.branch?.id === selectedBranchForRoster.id ||
+                    u.branch?.name === selectedBranchForRoster.name
+                );
 
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      staff.status === 'ACTIVE'
-                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                        : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                    }`}
+                if (branchStaff.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-xs text-slate-400 font-mono">
+                      No staff members assigned to this branch yet.
+                    </div>
+                  );
+                }
+
+                return branchStaff.map((staff) => (
+                  <div
+                    key={staff.id}
+                    className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs"
                   >
-                    {staff.status}
-                  </span>
-                </div>
-              ))}
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-amber-500/10 text-amber-500 font-extrabold flex items-center justify-center">
+                        {staff.firstName?.[0] || 'U'}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 dark:text-white">
+                          {staff.firstName} {staff.lastName}
+                        </h4>
+                        <span className="text-[11px] text-slate-400 font-medium">
+                          {staff.role.replace(/_/g, ' ')} • {staff.phone}
+                        </span>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        staff.status === 'ACTIVE' || staff.isApproved
+                          ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                          : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                      }`}
+                    >
+                      {staff.status || (staff.isApproved ? 'ACTIVE' : 'PENDING')}
+                    </span>
+                  </div>
+                ));
+              })()}
             </div>
 
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
