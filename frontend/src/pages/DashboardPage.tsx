@@ -107,6 +107,10 @@ export const DashboardPage: React.FC = () => {
     .filter((t) => t.type === 'DEPOSIT' || t.type === 'COMPANY_FEE_DEDUCTION')
     .reduce((sum, t) => sum + t.amount, 0);
 
+  const totalWithdrawalsSum = transactions
+    .filter((t) => t.type === 'WITHDRAWAL' || t.type === 'COMPANY_INTEREST_WITHDRAWAL')
+    .reduce((sum, t) => sum + t.amount, 0);
+
   const currentMonthName = new Date().toLocaleString('en-US', { month: 'short' });
   const chartData = [
     { month: 'May', deposits: 0, interest: 0, loans: 0 },
@@ -139,7 +143,7 @@ export const DashboardPage: React.FC = () => {
             </span>
           </h2>
           <p className="text-xs text-slate-400">
-            E-RIKON Core Financial Management System • Real-Time Branch Operations & 30-Day Interest Vault
+            E-RIKON Core Financial Management System • Institutional Operations & 30-Day Interest Vault
           </p>
         </div>
 
@@ -179,7 +183,7 @@ export const DashboardPage: React.FC = () => {
       )}
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           title="Total Customers"
           value={customers.length.toString()}
@@ -193,6 +197,13 @@ export const DashboardPage: React.FC = () => {
           subtitle="31-Day Policy Scheme"
           icon={Wallet}
           colorScheme="blue"
+        />
+        <StatCard
+          title="Withdrawal Balance"
+          value={`GHS ${totalWithdrawalsSum.toFixed(2)}`}
+          subtitle="Client Payouts & Liquidations"
+          icon={ArrowDownLeft}
+          colorScheme="rose"
         />
         <StatCard
           title="Company Interest Piled Up"
