@@ -77,50 +77,58 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       )}
 
       <header 
-        className="app-header fixed top-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-2.5 sm:px-6 transition-colors duration-200 shadow-2xs w-full h-14 sm:h-16 flex items-center justify-between"
+        className="app-header fixed top-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-3 sm:px-6 transition-colors duration-200 shadow-2xs w-full h-14 sm:h-16 flex items-center justify-between"
         style={{
           paddingTop: 'max(env(safe-area-inset-top, 0px), 0.25rem)',
         }}
       >
-        <div className="flex items-center justify-between gap-2 max-w-full">
+        <div className="flex items-center justify-between gap-2 w-full max-w-full">
           
-          {/* Left: Hamburger Toggle Button (Mobile) + Organization Branding & Active Branch */}
-          <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0 min-w-0">
+          {/* Left: Hamburger (Mobile) + Logo Branding & Active Role Indicator */}
+          <div className="flex items-center space-x-2 sm:space-x-3 shrink-0 min-w-0">
             {onToggleMobileMenu && (
               <button
                 type="button"
                 onClick={onToggleMobileMenu}
-                className="lg:hidden w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs shrink-0"
-                title="Open Navigation Menu"
+                className="lg:hidden w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs shrink-0"
+                title="Open Navigation Drawer"
                 aria-label="Toggle Mobile Menu"
               >
-                <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
+                <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-slate-700 dark:text-slate-200" />
               </button>
             )}
 
-            <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+            <div className="flex items-center space-x-2 shrink-0">
               <img 
                 src={logoImg} 
                 alt="E-RiKON Logo" 
                 className="h-7 sm:h-8 md:h-9 w-auto object-contain shrink-0"
               />
-              <span className="hidden lg:inline-flex text-[#0d9488] font-black text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/40 font-mono shrink-0">
+              <div className="flex flex-col">
+                <span className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white tracking-tight leading-tight hidden xs:inline">
+                  E-RiKON
+                </span>
+                <span className="text-[9px] text-[#0d9488] dark:text-teal-400 font-mono font-bold leading-none hidden sm:inline">
+                  Financial Co. LTD
+                </span>
+              </div>
+              <span className="hidden md:inline-flex text-[#0d9488] font-black text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/40 font-mono shrink-0 ml-1">
                 ECFMS v2.0
               </span>
             </div>
           </div>
 
-          {/* Right: Controls, Real-time Sync Badge & User Profile Badge */}
-          <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
+          {/* Right: Controls, System Actions, Notifications & User Identity Profile */}
+          <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
             
-            {/* Active Workstation Role Badge matching Logo Navy & Teal */}
+            {/* Active Workstation Role Badge (Desktop) */}
             <button
               type="button"
               onClick={() => setShowProfileModal(true)}
-              className="hidden lg:flex items-center bg-[#0a3866] hover:bg-[#082d52] text-white px-3 py-1 rounded-xl shadow-xs transition-all cursor-pointer border border-[#0e4b85] shrink-0"
+              className="hidden xl:flex items-center bg-[#0a3866] hover:bg-[#082d52] text-white px-3 py-1.5 rounded-xl shadow-xs transition-all cursor-pointer border border-[#0e4b85] shrink-0"
               title="Click to view Staff Profile & Permissions"
             >
-              <span className="text-xs font-black uppercase tracking-wider">
+              <span className="text-[11px] font-black uppercase tracking-wider">
                 {currentUser.role.replace(/_/g, ' ')} WORKSTATION
               </span>
             </button>
@@ -135,7 +143,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               <Compass className="w-4 h-4 text-[#0d9488] group-hover:rotate-45 transition-transform duration-300" />
             </button>
 
-            {/* Instant Full System Refresh & Sync Button */}
+            {/* Instant Full System Refresh & Cloud Sync Button */}
             <button
               type="button"
               onClick={async () => {
@@ -146,7 +154,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                 triggerAppRefresh();
               }}
               className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#0d9488] dark:hover:text-teal-400 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer group shadow-2xs shrink-0"
-              title="Refresh Page & Sync Latest Cloud System Updates"
+              title="Refresh Page & Sync Latest Cloud Data"
             >
               <RotateCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500 text-[#0d9488]" />
             </button>
@@ -161,7 +169,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
             </button>
 
-            {/* System Notifications Bell Button - Only shows indicator if unreadCount > 0 */}
+            {/* System Notifications Bell Button with Active Pulsating Counter */}
             <button
               type="button"
               onClick={() => setShowNotificationsModal(true)}
@@ -170,26 +178,28 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
             >
               <BellRing className="w-4 h-4" />
               {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#10b981] ring-2 ring-white dark:ring-slate-900 animate-pulse"></span>
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-emerald-500 text-white text-[9px] font-black font-mono flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-sm animate-pulse">
+                  {unreadCount}
+                </span>
               )}
             </button>
 
-            {/* User Profile Badge & Logout (Clickable to open Staff Profile Modal) */}
-            <div className="flex items-center space-x-1 sm:space-x-2 pl-1 sm:pl-2 border-l border-slate-200 dark:border-slate-800 shrink-0">
+            {/* User Profile Badge & Logout Control */}
+            <div className="flex items-center space-x-1.5 sm:space-x-2 pl-1 sm:pl-2 border-l border-slate-200 dark:border-slate-800 shrink-0">
               <div
                 onClick={() => setShowProfileModal(true)}
-                className="flex items-center space-x-1.5 sm:space-x-2.5 cursor-pointer group p-0.5 sm:p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-all shrink-0"
+                className="flex items-center space-x-1.5 sm:space-x-2 cursor-pointer group p-0.5 sm:p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-all shrink-0"
                 title="View Staff Identity Profile"
               >
                 <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-[#0a3866] via-[#0d9488] to-[#166534] flex items-center justify-center text-white text-[11px] sm:text-xs font-black shadow-xs ring-2 ring-teal-500/30 group-hover:ring-[#0d9488] shrink-0">
                   {currentUser.firstName[0]}{currentUser.lastName[0]}
                 </div>
-                <div className="hidden sm:block text-left">
-                  <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1 group-hover:text-[#0d9488] transition-colors">
+                <div className="hidden md:block text-left">
+                  <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1 group-hover:text-[#0d9488] transition-colors leading-tight">
                     {currentUser.firstName} {currentUser.lastName}
                     <ShieldCheck className="w-3 h-3 text-emerald-500 inline" />
                   </div>
-                  <div className="text-[10px] text-[#0d9488] dark:text-teal-400 font-bold tracking-wider uppercase">
+                  <div className="text-[9px] text-[#0d9488] dark:text-teal-400 font-extrabold tracking-wider uppercase leading-tight">
                     {currentUser.role.replace(/_/g, ' ')}
                   </div>
                 </div>
@@ -203,7 +213,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                 title="Logout to Role Login Portal"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Switch Role</span>
+                <span className="hidden sm:inline">Switch Role</span>
               </button>
             </div>
 

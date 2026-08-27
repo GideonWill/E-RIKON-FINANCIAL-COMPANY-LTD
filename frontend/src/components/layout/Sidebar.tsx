@@ -59,85 +59,98 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const activeRole = currentUser.role;
   const pendingApprovalsCount = approvals.filter((a) => a.status === 'PENDING').length;
 
-  const navItems = [
+  const navSections = [
     {
-      to: '/',
-      label: 'Executive Dashboard',
-      icon: LayoutDashboard,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+      title: 'Governance & Vault',
+      items: [
+        {
+          to: '/',
+          label: 'Executive Dashboard',
+          icon: LayoutDashboard,
+          roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+        },
+        {
+          to: '/approvals',
+          label: 'Approvals Hub',
+          icon: ShieldCheck,
+          badge: activeRole === 'SUPER_ADMIN' && pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined,
+          roles: ['SUPER_ADMIN'],
+        },
+        {
+          to: '/company-interest',
+          label: 'Company Interest Vault',
+          icon: PiggyBank,
+          roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
+        },
+      ],
     },
     {
-      to: '/approvals',
-      label: 'Approvals Hub',
-      icon: ShieldCheck,
-      badge: activeRole === 'SUPER_ADMIN' && pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined,
-      roles: ['SUPER_ADMIN'],
+      title: 'Operations & Cash Desk',
+      items: [
+        {
+          to: '/customers',
+          label: 'Customer 360',
+          icon: Users,
+          roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+        },
+        {
+          to: '/accounts',
+          label: 'Savings & Packages',
+          icon: Wallet,
+          roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+        },
+        {
+          to: '/teller',
+          label: 'Teller Workstation',
+          icon: Landmark,
+          roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER'],
+        },
+        {
+          to: '/field-officer',
+          label: 'Field Collections',
+          icon: Smartphone,
+          roles: ['SUPER_ADMIN', 'ADMIN', 'FIELD_OFFICER'],
+        },
+      ],
     },
     {
-      to: '/company-interest',
-      label: 'Company Interest Vault',
-      icon: PiggyBank,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
-    },
-    {
-      to: '/customers',
-      label: 'Customer 360',
-      icon: Users,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
-    },
-    {
-      to: '/accounts',
-      label: 'Savings & Packages',
-      icon: Wallet,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
-    },
-    {
-      to: '/teller',
-      label: 'Teller Workstation',
-      icon: Landmark,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER'],
-    },
-    {
-      to: '/field-officer',
-      label: 'Field Collections (Splitter)',
-      icon: Smartphone,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'FIELD_OFFICER'],
-    },
-    {
-      to: '/loans',
-      label: 'ER-Fast Loans Desk',
-      icon: Calculator,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'LOAN_OFFICER', 'AUDITOR'],
-    },
-    {
-      to: '/reports',
-      label: 'Financial Statements',
-      icon: FileSpreadsheet,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
-    },
-    {
-      to: '/end-of-day',
-      label: 'End of Day (EOD) Close',
-      icon: CalendarCheck2,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
-    },
-    {
-      to: '/audit',
-      label: 'Immutable Audit Trail',
-      icon: ShieldAlert,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
+      title: 'Credit, Reports & Audit',
+      items: [
+        {
+          to: '/loans',
+          label: 'ER-Fast Loans Desk',
+          icon: Calculator,
+          roles: ['SUPER_ADMIN', 'ADMIN', 'LOAN_OFFICER', 'AUDITOR'],
+        },
+        {
+          to: '/reports',
+          label: 'Financial Statements',
+          icon: FileSpreadsheet,
+          roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+        },
+        {
+          to: '/end-of-day',
+          label: 'End of Day (EOD) Close',
+          icon: CalendarCheck2,
+          roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+        },
+        {
+          to: '/audit',
+          label: 'Immutable Audit Trail',
+          icon: ShieldAlert,
+          roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
+        },
+      ],
     },
   ];
 
-  const allowedNav = navItems.filter((item) => item.roles.includes(activeRole));
-
   const sidebarContent = (
-    <div className="flex flex-col justify-between h-full p-4 space-y-6 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800">
-      <div className="space-y-4">
+    <div className="flex flex-col justify-between h-full p-4 space-y-4 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800">
+      <div className="space-y-4 overflow-y-auto">
         <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 dark:border-slate-800 pb-3">
           <div>
             <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-              Workstation Scopes
+              Workstation Scope
             </div>
             <div className="text-xs text-[#0d9488] font-black mt-0.5">
               Role: {activeRole.replace(/_/g, ' ')}
@@ -146,44 +159,58 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {onClose && (
             <button
               onClick={onClose}
-              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-              title="Close Menu"
+              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Close Drawer"
             >
               <X className="w-5 h-5" />
             </button>
           )}
         </div>
 
-        <nav className="space-y-1">
-          {allowedNav.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={onClose}
-                className={({ isActive }) =>
-                  `flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all ${
-                    isActive
-                      ? 'bg-gradient-to-r from-[#0d9488] via-[#059669] to-[#166534] text-white font-black shadow-md shadow-emerald-900/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-[#065f46] hover:bg-teal-50/70 dark:hover:bg-slate-800/60 font-semibold'
-                  }`
-                }
-              >
-                <div className="flex items-center space-x-3 truncate">
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{item.label}</span>
-                </div>
+        <div className="space-y-4">
+          {navSections.map((sec) => {
+            const visibleItems = sec.items.filter((item) => item.roles.includes(activeRole));
+            if (visibleItems.length === 0) return null;
 
-                {item.badge !== undefined && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white font-mono shadow-sm">
-                    {item.badge}
-                  </span>
-                )}
-              </NavLink>
+            return (
+              <div key={sec.title} className="space-y-1">
+                <div className="px-3.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  {sec.title}
+                </div>
+                <nav className="space-y-0.5">
+                  {visibleItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        onClick={onClose}
+                        className={({ isActive }) =>
+                          `flex items-center justify-between px-3.5 py-2 rounded-xl text-xs transition-all ${
+                            isActive
+                              ? 'bg-gradient-to-r from-[#0d9488] via-[#059669] to-[#166534] text-white font-black shadow-md shadow-emerald-900/20'
+                              : 'text-slate-600 dark:text-slate-300 hover:text-[#065f46] hover:bg-teal-50/70 dark:hover:bg-slate-800/60 font-semibold'
+                          }`
+                        }
+                      >
+                        <div className="flex items-center space-x-3 truncate">
+                          <Icon className="w-4 h-4 shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                        </div>
+
+                        {item.badge !== undefined && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white font-mono shadow-sm">
+                            {item.badge}
+                          </span>
+                        )}
+                      </NavLink>
+                    );
+                  })}
+                </nav>
+              </div>
             );
           })}
-        </nav>
+        </div>
       </div>
 
       {/* Footer Info Box */}
