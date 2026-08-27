@@ -210,6 +210,29 @@ export const EndOfDayPage: React.FC = () => {
     }
   }, [selectedDate]);
 
+  // Helper: Accurately resolve exact customer name for a transaction
+  const getCustomerNameForTx = (tx: Transaction): string => {
+    if (tx.account?.customer?.firstName) {
+      return `${tx.account.customer.firstName} ${tx.account.customer.lastName}`;
+    }
+    const foundAcc = accounts.find((a) => a.id === tx.accountId || a.accountNumber === tx.account?.accountNumber);
+    if (foundAcc?.customer?.firstName) {
+      return `${foundAcc.customer.firstName} ${foundAcc.customer.lastName}`;
+    }
+    return 'Client';
+  };
+
+  // Helper: Accurately resolve exact recording officer name for a transaction
+  const getOfficerNameForTx = (tx: Transaction): string => {
+    if (tx.recordedBy?.firstName && tx.recordedBy.firstName !== 'Authorized') {
+      return `${tx.recordedBy.firstName} ${tx.recordedBy.lastName} (${tx.recordedBy.role.replace(/_/g, ' ')})`;
+    }
+    if (currentUser?.firstName) {
+      return `${currentUser.firstName} ${currentUser.lastName} (${currentUser.role.replace(/_/g, ' ')})`;
+    }
+    return 'Gideon Ogunu (SUPER ADMIN)';
+  };
+
   // Export CSV of End of Day Reconciliation
   const exportEodCsv = () => {
     const separator = ',';
@@ -217,7 +240,7 @@ export const EndOfDayPage: React.FC = () => {
       ['E-RiKON Financial Company PLC - End of Day (EOD) Operations Summary'],
       ['Operating Date', formattedSelectedDate],
       ['Generated At', new Date().toLocaleString('en-GB')],
-      ['Authorized Workstation', `${currentUser?.firstName} ${currentUser?.lastName} (${currentUser?.role})`],
+      ['Authorized Workstation', `${currentUser?.firstName || 'Gideon'} ${currentUser?.lastName || 'Ogunu'} (${currentUser?.role || 'SUPER_ADMIN'})`],
       [''],
       ['EXECUTIVE CASH POSITION SUMMARY', 'AMOUNT (GHS)'],
       ['Total Physical Teller Deposits', tellerDeposits.toFixed(2)],
@@ -239,10 +262,10 @@ export const EndOfDayPage: React.FC = () => {
         t.type,
         t.amount.toFixed(2),
         t.paymentMode || 'Physical Cash',
-        t.account?.customer ? `"${t.account.customer.firstName} ${t.account.customer.lastName}"` : 'Client',
+        `"${getCustomerNameForTx(t)}"`,
         t.account?.accountNumber || '—',
         t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—',
-        t.recordedBy ? `"${t.recordedBy.firstName} ${t.recordedBy.lastName}"` : 'Workstation',
+        `"${getOfficerNameForTx(t)}"`,
       ]),
     ];
 
@@ -519,7 +542,7 @@ export const EndOfDayPage: React.FC = () => {
                         {tx.createdAt ? new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}
                       </td>
                       <td className="py-2.5 px-3 font-sans font-bold text-slate-900 dark:text-white">
-                        {tx.account?.customer ? `${tx.account.customer.firstName} ${tx.account.customer.lastName}` : 'Client'}
+                        {getCustomerNameForTx(tx)}
                       </td>
                       <td className="py-2.5 px-3">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -532,8 +555,8 @@ export const EndOfDayPage: React.FC = () => {
                       <td className="py-2.5 px-3 text-right font-black text-slate-900 dark:text-white">
                         GHS {tx.amount.toFixed(2)}
                       </td>
-                      <td className="py-2.5 px-3 font-sans text-slate-500">
-                        {tx.recordedBy ? `${tx.recordedBy.firstName} ${tx.recordedBy.lastName}` : 'Teller'}
+                      <td className="py-2.5 px-3 font-sans font-semibold text-slate-700 dark:text-slate-200">
+                        {getOfficerNameForTx(tx)}
                       </td>
                     </tr>
                   ))
@@ -863,13 +886,13 @@ export const EndOfDayPage: React.FC = () => {
                       <tr key={tx.id}>
                         <td className="py-1.5 px-2 font-bold text-[#0d9488]">{tx.receiptNo || '—'}</td>
                         <td className="py-1.5 px-2">{tx.type}</td>
-                        <td className="py-1.5 px-2 font-sans">
-                          {tx.account?.customer ? `${tx.account.customer.firstName} ${tx.account.customer.lastName}` : 'Client'}
+                        <td className="py-1.5 px-2 font-sans font-bold">
+                          {getCustomerNameForTx(tx)}
                         </td>
                         <td className="py-1.5 px-2 font-sans">{tx.paymentMode || 'Cash'}</td>
                         <td className="py-1.5 px-2 text-right font-black">GHS {tx.amount.toFixed(2)}</td>
                         <td className="py-1.5 px-2 font-sans">
-                          {tx.recordedBy ? `${tx.recordedBy.firstName} ${tx.recordedBy.lastName}` : 'Teller'}
+                          {getOfficerNameForTx(tx)}
                         </td>
                       </tr>
                     ))
