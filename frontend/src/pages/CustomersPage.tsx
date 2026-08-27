@@ -40,6 +40,8 @@ import {
   Wallet,
   Clock,
   ArrowRight,
+  ArrowUpRight,
+  ArrowDownLeft,
   TrendingUp,
   Landmark,
   ExternalLink,
@@ -1056,17 +1058,31 @@ export const CustomersPage: React.FC = () => {
               </div>
 
               {/* Modal Action Buttons */}
-              <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+              <div className="pt-2 flex flex-col sm:flex-row items-center gap-2.5">
                 <button
                   type="button"
                   onClick={() => {
+                    const accId = fin.acc?.id;
                     setSelectedDetailCustomer(null);
-                    navigate('/teller');
+                    navigate('/teller', { state: { accountId: accId, mode: 'DEPOSIT' } });
                   }}
                   className="w-full sm:flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer transition-all"
                 >
-                  <Landmark className="w-4 h-4" />
-                  <span>Record Deposit on Teller</span>
+                  <ArrowUpRight className="w-4 h-4" />
+                  <span>Record Deposit</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const accId = fin.acc?.id;
+                    setSelectedDetailCustomer(null);
+                    navigate('/teller', { state: { accountId: accId, mode: 'WITHDRAWAL' } });
+                  }}
+                  className="w-full sm:flex-1 py-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-rose-500/20 cursor-pointer transition-all"
+                >
+                  <ArrowDownLeft className="w-4 h-4" />
+                  <span>Record Withdrawal</span>
                 </button>
 
                 <button
@@ -1078,13 +1094,13 @@ export const CustomersPage: React.FC = () => {
                   className="w-full sm:flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <FileText className="w-4 h-4" />
-                  <span>View Financial Statement</span>
+                  <span>Statement</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setSelectedDetailCustomer(null)}
-                  className="w-full sm:w-auto px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-bold cursor-pointer"
+                  className="w-full sm:w-auto px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-bold cursor-pointer"
                 >
                   Close
                 </button>

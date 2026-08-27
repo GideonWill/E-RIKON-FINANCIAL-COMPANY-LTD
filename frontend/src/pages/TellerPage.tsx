@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   getStoredAccounts, 
   saveStoredAccounts, 
@@ -28,11 +29,13 @@ import {
   Sparkles,
   Check,
   RotateCcw,
-  Coins
+  Coins,
+  ShieldCheck
 } from 'lucide-react';
 
 export const TellerPage: React.FC = () => {
   const { currentUser } = useAuth();
+  const location = useLocation();
   const [accounts, setAccounts] = useState<Account[]>(getStoredAccounts());
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAccount, setSelectedAccount] = useState<Account>(accounts[0] || getStoredAccounts()[0]);
@@ -44,6 +47,23 @@ export const TellerPage: React.FC = () => {
   const [isDailyPolicyTick, setIsDailyPolicyTick] = useState<boolean>(true);
   const [printedTx, setPrintedTx] = useState<Transaction | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Handle incoming routing state (e.g. when navigated from Customers, Accounts, or Dashboard)
+  useEffect(() => {
+    if (location.state) {
+      const stateObj = location.state as { accountId?: string; mode?: 'DEPOSIT' | 'WITHDRAWAL' };
+      if (stateObj.accountId) {
+        const found = accounts.find((a) => a.id === stateObj.accountId);
+        if (found) {
+          setSelectedAccount(found);
+          if (found.savingsPackage) setChosenPackage(found.savingsPackage);
+        }
+      }
+      if (stateObj.mode) {
+        setOperationType(stateObj.mode);
+      }
+    }
+  }, [location.state, accounts]);
 
   // Sync package when selected account changes
   useEffect(() => {
@@ -223,9 +243,17 @@ export const TellerPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center space-x-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3.5 py-2 rounded-xl border border-emerald-500/20 text-xs font-mono font-bold w-fit shrink-0 shadow-xs">
-          <ShieldAlert className="w-4 h-4 shrink-0" /> 
-          <span>Vault Cash Balanced: GHS {liveTillBalance.toFixed(2)}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          {currentUser && (
+            <div className="flex items-center space-x-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-3 py-1.5 rounded-xl border border-amber-500/30 text-xs font-bold">
+              <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0" />
+              <span>Officer: <b>{currentUser.firstName} {currentUser.lastName}</b> ({currentUser.role.replace(/_/g, ' ')})</span>
+            </div>
+          )}
+          <div className="flex items-center space-x-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-xl border border-emerald-500/20 text-xs font-mono font-bold w-fit shrink-0 shadow-xs">
+            <ShieldAlert className="w-4 h-4 shrink-0" /> 
+            <span>Vault Cash Balanced: GHS {liveTillBalance.toFixed(2)}</span>
+          </div>
         </div>
       </div>
 

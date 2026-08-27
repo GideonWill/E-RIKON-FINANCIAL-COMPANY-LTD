@@ -15,6 +15,8 @@ import {
   FileText,
   UserPlus,
   ArrowRight,
+  ArrowUpRight,
+  ArrowDownLeft,
   Coins,
   Trash2
 } from 'lucide-react';
@@ -150,13 +152,33 @@ export const AccountsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-3">
-                    <div className="text-right bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
-                      <div className="text-[10px] text-slate-400 uppercase font-semibold">Total Deposited</div>
-                      <div className="text-lg font-extrabold text-amber-500 font-mono">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/teller', { state: { accountId: selectedAccount.id, mode: 'DEPOSIT' } })}
+                      className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer transition-all"
+                      title="Record physical cash deposit for this client"
+                    >
+                      <ArrowUpRight className="w-4 h-4" />
+                      <span>Record Deposit</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => navigate('/teller', { state: { accountId: selectedAccount.id, mode: 'WITHDRAWAL' } })}
+                      className="px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-500/20 cursor-pointer transition-all"
+                      title="Process physical cash withdrawal / loan for this client"
+                    >
+                      <ArrowDownLeft className="w-4 h-4" />
+                      <span>Record Withdrawal</span>
+                    </button>
+
+                    <div className="text-right bg-slate-50 dark:bg-slate-950 p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <div className="text-[9px] text-slate-400 uppercase font-semibold">Total Deposited</div>
+                      <div className="text-base font-extrabold text-amber-500 font-mono">
                         GHS {selectedAccount.currentBalance.toFixed(2)}
                       </div>
-                      <div className="text-[10px] text-emerald-400 font-mono">
+                      <div className="text-[10px] text-emerald-500 font-mono font-bold">
                         Available: GHS {selectedAccount.availableBalance.toFixed(2)}
                       </div>
                     </div>
@@ -173,7 +195,7 @@ export const AccountsPage: React.FC = () => {
                           setSelectedAccount(fresh[0] || null);
                         }
                       }}
-                      className="p-3 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-all flex items-center justify-center cursor-pointer"
+                      className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-all flex items-center justify-center cursor-pointer"
                       title="Close Account / Delete Record"
                     >
                       <Trash2 className="w-4 h-4" />

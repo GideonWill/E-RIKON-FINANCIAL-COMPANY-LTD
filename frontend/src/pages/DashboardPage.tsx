@@ -37,7 +37,10 @@ import {
   CheckCircle2,
   XCircle,
   UserCheck,
-  Trash2
+  Trash2,
+  Landmark,
+  Smartphone,
+  UserPlus
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -182,7 +185,56 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* KPI Cards Grid */}
+      {/* Executive Quick Financial Operations Bar */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+            <Coins className="w-4 h-4 text-amber-500" />
+            <span>Executive Cash Desk & Client Operations</span>
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Quickly record manual cash deposits, disburse savings-backed withdrawal loans, or split field collections.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => navigate('/teller', { state: { mode: 'DEPOSIT' } })}
+            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 cursor-pointer transition-all"
+          >
+            <ArrowUpRight className="w-4 h-4" />
+            <span>Record Client Deposit</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/teller', { state: { mode: 'WITHDRAWAL' } })}
+            className="px-4 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-rose-500/20 cursor-pointer transition-all"
+          >
+            <ArrowDownLeft className="w-4 h-4" />
+            <span>Record Client Withdrawal</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/field-officer')}
+            className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <Smartphone className="w-4 h-4 text-teal-500" />
+            <span>Field Splitter</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/customers')}
+            className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4 text-amber-500" />
+            <span>New Customer</span>
+          </button>
+        </div>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           title="Total Customers"
