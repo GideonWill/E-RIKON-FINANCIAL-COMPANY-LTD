@@ -192,219 +192,103 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
   const deletedCustIds = getDeletedCustomerIds();
   const deletedUserEmails = getDeletedUserEmails();
 
-  // 1. Merge & Sync Registered Users
-  if (Array.isArray(cloudData.registeredUsers) && cloudData.registeredUsers.length > 0) {
+  // 1. Authoritative Registered Users Sync
+  if (Array.isArray(cloudData.registeredUsers)) {
     const localUsers = getRegisteredUsers();
-    const userMap = new Map<string, RegisteredUserRecord>();
-
-    localUsers.forEach((u) => {
+    const cleanUsers = cloudData.registeredUsers.filter((u) => {
       const email = u.email?.toLowerCase();
-      if (!deletedUserEmails.includes(email) && !deletedUserEmails.includes(u.id?.toLowerCase())) {
-        userMap.set(email, u);
-      }
+      return !deletedUserEmails.includes(email) && !deletedUserEmails.includes(u.id?.toLowerCase());
     });
 
-    cloudData.registeredUsers.forEach((u) => {
-      const key = u.email.toLowerCase();
-      if (deletedUserEmails.includes(key) || deletedUserEmails.includes(u.id?.toLowerCase())) return;
-      const existing = userMap.get(key);
-      const isApproved = Boolean(existing?.isApproved || u.isApproved || u.role === 'SUPER_ADMIN');
-
-      userMap.set(key, {
-        id: u.id || existing?.id || `user-${Date.now()}`,
-        employeeId: u.employeeId || existing?.employeeId || `EMP-${Date.now().toString().slice(-4)}`,
-        firstName: u.firstName,
-        lastName: u.lastName,
-        email: u.email,
-        phone: u.phone || existing?.phone || '+233 24 000 0000',
-        role: u.role,
-        password: u.password || existing?.password || 'erikon2026',
-        ghanaCard: u.ghanaCard || existing?.ghanaCard || 'GHA-000000000-0',
-        branchId: u.branchId || existing?.branchId || 'br-01',
-        branch: u.branch || existing?.branch || { id: 'br-01', name: 'Accra Central Main Branch' } as any,
-        isApproved,
-        createdAt: u.createdAt || existing?.createdAt || new Date().toISOString(),
-        status: isApproved ? 'ACTIVE' : (existing?.status === 'ACTIVE' ? 'ACTIVE' : u.status || 'PENDING_APPROVAL'),
-      });
-    });
-
-    const mergedUsers = Array.from(userMap.values());
-    if (mergedUsers.length !== localUsers.length || JSON.stringify(mergedUsers) !== JSON.stringify(localUsers)) {
-      saveRegisteredUsers(mergedUsers);
+    if (cleanUsers.length !== localUsers.length || JSON.stringify(cleanUsers) !== JSON.stringify(localUsers)) {
+      saveRegisteredUsers(cleanUsers);
       hasUpdates = true;
     }
   }
 
-  // 2. Merge & Sync Approvals + Guarantee Pending Clearance Tickets for Super Admin
-  const localApprovals = getStoredApprovals();
-  const apprMap = new Map<string, ApprovalRequest>();
-  localApprovals.forEach((a) => {
-    const email = a.details?.email?.toLowerCase();
-    if (!deletedUserEmails.includes(email) && !deletedUserEmails.includes(a.targetId)) {
-      apprMap.set(a.id, a);
-    }
-  });
-
+  // 2. Authoritative Approvals Sync
   if (Array.isArray(cloudData.approvals)) {
-    cloudData.approvals.forEach((incomingAppr: ApprovalRequest) => {
-      const email = incomingAppr.details?.email?.toLowerCase();
-      if (deletedUserEmails.includes(email) || deletedUserEmails.includes(incomingAppr.targetId)) return;
-      const existingAppr = apprMap.get(incomingAppr.id);
-      if (existingAppr) {
-        if (existingAppr.status === 'APPROVED' || existingAppr.status === 'REJECTED') {
-          apprMap.set(incomingAppr.id, existingAppr);
-        } else {
-          apprMap.set(incomingAppr.id, incomingAppr);
-        }
-      } else {
-        apprMap.set(incomingAppr.id, incomingAppr);
-      }
+    const localApprovals = getStoredApprovals();
+    const cleanApprovals = cloudData.approvals.filter((a) => {
+      const email = a.details?.email?.toLowerCase();
+      return !deletedUserEmails.includes(email) && !deletedUserEmails.includes(a.targetId);
     });
-  }
 
-  // Ensure all unapproved staff users have active approval tickets in the Super Admin's queue
-  const allUsersNow = getRegisteredUsers();
-  allUsersNow.forEach((user) => {
-    if (!user.isApproved && user.role !== 'SUPER_ADMIN') {
-      const matchingAppr = Array.from(apprMap.values()).find(
-        (a) => a.targetId === user.id || a.details?.email?.toLowerCase() === user.email.toLowerCase()
-      );
-      if (!matchingAppr) {
-        const fallbackTicketId = `appr-sync-${user.id}`;
-        apprMap.set(fallbackTicketId, {
-          id: fallbackTicketId,
-          type: 'STAFF_ROLE_SIGNUP',
-          title: `Staff Clearance Request: ${user.firstName} ${user.lastName} (${user.role.replace(/_/g, ' ')})`,
-          description: `Newly onboarded ${user.role.replace(/_/g, ' ')} (${user.email}) submitted registration and is awaiting executive clearance from Super Admin to unlock workstation.`,
-          requestedById: user.id,
-          requestedByName: `${user.firstName} ${user.lastName}`,
-          requestedRole: user.role,
-          targetId: user.id,
-          details: {
-            employeeId: user.employeeId,
-            email: user.email,
-            phone: user.phone,
-            ghanaCard: user.ghanaCard,
-            role: user.role,
-            branch: user.branch?.name || 'Accra Central Main Branch',
-          },
-          status: 'PENDING',
-          createdAt: user.createdAt || new Date().toISOString(),
-        });
-      }
+    if (cleanApprovals.length !== localApprovals.length || JSON.stringify(cleanApprovals) !== JSON.stringify(localApprovals)) {
+      saveStoredApprovals(cleanApprovals);
+      hasUpdates = true;
     }
-  });
-
-  const mergedApprovals = Array.from(apprMap.values());
-  if (mergedApprovals.length !== localApprovals.length || JSON.stringify(mergedApprovals) !== JSON.stringify(localApprovals)) {
-    saveStoredApprovals(mergedApprovals);
-    hasUpdates = true;
   }
 
-  // 3. Merge & Sync Customers
-  const localCust = getStoredCustomers();
-  const custMap = new Map<string, any>();
-  localCust.forEach((c) => {
-    if (!deletedCustIds.includes(c.id)) custMap.set(c.id, c);
-  });
+  // 3. Authoritative Customers Sync
   if (Array.isArray(cloudData.customers)) {
-    cloudData.customers.forEach((c) => {
-      if (!deletedCustIds.includes(c.id)) custMap.set(c.id, c);
-    });
-  }
-  const mergedCust = Array.from(custMap.values());
-  if (mergedCust.length !== localCust.length || JSON.stringify(mergedCust) !== JSON.stringify(localCust)) {
-    saveStoredCustomers(mergedCust);
-    hasUpdates = true;
+    const localCust = getStoredCustomers();
+    const cleanCust = cloudData.customers.filter((c) => !deletedCustIds.includes(c.id));
+    if (cleanCust.length !== localCust.length || JSON.stringify(cleanCust) !== JSON.stringify(localCust)) {
+      saveStoredCustomers(cleanCust);
+      hasUpdates = true;
+    }
   }
 
-  // 4. Merge & Sync Accounts
-  const localAcc = getStoredAccounts();
-  const accMap = new Map<string, any>();
-  localAcc.forEach((a) => {
-    if (!deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)) accMap.set(a.id, a);
-  });
+  // 4. Authoritative Accounts Sync
   if (Array.isArray(cloudData.accounts)) {
-    cloudData.accounts.forEach((a) => {
-      if (!deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)) accMap.set(a.id, a);
-    });
-  }
-  const mergedAcc = Array.from(accMap.values());
-  if (mergedAcc.length !== localAcc.length || JSON.stringify(mergedAcc) !== JSON.stringify(localAcc)) {
-    saveStoredAccounts(mergedAcc);
-    hasUpdates = true;
+    const localAcc = getStoredAccounts();
+    const cleanAcc = cloudData.accounts.filter(
+      (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
+    );
+    if (cleanAcc.length !== localAcc.length || JSON.stringify(cleanAcc) !== JSON.stringify(localAcc)) {
+      saveStoredAccounts(cleanAcc);
+      hasUpdates = true;
+    }
   }
 
-  // 5. Merge & Sync Transactions
-  if (Array.isArray(cloudData.transactions) && cloudData.transactions.length > 0) {
+  // 5. Authoritative Transactions Sync
+  if (Array.isArray(cloudData.transactions)) {
     const localTx = getStoredTransactions();
-    const txMap = new Map<string, any>();
-    localTx.forEach((t) => txMap.set(t.id, t));
-    cloudData.transactions.forEach((t) => txMap.set(t.id, t));
-    const mergedTx = Array.from(txMap.values());
-    if (mergedTx.length !== localTx.length || JSON.stringify(mergedTx) !== JSON.stringify(localTx)) {
-      saveStoredTransactions(mergedTx);
+    if (cloudData.transactions.length !== localTx.length || JSON.stringify(cloudData.transactions) !== JSON.stringify(localTx)) {
+      saveStoredTransactions(cloudData.transactions);
       hasUpdates = true;
     }
   }
 
-  // 6. Merge & Sync Loans
-  const localLoans = getStoredLoans();
-  const loanMap = new Map<string, any>();
-  localLoans.forEach((l) => {
-    if (!deletedCustIds.includes(l.customerId)) loanMap.set(l.id, l);
-  });
+  // 6. Authoritative Loans Sync
   if (Array.isArray(cloudData.loans)) {
-    cloudData.loans.forEach((l) => {
-      if (!deletedCustIds.includes(l.customerId)) loanMap.set(l.id, l);
-    });
-  }
-  const mergedLoans = Array.from(loanMap.values());
-  if (mergedLoans.length !== localLoans.length || JSON.stringify(mergedLoans) !== JSON.stringify(localLoans)) {
-    saveStoredLoans(mergedLoans);
-    hasUpdates = true;
+    const localLoans = getStoredLoans();
+    const cleanLoans = cloudData.loans.filter((l) => !deletedCustIds.includes(l.customerId));
+    if (cleanLoans.length !== localLoans.length || JSON.stringify(cleanLoans) !== JSON.stringify(localLoans)) {
+      saveStoredLoans(cleanLoans);
+      hasUpdates = true;
+    }
   }
 
-  // 7. Merge & Sync Company Interest
-  if (Array.isArray(cloudData.companyInterest) && cloudData.companyInterest.length > 0) {
+  // 7. Authoritative Company Interest Sync
+  if (Array.isArray(cloudData.companyInterest)) {
     const localInt = getStoredCompanyInterest();
-    const intMap = new Map<string, any>();
-    localInt.forEach((i) => intMap.set(i.id, i));
-    cloudData.companyInterest.forEach((i) => intMap.set(i.id, i));
-    const mergedInt = Array.from(intMap.values());
-    if (mergedInt.length !== localInt.length || JSON.stringify(mergedInt) !== JSON.stringify(localInt)) {
-      saveStoredCompanyInterest(mergedInt);
+    if (cloudData.companyInterest.length !== localInt.length || JSON.stringify(cloudData.companyInterest) !== JSON.stringify(localInt)) {
+      saveStoredCompanyInterest(cloudData.companyInterest);
       hasUpdates = true;
     }
   }
 
-  // 8. Merge & Sync Company Withdrawals
-  if (Array.isArray(cloudData.companyWithdrawals) && cloudData.companyWithdrawals.length > 0) {
+  // 8. Authoritative Company Withdrawals Sync
+  if (Array.isArray(cloudData.companyWithdrawals)) {
     const localWd = getStoredCompanyWithdrawals();
-    const wdMap = new Map<string, any>();
-    localWd.forEach((w) => wdMap.set(w.id, w));
-    cloudData.companyWithdrawals.forEach((w) => wdMap.set(w.id, w));
-    const mergedWd = Array.from(wdMap.values());
-    if (mergedWd.length !== localWd.length || JSON.stringify(mergedWd) !== JSON.stringify(localWd)) {
-      saveStoredCompanyWithdrawals(mergedWd);
+    if (cloudData.companyWithdrawals.length !== localWd.length || JSON.stringify(cloudData.companyWithdrawals) !== JSON.stringify(localWd)) {
+      saveStoredCompanyWithdrawals(cloudData.companyWithdrawals);
       hasUpdates = true;
     }
   }
 
-  // 9. Merge & Sync Audit Logs
-  if (Array.isArray(cloudData.auditLogs) && cloudData.auditLogs.length > 0) {
+  // 9. Authoritative Audit Logs Sync
+  if (Array.isArray(cloudData.auditLogs)) {
     const localLogs = getStoredAuditLogs();
-    const logMap = new Map<string, any>();
-    localLogs.forEach((l) => logMap.set(l.id, l));
-    cloudData.auditLogs.forEach((l) => logMap.set(l.id, l));
-    const mergedLogs = Array.from(logMap.values());
-    if (mergedLogs.length !== localLogs.length || JSON.stringify(mergedLogs) !== JSON.stringify(localLogs)) {
-      saveStoredAuditLogs(mergedLogs);
+    if (cloudData.auditLogs.length !== localLogs.length || JSON.stringify(cloudData.auditLogs) !== JSON.stringify(localLogs)) {
+      saveStoredAuditLogs(cloudData.auditLogs);
       hasUpdates = true;
     }
   }
 
-  // 10. Merge & Sync Branches
+  // 10. Authoritative Branches Sync
   if (Array.isArray(cloudData.branches) && cloudData.branches.length > 0) {
     saveStoredBranches(cloudData.branches);
   }
