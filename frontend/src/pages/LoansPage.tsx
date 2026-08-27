@@ -59,7 +59,7 @@ export const LoansPage: React.FC = () => {
   });
 
   const [selectedCustId, setSelectedCustId] = useState<string>(customers[0]?.id || '');
-  const [amountReq, setAmountReq] = useState<number>(0);
+  const [amountReq, setAmountReq] = useState<number>(100);
   const [tenorDays, setTenorDays] = useState<number>(90);
   const [purpose, setPurpose] = useState('Stock Inventory Purchase');
 
@@ -684,11 +684,11 @@ export const LoansPage: React.FC = () => {
                     required
                     type="number"
                     min="100"
-                    step="100"
+                    step="50"
                     value={amountReq}
                     onChange={(e) => setAmountReq(Number(e.target.value))}
                     className="w-full mt-1 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono font-bold text-slate-900 dark:text-white"
-                    placeholder="Min GHS 100.00"
+                    placeholder="Min GHS 100.00 (Interval GHS 50)"
                   />
                 </div>
                 <div>

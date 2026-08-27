@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Calculator, Sparkles } from 'lucide-react';
 
 export const LoanCalculatorWidget: React.FC = () => {
-  const [amount, setAmount] = useState<number>(0);
+  const [amount, setAmount] = useState<number>(100);
   const [tenorDays, setTenorDays] = useState<number>(30);
 
   // E-RIKON Rate Policy Logic
@@ -40,7 +40,7 @@ export const LoanCalculatorWidget: React.FC = () => {
               </span>
             </h3>
             <p className="text-xs text-slate-400">
-              E-RiKON Tenor Tiered Rate Simulation Engine
+              E-RiKON Tenor Tiered Rate Simulation Engine (Min GH₵ 100 • Interval GH₵ 50)
             </p>
           </div>
         </div>
@@ -52,36 +52,48 @@ export const LoanCalculatorWidget: React.FC = () => {
         {/* Principal Amount */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-slate-300">Requested Principal</label>
-            <span className="text-amber-400 font-mono font-extrabold text-sm">
-              GHS {amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
+            <label className="text-xs font-bold text-slate-300">Requested Principal (GH₵)</label>
+            <div className="flex items-center space-x-1.5">
+              <button
+                type="button"
+                onClick={() => setAmount((prev) => Math.max(100, prev - 50))}
+                className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-xs flex items-center justify-center cursor-pointer transition-all border border-slate-700"
+                title="Decrease by GH₵ 50"
+              >
+                -50
+              </button>
+              <span className="text-amber-400 font-mono font-black text-sm px-2 py-0.5 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                GHS {amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+              <button
+                type="button"
+                onClick={() => setAmount((prev) => Math.min(50000, prev + 50))}
+                className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-xs flex items-center justify-center cursor-pointer transition-all border border-slate-700"
+                title="Increase by GH₵ 50"
+              >
+                +50
+              </button>
+            </div>
           </div>
           
           <input
             type="range"
-            min="0"
+            min="100"
             max="50000"
-            step="100"
+            step="50"
             value={amount}
-            onChange={(e) => {
-              const val = Number(e.target.value);
-              if (val > 0 && val < 100) {
-                setAmount(100);
-              } else {
-                setAmount(val);
-              }
-            }}
+            onChange={(e) => setAmount(Math.max(100, Number(e.target.value)))}
             className="w-full accent-amber-500 bg-slate-800 rounded-lg cursor-pointer h-2"
           />
           <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-            <span>GHS 100.00</span>
+            <span>GHS 100.00 (Min)</span>
+            <span>Interval: +GHS 50.00</span>
             <span>GHS 50,000.00</span>
           </div>
 
-          {/* Quick Amount Selector Chips Starting from 100 */}
+          {/* Quick Amount Selector Chips in multiples of 50 starting from 100 */}
           <div className="flex flex-wrap items-center gap-1.5 pt-1">
-            {[100, 500, 1000, 2500, 5000, 10000].map((preset) => (
+            {[100, 150, 200, 250, 300, 500, 1000, 2500, 5000].map((preset) => (
               <button
                 key={preset}
                 type="button"
