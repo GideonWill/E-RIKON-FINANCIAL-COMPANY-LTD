@@ -1056,15 +1056,45 @@ export const approveRequest = (
       saveStoredLoans(loans);
     }
   } else if (req.type === 'STAFF_ROLE_SIGNUP') {
+    const targetEmail = (req.details?.email || '').trim().toLowerCase();
+    const targetId = (req.targetId || '').trim();
     const users = getRegisteredUsers();
-    const uIndex = users.findIndex((u) => u.id === req.targetId || u.email === req.details?.email);
+    const uIndex = users.findIndex(
+      (u) => (targetId && u.id === targetId) || (targetEmail && u.email?.trim().toLowerCase() === targetEmail)
+    );
     if (uIndex !== -1) {
       users[uIndex].isApproved = true;
       users[uIndex].status = 'ACTIVE';
       saveRegisteredUsers(users);
     }
+
+    // Mark all matching tickets in approval queue as APPROVED
+    approvals.forEach((a) => {
+      if (
+        a.id === approvalId ||
+        (targetId && a.targetId === targetId) ||
+        (targetEmail && a.details?.email?.trim().toLowerCase() === targetEmail)
+      ) {
+        a.status = 'APPROVED';
+        a.reviewedById = reviewerUser.id;
+        a.reviewedByName = `${reviewerUser.firstName} ${reviewerUser.lastName}`;
+        a.reviewedAt = new Date().toISOString();
+        a.reviewRemarks = remarks || 'Approved by Super Admin';
+      }
+    });
+
+    // Broadcast real-time approval event
+    broadcastRealtimeEvent('APPROVAL_DECISION_MADE', {
+      userId: users[uIndex]?.id || targetId,
+      email: targetEmail || users[uIndex]?.email,
+      action: 'APPROVED',
+      role: req.requestedRole || users[uIndex]?.role,
+      name: req.requestedByName || `${users[uIndex]?.firstName} ${users[uIndex]?.lastName}`,
+    });
+
     // Sync approval to live backend
-    apiClient.patch(`/auth/approve/${req.targetId}`).catch(() => { });
+    if (targetId) apiClient.patch(`/auth/approve/${targetId}`).catch(() => {});
+    if (targetEmail) apiClient.patch(`/auth/approve/${targetEmail}`).catch(() => {});
   }
 
   approvals[index] = req;
@@ -1110,11 +1140,41 @@ export const rejectRequest = (
       saveStoredLoans(loans);
     }
   } else if (req.type === 'STAFF_ROLE_SIGNUP') {
+    const targetEmail = (req.details?.email || '').trim().toLowerCase();
+    const targetId = (req.targetId || '').trim();
     const users = getRegisteredUsers();
-    const updated = users.filter((u) => u.id !== req.targetId && u.email !== req.details?.email);
+    const updated = users.filter(
+      (u) => !(targetId && u.id === targetId) && !(targetEmail && u.email?.trim().toLowerCase() === targetEmail)
+    );
     saveRegisteredUsers(updated);
+
+    // Mark all matching tickets in approval queue as REJECTED
+    approvals.forEach((a) => {
+      if (
+        a.id === approvalId ||
+        (targetId && a.targetId === targetId) ||
+        (targetEmail && a.details?.email?.trim().toLowerCase() === targetEmail)
+      ) {
+        a.status = 'REJECTED';
+        a.reviewedById = reviewerUser.id;
+        a.reviewedByName = `${reviewerUser.firstName} ${reviewerUser.lastName}`;
+        a.reviewedAt = new Date().toISOString();
+        a.reviewRemarks = remarks || 'Rejected by Super Admin';
+      }
+    });
+
+    // Broadcast real-time rejection event
+    broadcastRealtimeEvent('APPROVAL_DECISION_MADE', {
+      userId: targetId,
+      email: targetEmail,
+      action: 'REJECTED',
+      role: req.requestedRole,
+      name: req.requestedByName,
+    });
+
     // Sync rejection to live backend
-    apiClient.delete(`/auth/reject/${req.targetId}`).catch(() => { });
+    if (targetId) apiClient.delete(`/auth/reject/${targetId}`).catch(() => {});
+    if (targetEmail) apiClient.delete(`/auth/reject/${targetEmail}`).catch(() => {});
   }
 
   approvals[index] = req;

@@ -9,7 +9,7 @@ import {
   deleteRegisteredUser,
   apiClient
 } from '../services/api';
-import { useRealtimeSync } from '../services/realtimeSync';
+import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
 import { pushLocalToCloud, pullCloudToLocal } from '../services/cloudSync';
 import { ApprovalRequest, ApprovalType, RoleName, RegisteredUserRecord } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -105,6 +105,16 @@ export const ApprovalsPage: React.FC = () => {
         const { data } = await apiClient.get('/auth/pending');
         if (Array.isArray(data)) {
           data.forEach((u: any) => {
+            const userKey = u.email?.toLowerCase();
+            const localUser = currentUsers.find((cu) => cu.email?.toLowerCase() === userKey || cu.id === u.id);
+            // If already approved, skip pending ticket
+            if (localUser && (localUser.isApproved || localUser.role === 'SUPER_ADMIN')) return;
+
+            const matchingAppr = Array.from(apprMap.values()).find(
+              (a) => a.targetId === u.id || a.details?.email?.toLowerCase() === userKey
+            );
+            if (matchingAppr && matchingAppr.status === 'APPROVED') return;
+
             const appId = `appr-${u.id}`;
             if (!apprMap.has(appId)) {
               apprMap.set(appId, {
@@ -133,9 +143,12 @@ export const ApprovalsPage: React.FC = () => {
       // Cross-check all registered users
       currentUsers.forEach((user) => {
         if (!user.isApproved && user.role !== 'SUPER_ADMIN') {
+          const userKey = user.email?.toLowerCase();
           const matchingAppr = Array.from(apprMap.values()).find(
-            (a) => a.targetId === user.id || a.details?.email?.toLowerCase() === user.email.toLowerCase()
+            (a) => a.targetId === user.id || a.details?.email?.toLowerCase() === userKey
           );
+          if (matchingAppr && matchingAppr.status === 'APPROVED') return;
+
           if (!matchingAppr) {
             const newAppId = `appr-${user.id}`;
             apprMap.set(newAppId, {
@@ -231,27 +244,40 @@ export const ApprovalsPage: React.FC = () => {
     const users = getRegisteredUsers();
     const idx = users.findIndex((u) => u.id === userId);
     if (idx !== -1) {
+      const targetEmail = (users[idx].email || '').trim().toLowerCase();
       users[idx].isApproved = targetStatus;
       users[idx].status = targetStatus ? 'ACTIVE' : 'PENDING_APPROVAL';
       saveRegisteredUsers(users);
       setRegisteredUsers(users);
 
-      // Also update any matching pending approval item
+      // Also update any matching pending approval items
       const apprs = getStoredApprovals();
-      const aIdx = apprs.findIndex((a) => a.targetId === userId || a.details?.email === users[idx].email);
-      if (aIdx !== -1) {
-        apprs[aIdx].status = targetStatus ? 'APPROVED' : 'REJECTED';
-        apprs[aIdx].reviewedByName = `${currentUser.firstName} ${currentUser.lastName}`;
-        apprs[aIdx].reviewedAt = new Date().toISOString();
-        saveStoredApprovals(apprs);
-        setApprovals(apprs);
-      }
+      apprs.forEach((a) => {
+        if (a.targetId === userId || (targetEmail && a.details?.email?.toLowerCase() === targetEmail)) {
+          a.status = targetStatus ? 'APPROVED' : 'REJECTED';
+          a.reviewedByName = `${currentUser.firstName} ${currentUser.lastName}`;
+          a.reviewedAt = new Date().toISOString();
+        }
+      });
+      saveStoredApprovals(apprs);
+      setApprovals(apprs);
+
+      // Broadcast real-time approval decision
+      broadcastRealtimeEvent('APPROVAL_DECISION_MADE', {
+        userId,
+        email: targetEmail,
+        action: targetStatus ? 'APPROVED' : 'REJECTED',
+        role: users[idx].role,
+        name: `${users[idx].firstName} ${users[idx].lastName}`,
+      });
 
       // Sync to live backend
       if (targetStatus) {
         apiClient.patch(`/auth/approve/${userId}`).catch(() => {});
+        if (targetEmail) apiClient.patch(`/auth/approve/${targetEmail}`).catch(() => {});
       } else {
         apiClient.delete(`/auth/reject/${userId}`).catch(() => {});
+        if (targetEmail) apiClient.delete(`/auth/reject/${targetEmail}`).catch(() => {});
       }
 
       pushLocalToCloud().catch(() => {});

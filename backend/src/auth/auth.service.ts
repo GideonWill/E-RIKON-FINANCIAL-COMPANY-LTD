@@ -215,9 +215,15 @@ export class AuthService {
     });
   }
 
-  async approveUser(userId: string, approverId?: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
+  async approveUser(userIdOrEmail: string, approverId?: string) {
+    const cleanParam = userIdOrEmail.trim().toLowerCase();
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: userIdOrEmail },
+          { email: cleanParam },
+        ],
+      },
       include: { branch: true },
     });
 
@@ -226,7 +232,7 @@ export class AuthService {
     }
 
     const updatedUser = await this.prisma.user.update({
-      where: { id: userId },
+      where: { id: user.id },
       data: {
         isApproved: true,
         isActive: true,
@@ -241,7 +247,7 @@ export class AuthService {
           userId: approverId || user.id,
           userEmail: user.email,
           userRole: user.role,
-          branchName: user.branch?.name || 'Accra Central Main Branch',
+          branchName: user.branch?.name || 'Institutional Main',
           action: 'STAFF_ACCOUNT_APPROVED',
           resource: 'AUTH',
           newValue: `Account approved for ${user.firstName} ${user.lastName} (${user.role})`,
@@ -252,6 +258,7 @@ export class AuthService {
     // Broadcast approval event in real-time
     this.eventsService.broadcast('APPROVAL_DECISION_MADE', {
       userId: user.id,
+      email: user.email,
       action: 'APPROVED',
       role: user.role,
       name: `${user.firstName} ${user.lastName}`,
@@ -260,31 +267,31 @@ export class AuthService {
     return {
       success: true,
       message: `User ${user.firstName} ${user.lastName} approved successfully.`,
-      user: updatedUser,
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        isApproved: updatedUser.isApproved,
+      },
     };
   }
 
-  async rejectUser(userId: string, approverId?: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: { branch: true },
+  async rejectUser(userIdOrEmail: string) {
+    const cleanParam = userIdOrEmail.trim().toLowerCase();
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: userIdOrEmail },
+          { email: cleanParam },
+        ],
+      },
     });
 
     if (!user) {
       throw new NotFoundException('User not found.');
     }
 
-    // Clean up dependent audit logs or daily summaries before deletion
-    try {
-      await this.prisma.auditLog.deleteMany({ where: { userId: user.id } });
-      await this.prisma.dailyCashSummary.deleteMany({ where: { tellerId: user.id } });
-    } catch { }
-
     await this.prisma.user.delete({
-      where: { id: userId },
-    });
-
-    // Broadcast deletion in real-time
     this.eventsService.broadcast('APPROVAL_DECISION_MADE', {
       userId: user.id,
       action: 'REJECTED',
