@@ -4,8 +4,10 @@ import {
   getStoredLoans, 
   getStoredAccounts, 
   getStoredCompanyInterest,
-  clearAllFinancialReceipts
+  clearAllFinancialReceipts,
+  clearStoredTransactions
 } from '../services/api';
+import { pushLocalToCloud } from '../services/cloudSync';
 import { useRealtimeSync } from '../services/realtimeSync';
 import { Transaction, Account, DailySplitEntry, DailyCollectionCycle } from '../types';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
@@ -739,9 +741,27 @@ export const ReportsPage: React.FC = () => {
 
       {/* Completed Physical Operations Receipts Table */}
       <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-        <h3 className="font-extrabold text-base text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-3">
-          Completed Financial Operations (Receipts Archive)
-        </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+          <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+            Completed Financial Operations (Receipts Archive)
+          </h3>
+          {transactions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm('Clear all recorded receipts and transaction histories from the archive?')) {
+                  clearStoredTransactions();
+                  setTransactions([]);
+                  pushLocalToCloud().catch(() => {});
+                }
+              }}
+              className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all self-start sm:self-auto"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Clear Receipts Archive</span>
+            </button>
+          )}
+        </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">

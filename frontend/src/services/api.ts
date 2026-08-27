@@ -202,10 +202,13 @@ export const getStoredTransactions = (): Transaction[] => {
     const parsed = JSON.parse(data);
     if (!Array.isArray(parsed)) return [];
     const deletedIds = getDeletedCustomerIds();
+    const currentCustomers = getStoredCustomers();
+    if (currentCustomers.length === 0) return [];
+    const currentCustomerIds = new Set(currentCustomers.map((c) => c.id));
     return parsed.filter((t) => {
       const custId = t.account?.customerId || t.account?.customer?.id;
-      if (custId && deletedIds.includes(custId)) return false;
-      if (deletedIds.includes(t.id) || deletedIds.includes(t.receiptNo)) return false;
+      if (custId && (deletedIds.includes(custId) || !currentCustomerIds.has(custId))) return false;
+      if (deletedIds.includes(t.id) || (t.receiptNo && deletedIds.includes(t.receiptNo))) return false;
       return true;
     });
   } catch {
@@ -215,10 +218,12 @@ export const getStoredTransactions = (): Transaction[] => {
 
 export const saveStoredTransactions = (txs: Transaction[]) => {
   const deletedIds = getDeletedCustomerIds();
+  const currentCustomers = getStoredCustomers();
+  const currentCustomerIds = new Set(currentCustomers.map((c) => c.id));
   const sanitized = txs
     .filter((t) => {
       const custId = t.account?.customerId || t.account?.customer?.id;
-      if (custId && deletedIds.includes(custId)) return false;
+      if (custId && (deletedIds.includes(custId) || !currentCustomerIds.has(custId))) return false;
       if (deletedIds.includes(t.id) || (t.receiptNo && deletedIds.includes(t.receiptNo))) return false;
       return true;
     })
