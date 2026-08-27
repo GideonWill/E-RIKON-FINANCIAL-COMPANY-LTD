@@ -237,61 +237,138 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
     }
   }
 
-  // 3. Authoritative Customers Sync
+  // 3. Merged Authoritative Customers Sync
   if (Array.isArray(cloudData.customers)) {
-    const localCust = getStoredCustomers();
+    const localCust = getStoredCustomers().filter((c) => !deletedCustIds.includes(c.id));
     const cleanCust = cloudData.customers.filter((c) => !deletedCustIds.includes(c.id));
-    if (cleanCust.length !== localCust.length || JSON.stringify(cleanCust) !== JSON.stringify(localCust)) {
-      saveStoredCustomers(cleanCust);
+    
+    const custMap = new Map<string, any>();
+    localCust.forEach((c) => {
+      if (c.id) custMap.set(c.id, c);
+      if (c.customerNumber) custMap.set(c.customerNumber, c);
+    });
+    cleanCust.forEach((c) => {
+      const existing = custMap.get(c.id) || (c.customerNumber ? custMap.get(c.customerNumber) : null);
+      custMap.set(c.id, { ...existing, ...c });
+    });
+
+    const mergedCust = Array.from(new Set(Array.from(custMap.values()).map((c) => c.id)))
+      .map((id) => custMap.get(id)!)
+      .filter((c) => !deletedCustIds.includes(c.id));
+
+    if (mergedCust.length !== localCust.length || JSON.stringify(mergedCust) !== JSON.stringify(localCust)) {
+      saveStoredCustomers(mergedCust);
       hasUpdates = true;
     }
   }
 
-  // 4. Authoritative Accounts Sync
+  // 4. Merged Authoritative Accounts Sync
   if (Array.isArray(cloudData.accounts)) {
-    const localAcc = getStoredAccounts();
+    const localAcc = getStoredAccounts().filter(
+      (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
+    );
     const cleanAcc = cloudData.accounts.filter(
       (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
     );
-    if (cleanAcc.length !== localAcc.length || JSON.stringify(cleanAcc) !== JSON.stringify(localAcc)) {
-      saveStoredAccounts(cleanAcc);
+
+    const accMap = new Map<string, any>();
+    localAcc.forEach((a) => {
+      if (a.id) accMap.set(a.id, a);
+      if (a.accountNumber) accMap.set(a.accountNumber, a);
+    });
+    cleanAcc.forEach((a) => {
+      const existing = accMap.get(a.id) || (a.accountNumber ? accMap.get(a.accountNumber) : null);
+      // Prefer most recent balance & daily cycles
+      accMap.set(a.id, { ...existing, ...a });
+    });
+
+    const mergedAcc = Array.from(new Set(Array.from(accMap.values()).map((a) => a.id)))
+      .map((id) => accMap.get(id)!)
+      .filter((a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id));
+
+    if (mergedAcc.length !== localAcc.length || JSON.stringify(mergedAcc) !== JSON.stringify(localAcc)) {
+      saveStoredAccounts(mergedAcc);
       hasUpdates = true;
     }
   }
 
-  // 5. Authoritative Transactions Sync
+  // 5. Merged Authoritative Transactions Sync
   if (Array.isArray(cloudData.transactions)) {
     const localTx = getStoredTransactions();
-    if (cloudData.transactions.length !== localTx.length || JSON.stringify(cloudData.transactions) !== JSON.stringify(localTx)) {
-      saveStoredTransactions(cloudData.transactions);
+    const txMap = new Map<string, any>();
+    localTx.forEach((t) => {
+      if (t.id) txMap.set(t.id, t);
+      if (t.referenceNo) txMap.set(t.referenceNo, t);
+    });
+    cloudData.transactions.forEach((t) => {
+      const existing = txMap.get(t.id) || (t.referenceNo ? txMap.get(t.referenceNo) : null);
+      txMap.set(t.id, { ...existing, ...t });
+    });
+
+    const mergedTx = Array.from(new Set(Array.from(txMap.values()).map((t) => t.id)))
+      .map((id) => txMap.get(id)!);
+
+    if (mergedTx.length !== localTx.length || JSON.stringify(mergedTx) !== JSON.stringify(localTx)) {
+      saveStoredTransactions(mergedTx);
       hasUpdates = true;
     }
   }
 
-  // 6. Authoritative Loans Sync
+  // 6. Merged Authoritative Loans Sync
   if (Array.isArray(cloudData.loans)) {
-    const localLoans = getStoredLoans();
+    const localLoans = getStoredLoans().filter((l) => !deletedCustIds.includes(l.customerId));
     const cleanLoans = cloudData.loans.filter((l) => !deletedCustIds.includes(l.customerId));
-    if (cleanLoans.length !== localLoans.length || JSON.stringify(cleanLoans) !== JSON.stringify(localLoans)) {
-      saveStoredLoans(cleanLoans);
+
+    const loanMap = new Map<string, any>();
+    localLoans.forEach((l) => {
+      if (l.id) loanMap.set(l.id, l);
+    });
+    cleanLoans.forEach((l) => {
+      const existing = loanMap.get(l.id);
+      loanMap.set(l.id, { ...existing, ...l });
+    });
+
+    const mergedLoans = Array.from(loanMap.values()).filter((l) => !deletedCustIds.includes(l.customerId));
+    if (mergedLoans.length !== localLoans.length || JSON.stringify(mergedLoans) !== JSON.stringify(localLoans)) {
+      saveStoredLoans(mergedLoans);
       hasUpdates = true;
     }
   }
 
-  // 7. Authoritative Company Interest Sync
+  // 7. Merged Authoritative Company Interest Sync
   if (Array.isArray(cloudData.companyInterest)) {
     const localInt = getStoredCompanyInterest();
-    if (cloudData.companyInterest.length !== localInt.length || JSON.stringify(cloudData.companyInterest) !== JSON.stringify(localInt)) {
-      saveStoredCompanyInterest(cloudData.companyInterest);
+    const intMap = new Map<string, any>();
+    localInt.forEach((i) => {
+      if (i.id) intMap.set(i.id, i);
+    });
+    cloudData.companyInterest.forEach((i) => {
+      const existing = intMap.get(i.id);
+      intMap.set(i.id, { ...existing, ...i });
+    });
+
+    const mergedInt = Array.from(intMap.values());
+    if (mergedInt.length !== localInt.length || JSON.stringify(mergedInt) !== JSON.stringify(localInt)) {
+      saveStoredCompanyInterest(mergedInt);
       hasUpdates = true;
     }
   }
 
-  // 8. Authoritative Company Withdrawals Sync
+  // 8. Merged Authoritative Company Withdrawals Sync
   if (Array.isArray(cloudData.companyWithdrawals)) {
     const localWd = getStoredCompanyWithdrawals();
-    if (cloudData.companyWithdrawals.length !== localWd.length || JSON.stringify(cloudData.companyWithdrawals) !== JSON.stringify(localWd)) {
-      saveStoredCompanyWithdrawals(cloudData.companyWithdrawals);
+    const wdMap = new Map<string, any>();
+    localWd.forEach((w) => {
+      if (w.id) wdMap.set(w.id, w);
+    });
+    cloudData.companyWithdrawals.forEach((w) => {
+      const existing = wdMap.get(w.id);
+      wdMap.set(w.id, { ...existing, ...w });
+    });
+
+    const mergedWd = Array.from(wdMap.values());
+    if (mergedWd.length !== localWd.length || JSON.stringify(mergedWd) !== JSON.stringify(localWd)) {
+      saveStoredCompanyWithdrawals(mergedWd);
       hasUpdates = true;
     }
   }

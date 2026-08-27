@@ -12,6 +12,7 @@ import {
   accumulateCompanyInterest
 } from '../services/api';
 import { subscribeRealtimeEvents, broadcastRealtimeEvent, useRealtimeSync } from '../services/realtimeSync';
+import { pushLocalToCloud } from '../services/cloudSync';
 import { Customer, Account, SavingsPackage, SAVINGS_PACKAGES, Transaction, DailyCollectionCycle } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { GhanaCardModal } from '../components/ui/GhanaCardModal';
@@ -377,6 +378,11 @@ export const CustomersPage: React.FC = () => {
 
       // Broadcast across all connected staff devices in real-time
       broadcastRealtimeEvent('CUSTOMER_CREATED', newCust);
+      broadcastRealtimeEvent('ACCOUNT_OPENED', newAcc);
+      if (depositNum > 0) {
+        broadcastRealtimeEvent('DEPOSIT_RECORDED', newTxs[0]);
+      }
+      pushLocalToCloud().catch(() => {});
 
       // Close modal, clear search filter, and show new customer immediately
       setShowRegisterModal(false);

@@ -12,6 +12,7 @@ import {
   toDecimal
 } from '../services/api';
 import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
+import { pushLocalToCloud } from '../services/cloudSync';
 import { Account, Transaction, PaymentMode, SavingsPackage, SAVINGS_PACKAGES, User } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
@@ -145,6 +146,8 @@ export const TellerPage: React.FC = () => {
       setSelectedAccount(updatedAccount);
       setAccounts(getStoredAccounts());
       setPrintedTx(transaction);
+      broadcastRealtimeEvent('PACKAGE_DEPOSIT_RECORDED', { accountId: selectedAccount.id, amount: numAmount });
+      pushLocalToCloud().catch(() => {});
 
       setSuccessMessage(
         `🎉 Deposit of GHS ${numAmount.toFixed(2)} recorded! Covered ${splitResult.daysCovered} days (Days ${splitResult.startDay} to ${splitResult.endDay}) on GH₵ ${chosenPackage}/day package.`
@@ -201,6 +204,7 @@ export const TellerPage: React.FC = () => {
       setAccounts(freshAccs);
       setPrintedTx(newTx);
       broadcastRealtimeEvent('WITHDRAWAL_RECORDED', newTx);
+      pushLocalToCloud().catch(() => {});
 
       setSuccessMessage(`✅ Savings-backed withdrawal loan of GHS ${numAmount.toFixed(2)} completed successfully!`);
     }
