@@ -179,10 +179,11 @@ export const CustomersPage: React.FC = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Dynamic calculations for deposit & upfront package fee
+  // Dynamic calculations for deposit & upfront package fee (fee deducted from deposit)
   const depositNum = Number(initialDepositAmount) || 0;
   const packageFee = chosenPackage;
-  const totalPayable = depositNum + packageFee;
+  const totalPayable = depositNum;
+  const netCreditedSavings = Math.max(0, depositNum - packageFee);
   const splitPreview = depositNum > 0 ? splitPaymentIntoDays(chosenPackage, depositNum, 0) : null;
 
   const filteredCustomers = customers.filter((c) => {
@@ -1339,14 +1340,20 @@ export const CustomersPage: React.FC = () => {
                     </div>
 
                     <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80">
-                      <span className="text-[10px] text-amber-400/90 block font-medium">Upfront Cycle Fee</span>
-                      <span className="font-mono font-black text-amber-300 text-sm">GH₵ {packageFee}.00 (Retained)</span>
+                      <span className="text-[10px] text-amber-400/90 block font-medium">1-Day Retention Fee</span>
+                      <span className="font-mono font-black text-amber-300 text-sm">GH₵ {packageFee}.00 (Deducted)</span>
                     </div>
 
                     <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40">
                       <span className="text-[10px] text-emerald-300 block font-medium">Total Cash Required</span>
                       <span className="font-mono font-black text-emerald-400 text-sm">GH₵ {totalPayable}.00</span>
                     </div>
+                  </div>
+
+                  {/* Net Balance Breakdown Badge */}
+                  <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700 flex items-center justify-between text-xs">
+                    <span className="text-slate-300 font-medium text-[11px]">Net Credited to Available Savings Balance:</span>
+                    <span className="font-mono font-black text-emerald-400 text-xs">GH₵ {netCreditedSavings}.00</span>
                   </div>
 
                   {/* Early Withdrawal Guarantee Policy Note */}
