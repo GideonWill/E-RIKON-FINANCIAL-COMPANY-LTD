@@ -312,15 +312,33 @@ export interface RegisteredUserRecord extends User {
   ghanaCard?: string;
 }
 
+const DEFAULT_PURGED_EMAILS = [
+  'gettyrodes@gmail.com',
+  'gertyrays@gmail.com',
+  'kwamemensah@gmail.com',
+  'test_superadmin@erikon.com',
+  'david@gmail.com',
+  'nanaquasi1992nk@gmail.com',
+  'prinzeboateng@gmail.com',
+  'k@gmail.com',
+  'kofikofi@gmail.com',
+  'testadmin@erikon-group.com'
+];
+
 export const getDeletedUserEmails = (): string[] => {
   const data = localStorage.getItem('erikon_deleted_user_emails');
-  if (!data) return [];
-  try {
-    const parsed = JSON.parse(data);
-    return Array.isArray(parsed) ? parsed.map((e) => String(e).toLowerCase()) : [];
-  } catch {
-    return [];
+  const deletedSet = new Set<string>(DEFAULT_PURGED_EMAILS.map((e) => e.toLowerCase()));
+  if (data) {
+    try {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((e) => deletedSet.add(String(e).toLowerCase()));
+      }
+    } catch {
+      // ignore
+    }
   }
+  return Array.from(deletedSet);
 };
 
 export const addDeletedUserEmail = (emailOrId: string) => {
