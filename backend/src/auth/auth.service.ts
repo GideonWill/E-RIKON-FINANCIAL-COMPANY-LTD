@@ -292,10 +292,15 @@ export class AuthService {
     }
 
     await this.prisma.user.delete({
+      where: { id: user.id },
+    });
+
     this.eventsService.broadcast('APPROVAL_DECISION_MADE', {
       userId: user.id,
+      email: user.email,
       action: 'REJECTED',
       role: user.role,
+      name: `${user.firstName} ${user.lastName}`,
     });
 
     this.eventsService.broadcast('USER_DELETED', {
