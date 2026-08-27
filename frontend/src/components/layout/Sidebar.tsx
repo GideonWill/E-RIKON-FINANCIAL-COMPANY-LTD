@@ -110,12 +110,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'LOAN_OFFICER', 'AUDITOR'],
     },
     {
-      to: '/branches',
-      label: 'Branch Operations',
-      icon: GitBranch,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'AUDITOR'],
-    },
-    {
       to: '/reports',
       label: 'Financial Statements',
       icon: FileSpreadsheet,

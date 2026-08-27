@@ -134,7 +134,7 @@ export const LoginPage: React.FC = () => {
           navigate('/loans');
           break;
         case 'BRANCH_ADMIN':
-          navigate('/branches');
+          navigate('/dashboard');
           break;
         case 'AUDITOR':
           navigate('/audit');

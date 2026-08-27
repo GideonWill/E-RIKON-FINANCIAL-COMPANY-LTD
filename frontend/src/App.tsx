@@ -94,11 +94,7 @@ export const App: React.FC = () => {
                         
                         <Route
                           path="/branches"
-                          element={
-                            <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'AUDITOR']}>
-                              <BranchesPage />
-                            </ProtectedRoute>
-                          }
+                          element={<Navigate to="/dashboard" replace />}
                         />
                         
                         <Route path="/reports" element={<ReportsPage />} />
