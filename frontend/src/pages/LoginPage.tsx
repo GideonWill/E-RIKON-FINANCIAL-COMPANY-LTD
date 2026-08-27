@@ -658,10 +658,25 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {/* Bottom Clean Footer */}
-        <footer className="w-full max-w-[1020px] mx-auto flex items-center justify-center shrink-0 pt-2 text-center text-xs text-slate-500 font-medium">
+        <footer className="w-full max-w-[1020px] mx-auto flex flex-col sm:flex-row items-center justify-between shrink-0 pt-2 pb-4 text-center text-xs text-slate-500 font-medium gap-2">
           <p>
             © {new Date().getFullYear()} E-RiKON Financial Company PLC. All rights reserved.
           </p>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                resetToCleanLiveState();
+                pullCloudToLocal().then(() => {
+                  window.location.reload();
+                });
+              }}
+              className="text-[11px] text-slate-400 hover:text-amber-600 transition-colors flex items-center gap-1 cursor-pointer font-mono"
+              title="Purge cached device records and fetch pristine cloud state"
+            >
+              <span>🔄 Hard Refresh & Sync</span>
+            </button>
+          </div>
         </footer>
 
       </div>
