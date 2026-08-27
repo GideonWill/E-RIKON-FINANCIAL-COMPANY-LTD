@@ -119,19 +119,19 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans transition-colors duration-200 overflow-x-hidden relative"
+      className="min-h-screen h-screen flex flex-col bg-slate-50 dark:bg-slate-950 font-sans transition-colors duration-200 overflow-hidden relative"
     >
       {/* Edge drag affordance on mobile */}
       {!isMobileMenuOpen && (
         <div 
-          className="fixed left-0 top-0 bottom-0 w-8 z-40 lg:hidden pointer-events-auto select-none"
+          className="fixed left-0 top-14 bottom-0 w-6 z-30 lg:hidden pointer-events-auto select-none"
           aria-hidden="true"
         />
       )}
 
       <Header onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)} />
 
-      <div className="flex flex-1 relative min-w-0">
+      <div className="flex flex-1 pt-14 sm:pt-16 min-h-0 overflow-hidden relative min-w-0">
         <Sidebar
           isOpen={isMobileMenuOpen}
           isDragging={isDragging}
@@ -140,6 +140,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         />
         <main 
           className="flex-1 p-3 sm:p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden"
+          style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {children}
         </main>

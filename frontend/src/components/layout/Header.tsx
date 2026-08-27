@@ -77,10 +77,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       )}
 
       <header 
-        className="app-header sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-2.5 sm:px-6 transition-colors duration-200 shadow-2xs overflow-x-clip"
+        className="app-header fixed top-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-2.5 sm:px-6 transition-colors duration-200 shadow-2xs w-full h-14 sm:h-16 flex items-center justify-between"
         style={{
-          paddingTop: 'max(env(safe-area-inset-top, 0px), 0.5rem)',
-          paddingBottom: '0.5rem',
+          paddingTop: 'max(env(safe-area-inset-top, 0px), 0.25rem)',
         }}
       >
         <div className="flex items-center justify-between gap-2 max-w-full">

@@ -162,7 +162,7 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
   for (const url of endpoints) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
       const res = await fetch(url, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
@@ -174,10 +174,14 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
         const vault = data?.vault || data;
         if (
           vault &&
-          (Array.isArray(vault.registeredUsers) || Array.isArray(vault.customers) || Array.isArray(vault.accounts))
+          ((Array.isArray(vault.registeredUsers) && vault.registeredUsers.length > 0) ||
+           (Array.isArray(vault.customers) && vault.customers.length > 0) ||
+           (Array.isArray(vault.transactions) && vault.transactions.length > 0))
         ) {
           cloudData = vault;
-          break; // Use the fastest responsive endpoint with valid data
+          break; // Prioritize the active, populated vault
+        } else if (vault && !cloudData) {
+          cloudData = vault;
         }
       }
     } catch (e) {
