@@ -262,7 +262,7 @@ export const TellerPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:ml-auto justify-start sm:justify-end shrink-0">
           {currentUser && (
             <div className="flex items-center space-x-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-3 py-1.5 rounded-xl border border-amber-500/30 text-xs font-bold">
               <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0" />

@@ -118,8 +118,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
             </div>
           </div>
 
-          {/* Right: Controls, System Actions, Notifications & User Identity Profile */}
-          <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
+          {/* Right: Controls, System Actions, Notifications & User Identity Profile (Strictly Right-Aligned) */}
+          <div className="flex items-center justify-end space-x-1.5 sm:space-x-2.5 shrink-0 ml-auto">
             
             {/* Active Workstation Role Badge (Desktop) */}
             <button
