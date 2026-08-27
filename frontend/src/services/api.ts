@@ -268,10 +268,21 @@ export const saveStoredBranches = (branches: Branch[]) => {
 };
 
 export const getStoredCompanyInterest = (): CompanyInterestRecord[] => {
+  const currentCustomers = getStoredCustomers();
+  if (currentCustomers.length === 0) return [];
+  const currentCustomerIds = new Set(currentCustomers.map((c) => c.id));
+  const currentAccNos = new Set(getStoredAccounts().map((a) => a.accountNumber));
   const data = localStorage.getItem('erikon_company_interest');
   if (!data) return [];
   try {
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    if (!Array.isArray(parsed)) return [];
+    const deletedIds = getDeletedCustomerIds();
+    return parsed.filter((r) => {
+      if (r.customerId && (deletedIds.includes(r.customerId) || !currentCustomerIds.has(r.customerId))) return false;
+      if (r.accountNumber && !currentAccNos.has(r.accountNumber)) return false;
+      return true;
+    });
   } catch {
     return [];
   }
@@ -303,6 +314,7 @@ export const emptyVaultBalance = () => {
   broadcastRealtimeEvent('COMPANY_INTEREST_ACCUMULATED', []);
   broadcastRealtimeEvent('INTEREST_WITHDRAWAL_REQUESTED', []);
   broadcastRealtimeEvent('VAULT_CLEARED', { clearedAt: new Date().toISOString() });
+  import('./cloudSync').then((m) => m.pushLocalToCloud().catch(() => {}));
 };
 
 export const getStoredApprovals = (): ApprovalRequest[] => {
