@@ -81,11 +81,31 @@ export const EndOfDayPage: React.FC = () => {
 
   // Daily field splits recorded across all client cycles for this date
   const dayFieldSplits = useMemo(() => {
-    const splits: { splitDate: string; amount: number; dayNumber: number; receiptNo: string; customerName: string; accountNumber: string; savingsPackage: number; isCompanyFee: boolean }[] = [];
+    const splits: { 
+      splitDate: string; 
+      amount: number; 
+      dayNumber: number; 
+      receiptNo: string; 
+      customerName: string; 
+      accountNumber: string; 
+      savingsPackage: number; 
+      recordedBy?: string;
+      recordedAt?: string;
+      isCompanyFee: boolean;
+    }[] = [];
+
     accounts.forEach((acc) => {
       (acc.dailyCycles || []).forEach((c) => {
         (c.dailySplits || []).forEach((s) => {
-          if (s.date === selectedDate) {
+          // A split belongs to selectedDate if:
+          // 1. It was recorded/received on selectedDate (via recordedAt)
+          // 2. OR its cycle allocation date is selectedDate
+          // 3. OR if the cycle itself was opened/contributed on selectedDate
+          const wasRecordedOnDate = s.recordedAt ? s.recordedAt.startsWith(selectedDate) : false;
+          const isDateMatch = s.date === selectedDate;
+          const isCycleStartedOnDate = c.startDate ? c.startDate.startsWith(selectedDate) : false;
+
+          if (wasRecordedOnDate || isDateMatch || isCycleStartedOnDate) {
             splits.push({
               splitDate: s.date,
               amount: s.amount,
@@ -94,6 +114,8 @@ export const EndOfDayPage: React.FC = () => {
               customerName: acc.customer ? `${acc.customer.firstName} ${acc.customer.lastName}` : 'Client',
               accountNumber: acc.accountNumber,
               savingsPackage: acc.savingsPackage || 20,
+              recordedBy: s.recordedBy || (currentUser ? `${currentUser.firstName} ${currentUser.lastName} (${currentUser.role.replace(/_/g, ' ')})` : 'Authorized Officer'),
+              recordedAt: s.recordedAt,
               isCompanyFee: Boolean(s.isCompanyFee),
             });
           }
@@ -101,7 +123,7 @@ export const EndOfDayPage: React.FC = () => {
       });
     });
     return splits;
-  }, [accounts, selectedDate]);
+  }, [accounts, selectedDate, currentUser]);
 
   // Loans created / updated on the selected date
   const dayLoans = useMemo(() => {
@@ -134,7 +156,7 @@ export const EndOfDayPage: React.FC = () => {
 
   // ================= CALCULATION OF ROLE-BY-ROLE TOTALS ================= //
 
-  // 1. Teller Operations
+  // 1. Teller & Counter Operations
   const tellerDeposits = dayTransactions
     .filter((t) => t.type === 'DEPOSIT' && t.paymentMode === 'PHYSICAL_CASH')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -147,7 +169,7 @@ export const EndOfDayPage: React.FC = () => {
     .filter((t) => t.type === 'DEPOSIT' && t.paymentMode !== 'PHYSICAL_CASH')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // 2. Field Collections
+  // 2. Field Collections & Multi-Day Splitter
   const fieldCollectionsTotal = dayFieldSplits
     .filter((s) => !s.isCompanyFee)
     .reduce((sum, s) => sum + s.amount, 0);
@@ -168,7 +190,7 @@ export const EndOfDayPage: React.FC = () => {
     dayFieldSplits.filter((s) => s.isCompanyFee).reduce((sum, s) => sum + s.amount, 0);
 
   // 5. Total Daily Inflow & Outflow Across Whole Institution
-  const totalDailyInflow = tellerDeposits + tellerElectronicInflow + fieldCollectionsTotal + loanRepaymentsTotal;
+  const totalDailyInflow = Math.max(tellerDeposits + tellerElectronicInflow, fieldCollectionsTotal) + loanRepaymentsTotal;
   const totalDailyOutflow = tellerWithdrawals + loansDisbursedTotal;
   const netDailyCashPosition = totalDailyInflow - totalDailyOutflow;
 
@@ -555,6 +577,7 @@ export const EndOfDayPage: React.FC = () => {
                   <th className="py-2.5 px-3">Package Rate</th>
                   <th className="py-2.5 px-3 text-right">Collected Amount (GHS)</th>
                   <th className="py-2.5 px-3">Type</th>
+                  <th className="py-2.5 px-3">Collected / Recorded By</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
@@ -576,16 +599,32 @@ export const EndOfDayPage: React.FC = () => {
                           {split.isCompanyFee ? 'Day 31 Company Fee' : 'Client Daily Savings'}
                         </span>
                       </td>
+                      <td className="py-2.5 px-3 font-sans font-semibold text-slate-600 dark:text-slate-300">
+                        {split.recordedBy || 'Authorized Officer'}
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="py-6 text-center text-slate-400 font-sans">
+                    <td colSpan={8} className="py-6 text-center text-slate-400 font-sans">
                       No field collections recorded on {formattedSelectedDate}.
                     </td>
                   </tr>
                 )}
               </tbody>
+              {dayFieldSplits.length > 0 && (
+                <tfoot>
+                  <tr className="border-t-2 border-slate-200 dark:border-slate-800 font-mono font-bold bg-slate-50/50 dark:bg-slate-950/50">
+                    <td colSpan={5} className="py-2.5 px-3 text-slate-500 uppercase text-[10px]">
+                      Total Collections Across {dayFieldSplits.length} Daily Contribution Day(s)
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-black text-emerald-600 text-sm">
+                      GHS {fieldCollectionsTotal.toFixed(2)}
+                    </td>
+                    <td colSpan={2}></td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         </div>

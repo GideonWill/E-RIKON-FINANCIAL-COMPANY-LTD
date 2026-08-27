@@ -132,6 +132,8 @@ export interface DailySplitEntry {
   amount: number;
   receiptNo: string;
   recordedBy?: string;
+  recordedAt?: string; // ISO date timestamp when payment was deposited/collected
+  batchTxRef?: string; // Reference to the parent transaction
   isCompanyFee?: boolean;
 }
 

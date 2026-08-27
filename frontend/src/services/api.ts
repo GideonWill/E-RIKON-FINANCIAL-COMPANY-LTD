@@ -953,7 +953,9 @@ export const splitPaymentIntoDays = (
   packageAmount: number,
   totalPaid: number,
   startingDay: number = 0,
-  startDateStr?: string
+  startDateStr?: string,
+  recordedByOfficer?: string,
+  batchTxRef?: string
 ): PaymentSplitResult => {
   if (!packageAmount || packageAmount <= 0) {
     throw new Error('Invalid package amount');
@@ -966,6 +968,7 @@ export const splitPaymentIntoDays = (
   let companyFeeIncluded = 0;
 
   const baseDate = startDateStr ? new Date(startDateStr) : new Date();
+  const currentIsoTime = new Date().toISOString();
 
   for (let i = 1; i <= daysCovered; i++) {
     const currentDayNo = startingDay + i;
@@ -984,6 +987,9 @@ export const splitPaymentIntoDays = (
       date: entryDate.toISOString().split('T')[0],
       amount: packageAmount,
       receiptNo: `RCP-SPLIT-${Date.now().toString().slice(-6)}-${i}`,
+      recordedBy: recordedByOfficer,
+      recordedAt: currentIsoTime,
+      batchTxRef: batchTxRef,
       isCompanyFee: isFeeDay,
     });
   }
@@ -1075,11 +1081,16 @@ export const recordPackageDeposit = (
     cycles = [activeCycle, ...cycles];
   }
 
+  const txReferenceNo = `TX-DEP-${Date.now().toString().slice(-8)}`;
+  const officerNameTag = officerUser ? `${officerUser.firstName} ${officerUser.lastName} (${officerUser.role.replace(/_/g, ' ')})` : 'Authorized Officer';
+
   const splitResult = splitPaymentIntoDays(
     packageRate,
     amountPaid,
     activeCycle.currentDayCount,
-    customStartDate || activeCycle.startDate
+    customStartDate || activeCycle.startDate,
+    officerNameTag,
+    txReferenceNo
   );
 
   // Update Cycle
@@ -1109,7 +1120,7 @@ export const recordPackageDeposit = (
   // Create Transaction
   const newTx: Transaction = {
     id: `tx-${Date.now()}`,
-    referenceNo: `TX-DEP-${Date.now().toString().slice(-8)}`,
+    referenceNo: txReferenceNo,
     receiptNo: `RCP-${Date.now().toString().slice(-8)}`,
     accountId: acc.id,
     account: acc,
