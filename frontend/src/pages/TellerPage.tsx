@@ -190,6 +190,16 @@ export const TellerPage: React.FC = () => {
     }, 3000);
   };
 
+  const todayIso = new Date().toISOString().split('T')[0];
+  const allTxs = getStoredTransactions();
+  const todayTellerDeposits = allTxs
+    .filter((t) => (t.type === 'DEPOSIT' || t.type === 'COMPANY_FEE_DEDUCTION') && t.createdAt?.startsWith(todayIso))
+    .reduce((sum, t) => sum + t.amount, 0);
+  const todayTellerWithdrawals = allTxs
+    .filter((t) => t.type === 'WITHDRAWAL' && t.createdAt?.startsWith(todayIso))
+    .reduce((sum, t) => sum + t.amount, 0);
+  const liveTillBalance = Math.max(0, todayTellerDeposits - todayTellerWithdrawals);
+
   return (
     <div className="space-y-6 pb-12">
       
@@ -207,7 +217,7 @@ export const TellerPage: React.FC = () => {
 
         <div className="flex items-center space-x-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3.5 py-2 rounded-xl border border-emerald-500/20 text-xs font-mono font-bold w-fit shrink-0 shadow-xs">
           <ShieldAlert className="w-4 h-4 shrink-0" /> 
-          <span>Vault Cash Balanced: GHS 124,800.00</span>
+          <span>Vault Cash Balanced: GHS {liveTillBalance.toFixed(2)}</span>
         </div>
       </div>
 
