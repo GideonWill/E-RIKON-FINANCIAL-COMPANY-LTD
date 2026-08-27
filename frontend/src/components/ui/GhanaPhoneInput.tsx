@@ -7,6 +7,7 @@ interface GhanaPhoneInputProps {
   required?: boolean;
   className?: string;
   dark?: boolean;
+  variant?: 'box' | 'pill';
 }
 
 /**
@@ -39,6 +40,7 @@ export const GhanaPhoneInput: React.FC<GhanaPhoneInputProps> = ({
   required = false,
   className = '',
   dark = false,
+  variant = 'box',
 }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatGhanaianPhoneNumber(e.target.value);
@@ -48,8 +50,37 @@ export const GhanaPhoneInput: React.FC<GhanaPhoneInputProps> = ({
   const digitsCount = (value || '').replace(/\D/g, '').length;
   const isComplete = digitsCount === 10;
 
+  if (variant === 'pill') {
+    return (
+      <div className="relative flex items-center w-full">
+        <input
+          required={required}
+          type="tel"
+          inputMode="numeric"
+          value={value}
+          onChange={handleChange}
+          placeholder={placeholder}
+          maxLength={10}
+          style={{ color: '#0f172a' }}
+          className={`w-full bg-transparent text-slate-900 !text-slate-900 placeholder:!text-slate-500 placeholder-slate-500 text-xs font-semibold focus:outline-none font-mono ${className}`}
+        />
+        <div className="absolute right-0 pointer-events-none select-none text-[9px] font-mono font-bold flex items-center">
+          <span
+            className={`px-1.5 py-0.5 rounded-full ${
+              isComplete
+                ? 'bg-emerald-100 text-emerald-700'
+                : 'bg-slate-100 text-slate-400'
+            }`}
+          >
+            {digitsCount}/10
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative flex items-center">
+    <div className="relative flex items-center w-full">
       <input
         required={required}
         type="tel"
@@ -58,11 +89,11 @@ export const GhanaPhoneInput: React.FC<GhanaPhoneInputProps> = ({
         onChange={handleChange}
         placeholder={placeholder}
         maxLength={10}
-        style={dark ? { color: '#ffffff' } : undefined}
+        style={dark ? { color: '#ffffff' } : { color: '#0f172a' }}
         className={`w-full pr-14 pl-3.5 py-2.5 rounded-xl font-mono font-bold text-xs focus:outline-none focus:border-amber-500 tracking-wider transition-all ${
           dark
-            ? 'bg-slate-950 border border-slate-800 text-white !text-white placeholder-slate-500'
-            : 'bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400'
+            ? 'bg-slate-950 border border-slate-800 text-white !text-white placeholder:text-slate-500'
+            : 'bg-white border border-slate-300 text-slate-900 !text-slate-900 placeholder:text-slate-400'
         } ${isComplete ? 'border-emerald-500/50' : ''} ${className}`}
       />
       <div className="absolute right-2.5 pointer-events-none select-none text-[10px] font-mono font-extrabold flex items-center gap-1">

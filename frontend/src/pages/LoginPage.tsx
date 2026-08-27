@@ -557,6 +557,7 @@ export const LoginPage: React.FC = () => {
                       <div className="w-full auth-light-input">
                         <GhanaPhoneInput
                           required
+                          variant="pill"
                           dark={false}
                           value={signupPhone}
                           onChange={(phone) => setSignupPhone(phone)}
@@ -575,10 +576,11 @@ export const LoginPage: React.FC = () => {
                       <div className="w-full auth-light-input">
                         <GhanaCardInput
                           required
+                          variant="pill"
                           dark={false}
                           value={signupGhanaCard}
                           onChange={(formatted) => setSignupGhanaCard(formatted)}
-                          placeholder="123456789-0"
+                          placeholder="GHA-000000000-0"
                         />
                       </div>
                     </div>

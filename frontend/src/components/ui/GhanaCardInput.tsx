@@ -34,6 +34,7 @@ interface GhanaCardInputProps {
   required?: boolean;
   className?: string;
   dark?: boolean;
+  variant?: 'box' | 'pill';
 }
 
 export const GhanaCardInput: React.FC<GhanaCardInputProps> = ({
@@ -43,10 +44,10 @@ export const GhanaCardInput: React.FC<GhanaCardInputProps> = ({
   required = false,
   className = '',
   dark = false,
+  variant = 'box',
 }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
-    // Allow user to clear completely
     if (!raw || raw === 'GHA' || raw === 'GHA-') {
       onChange('');
       return;
@@ -69,6 +70,30 @@ export const GhanaCardInput: React.FC<GhanaCardInputProps> = ({
 
   const isComplete = isValidGhanaCard(value);
 
+  if (variant === 'pill') {
+    return (
+      <div className="relative flex items-center w-full">
+        <input
+          required={required}
+          type="text"
+          maxLength={15}
+          value={value}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          placeholder={placeholder}
+          style={{ color: '#0f172a' }}
+          className={`w-full bg-transparent text-slate-900 !text-slate-900 placeholder:!text-slate-500 placeholder-slate-500 text-xs font-semibold focus:outline-none uppercase tracking-wider font-mono ${className}`}
+        />
+        {isComplete && (
+          <div className="absolute right-0 pointer-events-none text-emerald-600" title="Valid Ghana Card PIN">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="relative flex items-center w-full">
       <div className="absolute left-3.5 flex items-center pointer-events-none text-slate-400">
@@ -84,11 +109,12 @@ export const GhanaCardInput: React.FC<GhanaCardInputProps> = ({
         onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder={placeholder}
-        style={dark ? { color: '#ffffff' } : undefined}
-        className={`w-full pl-10 pr-10 py-2.5 rounded-xl font-mono font-bold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 tracking-wider uppercase transition-all ${dark
-            ? 'bg-slate-950 border border-slate-800 text-white !text-white placeholder-slate-500'
-            : 'bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500'
-          } ${isComplete ? 'border-emerald-500/60 ring-1 ring-emerald-500/30' : ''} ${className}`}
+        style={dark ? { color: '#ffffff' } : { color: '#0f172a' }}
+        className={`w-full pl-10 pr-10 py-2.5 rounded-xl font-mono font-bold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 tracking-wider uppercase transition-all ${
+          dark
+            ? 'bg-slate-950 border border-slate-800 text-white !text-white placeholder:text-slate-500'
+            : 'bg-white border border-slate-300 text-slate-900 !text-slate-900 placeholder:text-slate-400'
+        } ${isComplete ? 'border-emerald-500/60 ring-1 ring-emerald-500/30' : ''} ${className}`}
       />
 
       {isComplete && (
