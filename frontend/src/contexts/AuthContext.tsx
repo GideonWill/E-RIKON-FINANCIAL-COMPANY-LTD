@@ -4,8 +4,7 @@ import {
   registerNewUserRole, 
   getRegisteredUsers, 
   RegisteredUserRecord,
-  apiClient,
-  MOCK_BRANCHES 
+  apiClient
 } from '../services/api';
 import { initCloudSync, pushLocalToCloud } from '../services/cloudSync';
 import { connectSSE, disconnectSSE, useRealtimeSync } from '../services/realtimeSync';
@@ -171,8 +170,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: data.user.role,
           password: cleanPass,
           ghanaCard: data.user.ghanaCard || 'GHA-000000000-0',
-          branchId: data.user.branchId || 'br-01',
-          branch: data.user.branch || MOCK_BRANCHES[0],
           isApproved: isUserApproved,
           createdAt: new Date().toISOString(),
           status: isUserApproved ? 'ACTIVE' : 'PENDING_APPROVAL',

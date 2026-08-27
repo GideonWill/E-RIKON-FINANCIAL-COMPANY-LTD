@@ -357,33 +357,16 @@ export interface RegisteredUserRecord extends User {
   ghanaCard?: string;
 }
 
-const DEFAULT_PURGED_EMAILS = [
-  'gettyrodes@gmail.com',
-  'gertyrays@gmail.com',
-  'kwamemensah@gmail.com',
-  'test_superadmin@erikon.com',
-  'david@gmail.com',
-  'nanaquasi1992nk@gmail.com',
-  'prinzeboateng@gmail.com',
-  'k@gmail.com',
-  'kofikofi@gmail.com',
-  'testadmin@erikon-group.com'
-];
-
 export const getDeletedUserEmails = (): string[] => {
   const data = localStorage.getItem('erikon_deleted_user_emails');
-  const deletedSet = new Set<string>(DEFAULT_PURGED_EMAILS.map((e) => e.toLowerCase()));
-  if (data) {
-    try {
-      const parsed = JSON.parse(data);
-      if (Array.isArray(parsed)) {
-        parsed.forEach((e) => deletedSet.add(String(e).toLowerCase()));
-      }
-    } catch {
-      // ignore
+  if (!data) return [];
+  try {
+    const parsed = JSON.parse(data);
+    if (Array.isArray(parsed)) {
+      return parsed.map((e) => String(e).toLowerCase());
     }
-  }
-  return Array.from(deletedSet);
+  } catch {}
+  return [];
 };
 
 export const addDeletedUserEmail = (emailOrId: string) => {
@@ -394,6 +377,14 @@ export const addDeletedUserEmail = (emailOrId: string) => {
     const updated = [...existing, clean];
     localStorage.setItem('erikon_deleted_user_emails', JSON.stringify(updated));
   }
+};
+
+export const removeDeletedUserEmail = (emailOrId: string) => {
+  if (!emailOrId) return;
+  const clean = emailOrId.trim().toLowerCase();
+  const existing = getDeletedUserEmails();
+  const updated = existing.filter((e) => e !== clean);
+  localStorage.setItem('erikon_deleted_user_emails', JSON.stringify(updated));
 };
 
 export const getRegisteredUsers = (): RegisteredUserRecord[] => {
@@ -1132,7 +1123,7 @@ export const rejectRequest = (
 };
 
 /**
- * Register New Staff Role (Directly to Render PostgreSQL Backend)
+ * Register New Staff Role (Directly to Render PostgreSQL Backend & Cloud Vault)
  */
 export const registerNewUserRole = async (signupData: {
   firstName: string;
@@ -1142,10 +1133,12 @@ export const registerNewUserRole = async (signupData: {
   role: RoleName;
   ghanaCard: string;
   employeeId?: string;
-  branchId?: string;
   password?: string;
 }): Promise<{ user: User; approval: ApprovalRequest; isApproved: boolean }> => {
   const isAutoApproved = signupData.role === 'SUPER_ADMIN';
+
+  // Ensure email is cleared from any prior deletion tombstones
+  removeDeletedUserEmail(signupData.email);
 
   let backendUserId = `user-${Date.now()}`;
   let backendEmployeeId = signupData.employeeId || `EMP-${Date.now().toString().slice(-4)}`;
@@ -1160,7 +1153,6 @@ export const registerNewUserRole = async (signupData: {
       role: signupData.role,
       password: signupData.password || 'erikon2026',
       employeeId: backendEmployeeId,
-      branchId: signupData.branchId,
     });
     if (data?.user?.id) {
       backendUserId = data.user.id;
@@ -1180,8 +1172,6 @@ export const registerNewUserRole = async (signupData: {
     role: signupData.role,
     password: signupData.password || 'erikon2026',
     ghanaCard: signupData.ghanaCard,
-    branchId: signupData.branchId || 'br-01',
-    branch: MOCK_BRANCHES[0],
     isApproved: isAutoApproved,
     createdAt: new Date().toISOString(),
     status: isAutoApproved ? 'ACTIVE' : 'PENDING_APPROVAL',
@@ -1205,14 +1195,13 @@ export const registerNewUserRole = async (signupData: {
       phone: signupData.phone,
       ghanaCard: signupData.ghanaCard,
       role: signupData.role,
-      branch: 'Accra Central Main Branch',
     },
     status: isAutoApproved ? 'APPROVED' : 'PENDING',
     createdAt: new Date().toISOString(),
   };
 
   const approvals = getStoredApprovals();
-  saveStoredApprovals([approvalItem, ...approvals]);
+  saveStoredApprovals([approvalItem, ...approvals.filter((a) => a.targetId !== newUser.id && a.details?.email?.toLowerCase() !== newUser.email.toLowerCase())]);
 
   return { user: newUser, approval: approvalItem, isApproved: isAutoApproved };
 };

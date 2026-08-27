@@ -9,8 +9,7 @@ import {
   splitPaymentIntoDays,
   getStoredTransactions,
   saveStoredTransactions,
-  accumulateCompanyInterest,
-  MOCK_BRANCHES
+  accumulateCompanyInterest
 } from '../services/api';
 import { subscribeRealtimeEvents, broadcastRealtimeEvent, useRealtimeSync } from '../services/realtimeSync';
 import { Customer, Account, SavingsPackage, SAVINGS_PACKAGES, Transaction, DailyCollectionCycle } from '../types';
@@ -263,8 +262,6 @@ export const CustomersPage: React.FC = () => {
         ghanaCardNumber: finalGhanaCard,
         occupation: formData.occupation.trim() || 'Self Employed',
         monthlyIncome: Number(formData.monthlyIncome) || 0,
-        branchId: 'br-01',
-        branch: MOCK_BRANCHES[0],
         status: 'VERIFIED',
         createdAt: new Date().toISOString(),
         nextOfKin: {
@@ -306,8 +303,6 @@ export const CustomersPage: React.FC = () => {
         accountNumber: `ACC-1001-${Math.floor(1000 + Math.random() * 9000)}`,
         customerId: newCustId,
         customer: newCust,
-        branchId: 'br-01',
-        branch: MOCK_BRANCHES[0],
         type: 'SAVINGS',
         savingsPackage: chosenPackage,
         currentBalance: totalDeposited,

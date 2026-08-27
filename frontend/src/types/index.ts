@@ -85,7 +85,7 @@ export interface Customer {
   occupation: string;
   employerName?: string;
   monthlyIncome?: number;
-  branchId: string;
+  branchId?: string;
   branch?: Branch;
   status: CustomerStatus;
   createdAt: string;
@@ -108,7 +108,7 @@ export interface NextOfKin {
   fullName: string;
   relationship: string;
   phone: string;
-  address: string;
+  address?: string;
   occupation?: string;
 }
 
@@ -150,7 +150,7 @@ export interface Account {
   accountNumber: string;
   customerId: string;
   customer?: Customer;
-  branchId: string;
+  branchId?: string;
   branch?: Branch;
   type: AccountType;
   currentBalance: number;
