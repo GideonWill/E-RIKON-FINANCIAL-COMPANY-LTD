@@ -15,8 +15,6 @@ let globalCloudVault = {
   updatedAt: new Date().toISOString(),
 };
 
-const RENDER_BACKEND_SYNC_URL = 'https://e-rikon-ecfms-backend.onrender.com/api/sync';
-
 export default async function handler(req, res) {
   // CORS Headers for multi-device access
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -32,30 +30,6 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
-      const rRes = await fetch(RENDER_BACKEND_SYNC_URL, {
-        headers: { 'Accept': 'application/json' },
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      if (rRes.ok) {
-        const rData = await rRes.json();
-        if (rData && (rData.vault || rData.success)) {
-          const fetchedVault = rData.vault || rData;
-          globalCloudVault = { ...globalCloudVault, ...fetchedVault };
-          return res.status(200).json({
-            success: true,
-            vault: fetchedVault,
-            updatedAt: fetchedVault.updatedAt || new Date().toISOString(),
-          });
-        }
-      }
-    } catch (e) {
-      // Fallback to in-memory vault
-    }
-
     return res.status(200).json({
       success: true,
       vault: globalCloudVault,
@@ -209,13 +183,6 @@ export default async function handler(req, res) {
       }
 
       globalCloudVault.updatedAt = new Date().toISOString();
-
-      // Asynchronously forward to Render backend
-      fetch(RENDER_BACKEND_SYNC_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(globalCloudVault),
-      }).catch(() => { });
 
       return res.status(200).json({
         success: true,

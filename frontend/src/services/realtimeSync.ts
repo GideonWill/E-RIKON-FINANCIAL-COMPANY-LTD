@@ -22,7 +22,7 @@ const SSE_BASE_URL =
   import.meta.env.VITE_API_URL ||
   (typeof window !== 'undefined' && window.location.hostname === 'localhost'
     ? 'http://localhost:4000/api'
-    : 'https://e-rikon-ecfms-backend.onrender.com/api');
+    : '/api');
 
 export type SyncEventType =
   | 'CUSTOMER_REGISTERED'

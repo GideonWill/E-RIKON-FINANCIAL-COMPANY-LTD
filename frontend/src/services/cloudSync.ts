@@ -54,13 +54,13 @@ export const getLastSyncTime = () => lastSyncTimestamp;
 const getSyncEndpoints = (): string[] => {
   const endpoints: string[] = [];
 
-  // 1. Production Render Backend Endpoint (Primary Authoritative Source of Truth)
-  endpoints.push('https://e-rikon-ecfms-backend.onrender.com/api/sync');
-
-  // 2. Same-Origin / Vercel Serverless Function Endpoint (Relays to Render Backend)
+  // 1. Same-Origin / Vercel Serverless Function Endpoint (Primary)
   if (typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes('localhost')) {
     endpoints.push(`${window.location.origin}/api/sync`);
   }
+
+  // 2. Relative Endpoint
+  endpoints.push('/api/sync');
 
   // 3. Localhost Dev Backend (if running locally)
   if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
