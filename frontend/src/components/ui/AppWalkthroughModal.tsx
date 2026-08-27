@@ -477,27 +477,26 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
           },
         ];
 
-      case 'BRANCH_ADMIN':
       case 'ADMIN':
         return [
           {
-            title: `Welcome, Branch Administrator ${currentUser.firstName}!`,
-            subtitle: 'Branch Governance, Operations Oversight & Vault Coordination',
-            badge: 'Branch Operations',
+            title: `Welcome, Operations Administrator ${currentUser.firstName}!`,
+            subtitle: 'Governance, Operations Oversight & Vault Coordination',
+            badge: 'Operations Hub',
             icon: Building2,
             color: 'from-emerald-600 via-teal-600 to-[#0a3866]',
             content: (
               <div className="space-y-3.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                 <p>
-                  As <strong>Branch Administrator</strong> for <strong className="text-slate-900 dark:text-white">{currentUser.branch?.name || 'Accra Central Main Branch'}</strong>, you oversee branch tellers, field officers, customer onboarding, and local vault liquidity.
+                  As <strong>Operations Administrator</strong>, you oversee tellers, field officers, customer onboarding, and vault liquidity.
                 </p>
                 <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 space-y-1.5">
                   <div className="font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 text-xs">
                     <Building2 className="w-4 h-4" />
-                    <span>Branch Workstation Authority</span>
+                    <span>Workstation Authority</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300">
-                    Verify client Ghana Card KYC dossiers, review daily collections, supervise teller drawers, and perform branch daily close reconciliations.
+                    Verify client Ghana Card KYC dossiers, review daily collections, supervise teller drawers, and perform daily close reconciliations.
                   </p>
                 </div>
               </div>

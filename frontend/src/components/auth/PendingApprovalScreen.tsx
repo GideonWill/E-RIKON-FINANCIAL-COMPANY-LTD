@@ -149,7 +149,7 @@ export const PendingApprovalScreen: React.FC = () => {
               For regulatory auditing and financial safety, all newly registered staff require executive clearance by the <strong>Super Admin</strong> before accessing workstation tools.
             </p>
             <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] font-mono text-slate-500">
-              <span>Branch: {currentUser?.branch?.name || 'Accra Central Main'}</span>
+              <span>Organization: E-RiKON Financial</span>
               <span>Ref: #{currentUser?.id?.slice(0, 8) || 'STAFF'}</span>
             </div>
           </div>

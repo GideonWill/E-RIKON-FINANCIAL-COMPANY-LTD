@@ -17,8 +17,6 @@ import {
   saveStoredApprovals,
   getStoredAuditLogs,
   saveStoredAuditLogs,
-  getStoredBranches,
-  saveStoredBranches,
   getDeletedCustomerIds,
   addDeletedCustomerId,
   getDeletedUserEmails,
@@ -39,7 +37,6 @@ export interface CloudVaultPayload {
   companyWithdrawals?: any[];
   approvals?: any[];
   auditLogs?: any[];
-  branches?: any[];
   deletedCustomerIds?: string[];
   deletedUserEmails?: string[];
   updatedAt?: string;
@@ -102,7 +99,6 @@ export const pushLocalToCloud = async (): Promise<boolean> => {
     companyWithdrawals: getStoredCompanyWithdrawals(),
     approvals: getStoredApprovals(),
     auditLogs: getStoredAuditLogs(),
-    branches: getStoredBranches(),
     deletedCustomerIds: getDeletedCustomerIds(),
     deletedUserEmails: getDeletedUserEmails(),
     updatedAt: new Date().toISOString(),
@@ -294,11 +290,6 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
       saveStoredAuditLogs(cloudData.auditLogs);
       hasUpdates = true;
     }
-  }
-
-  // 10. Authoritative Branches Sync
-  if (Array.isArray(cloudData.branches) && cloudData.branches.length > 0) {
-    saveStoredBranches(cloudData.branches);
   }
 
   if (hasUpdates) {

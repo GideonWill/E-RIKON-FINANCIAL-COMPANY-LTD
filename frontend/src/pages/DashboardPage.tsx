@@ -347,7 +347,6 @@ export const DashboardPage: React.FC = () => {
                   <th className="py-2.5 px-3">Email Address</th>
                   <th className="py-2.5 px-3">Phone</th>
                   <th className="py-2.5 px-3">Ghana Card</th>
-                  <th className="py-2.5 px-3">Branch</th>
                   <th className="py-2.5 px-3">Clearance Status</th>
                   {isSuperAdmin && <th className="py-2.5 px-3 text-center">Action</th>}
                 </tr>
@@ -395,10 +394,6 @@ export const DashboardPage: React.FC = () => {
 
                         <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-200">
                           {staff.ghanaCard || '—'}
-                        </td>
-
-                        <td className="py-2.5 px-3 font-sans text-slate-600 dark:text-slate-300">
-                          {staff.branch?.name || 'Accra Central Main'}
                         </td>
 
                         <td className="py-2.5 px-3">

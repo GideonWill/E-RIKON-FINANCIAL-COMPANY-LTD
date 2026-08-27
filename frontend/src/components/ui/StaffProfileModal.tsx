@@ -36,16 +36,10 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
 
   const rolePrivileges: Record<string, string[]> = {
     SUPER_ADMIN: [
-      'Full System Administration & Branch Management',
+      'Full Institutional Administration & Governance',
       'Global Audit Log & Financial Ledger Inspection',
-      'Branch Cash Limits & Vault Threshold Configuration',
+      'System Cash Limits & Vault Policy Configuration',
       'System Settings & Master Override Privileges',
-    ],
-    BRANCH_ADMIN: [
-      'Local Branch Staff Management & Operations',
-      'Credit Evaluation & Local Loan Approvals',
-      'Vault Balancing & Cash Summary Inspection',
-      'Branch Customer Account Approvals',
     ],
     TELLER: [
       'Physical Cash Deposit & Cash Withdrawal Processing',
@@ -166,15 +160,6 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
             </span>
             <div className="font-mono font-bold text-slate-800 dark:text-slate-200">
               {user.phone || '—'}
-            </div>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 space-y-1">
-            <span className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
-              <Building2 className="w-3 h-3 text-purple-500" /> Primary Branch
-            </span>
-            <div className="font-bold text-slate-800 dark:text-slate-200 truncate">
-              {user.branch?.name || 'Accra Central Main Branch'}
             </div>
           </div>
 

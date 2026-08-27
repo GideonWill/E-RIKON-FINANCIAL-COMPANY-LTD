@@ -78,7 +78,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
               E-RiKON Financial Company PLC
             </h4>
             <p className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400">
-              Accra Central Main Branch • Independence Avenue, Ridge
+              Institutional Operations • Independence Avenue, Ridge
             </p>
             <div className="text-[10px] sm:text-[11px] font-bold text-amber-500 pt-0.5">
               OFFICIAL CASH RECEIPT • {transaction.receiptNo}
@@ -165,7 +165,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
               </div>
             </div>
             <div className="flex justify-between items-center text-[8px] text-slate-400 font-mono px-0.5">
-              <span>{transaction.account?.branch?.name || 'Accra Central Main Branch'}</span>
+              <span>E-RiKON Financial Company PLC</span>
               <span>Ref: {transaction.referenceNo}</span>
             </div>
           </div>

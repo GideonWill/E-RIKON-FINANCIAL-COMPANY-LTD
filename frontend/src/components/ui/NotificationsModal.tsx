@@ -74,7 +74,7 @@ export const getSystemNotifications = (role: RoleName): NotificationItem[] => {
       time: 'Live',
       type: 'SYSTEM',
       targetRoute: '/company-interest',
-      roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+      roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
       isRead: readIds.includes('sys-policy-01'),
     }
   ];

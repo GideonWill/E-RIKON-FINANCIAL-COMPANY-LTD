@@ -109,11 +109,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                 ECFMS v2.0
               </span>
             </div>
-
-            <div className="hidden md:flex items-center space-x-2 bg-slate-100/80 dark:bg-slate-800/80 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700/80 shrink-0">
-              <Building2 className="w-3.5 h-3.5 text-[#0d9488]" />
-              <span>{currentUser.branch?.name || 'Accra Main Branch'}</span>
-            </div>
           </div>
 
           {/* Right: Controls, Real-time Sync Badge & User Profile Badge */}

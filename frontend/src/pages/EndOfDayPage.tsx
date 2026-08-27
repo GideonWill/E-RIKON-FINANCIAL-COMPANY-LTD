@@ -66,7 +66,6 @@ export const EndOfDayPage: React.FC = () => {
   // Today's ISO Date String (YYYY-MM-DD)
   const todayIso = new Date().toISOString().slice(0, 10);
   const [selectedDate, setSelectedDate] = useState<string>(todayIso);
-  const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
   const [activeTab, setActiveTab] = useState<'ALL' | 'TELLER' | 'FIELD' | 'LOANS' | 'INTEREST' | 'APPROVALS' | 'AUDIT'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isEodPdfModalOpen, setIsEodPdfModalOpen] = useState<boolean>(false);
@@ -76,10 +75,9 @@ export const EndOfDayPage: React.FC = () => {
   const dayTransactions = useMemo(() => {
     return transactions.filter((t) => {
       const matchDate = t.createdAt ? t.createdAt.startsWith(selectedDate) : false;
-      const matchBranch = selectedBranch === 'ALL' || t.recordedBy?.branchId === selectedBranch;
-      return matchDate && matchBranch;
+      return matchDate;
     });
-  }, [transactions, selectedDate, selectedBranch]);
+  }, [transactions, selectedDate]);
 
   // Daily field splits recorded across all client cycles for this date
   const dayFieldSplits = useMemo(() => {

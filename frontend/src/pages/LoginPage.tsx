@@ -49,7 +49,6 @@ export const LoginPage: React.FC = () => {
   const [signupPhone, setSignupPhone] = useState('');
   const [signupGhanaCard, setSignupGhanaCard] = useState('');
   const [signupEmployeeId, setSignupEmployeeId] = useState('');
-  const [signupBranch, setSignupBranch] = useState('Accra Central Main Branch');
   const [signupPassword, setSignupPassword] = useState('');
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [signupSuccessMsg, setSignupSuccessMsg] = useState<string | null>(null);
@@ -82,7 +81,6 @@ export const LoginPage: React.FC = () => {
   const rolesList: { role: RoleName; label: string }[] = [
     { role: 'SUPER_ADMIN', label: 'Super Admin' },
     { role: 'ADMIN', label: 'Operations Admin' },
-    { role: 'BRANCH_ADMIN', label: 'Branch Admin' },
     { role: 'TELLER', label: 'Teller Station' },
     { role: 'FIELD_OFFICER', label: 'Field Officer' },
     { role: 'LOAN_OFFICER', label: 'Loan Officer' },
@@ -132,9 +130,6 @@ export const LoginPage: React.FC = () => {
           break;
         case 'LOAN_OFFICER':
           navigate('/loans');
-          break;
-        case 'BRANCH_ADMIN':
-          navigate('/dashboard');
           break;
         case 'AUDITOR':
           navigate('/audit');

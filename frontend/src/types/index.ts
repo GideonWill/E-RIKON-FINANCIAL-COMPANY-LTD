@@ -1,7 +1,6 @@
 export type RoleName = 
   | 'SUPER_ADMIN'
   | 'ADMIN'
-  | 'BRANCH_ADMIN'
   | 'TELLER'
   | 'FIELD_OFFICER'
   | 'LOAN_OFFICER'
@@ -59,7 +58,7 @@ export interface User {
   email: string;
   phone: string;
   role: RoleName;
-  branchId: string;
+  branchId?: string;
   branch?: Branch;
   ghanaCard?: string;
   isApproved?: boolean;
