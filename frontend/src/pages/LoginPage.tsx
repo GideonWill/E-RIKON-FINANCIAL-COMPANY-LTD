@@ -593,11 +593,18 @@ export const LoginPage: React.FC = () => {
                         <select
                           value={signupRoleType}
                           onChange={(e) => setSignupRoleType(e.target.value as RoleName)}
-                          style={{ color: '#0f172a' }}
+                          style={{ color: '#0f172a', backgroundColor: 'transparent' }}
                           className="w-full bg-transparent text-slate-900 !text-slate-900 text-xs font-semibold focus:outline-none cursor-pointer appearance-none truncate"
                         >
                           {rolesList.map((r) => (
-                            <option key={r.role} value={r.role} className="text-slate-900 bg-white">{r.label}</option>
+                            <option
+                              key={r.role}
+                              value={r.role}
+                              style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
+                              className="text-slate-900 bg-white"
+                            >
+                              {r.label}
+                            </option>
                           ))}
                         </select>
                       </div>
