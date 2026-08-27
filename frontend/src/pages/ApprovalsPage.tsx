@@ -7,6 +7,7 @@ import {
   getRegisteredUsers,
   saveRegisteredUsers,
   deleteRegisteredUser,
+  removeDeletedUserEmail,
   apiClient
 } from '../services/api';
 import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
@@ -58,13 +59,27 @@ export const ApprovalsPage: React.FC = () => {
 
     // 2. Fetch latest registered staff from backend API
     try {
-      const { data } = await apiClient.get('/auth/users');
-      if (Array.isArray(data)) {
+      let usersData: any[] = [];
+      try {
+        const { data } = await apiClient.get('/auth/users');
+        if (Array.isArray(data)) usersData = data;
+      } catch {
+        const directRes = await fetch('https://e-rikon-ecfms-backend.onrender.com/api/auth/users').catch(() => null);
+        if (directRes && directRes.ok) {
+          const directData = await directRes.json();
+          if (Array.isArray(directData)) usersData = directData;
+        }
+      }
+
+      if (usersData.length > 0) {
         const localUsers = getRegisteredUsers();
         const userMap = new Map<string, RegisteredUserRecord>();
         localUsers.forEach((u) => userMap.set(u.email.toLowerCase(), u));
 
-        data.forEach((u: any) => {
+        usersData.forEach((u: any) => {
+          removeDeletedUserEmail(u.email);
+          if (u.id) removeDeletedUserEmail(u.id);
+
           const key = u.email.toLowerCase();
           const existing = userMap.get(key);
           const isApproved = Boolean(existing?.isApproved || u.isApproved || u.role === 'SUPER_ADMIN');
@@ -88,6 +103,9 @@ export const ApprovalsPage: React.FC = () => {
         const mergedUsers = Array.from(userMap.values());
         saveRegisteredUsers(mergedUsers);
         setRegisteredUsers(mergedUsers);
+        pushLocalToCloud().catch(() => {});
+      } else {
+        setRegisteredUsers(getRegisteredUsers());
       }
     } catch {
       setRegisteredUsers(getRegisteredUsers());

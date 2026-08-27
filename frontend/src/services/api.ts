@@ -393,24 +393,15 @@ export const getRegisteredUsers = (): RegisteredUserRecord[] => {
   try {
     const parsed = JSON.parse(data);
     if (!Array.isArray(parsed)) return [];
-    const deletedEmails = getDeletedUserEmails();
-    return parsed.filter((u) => {
-      const email = u.email?.toLowerCase();
-      return !deletedEmails.includes(email) && !deletedEmails.includes(u.id?.toLowerCase());
-    });
+    return parsed;
   } catch {
     return [];
   }
 };
 
 export const saveRegisteredUsers = (users: RegisteredUserRecord[]) => {
-  const deletedEmails = getDeletedUserEmails();
-  const filtered = users.filter((u) => {
-    const email = u.email?.toLowerCase();
-    return !deletedEmails.includes(email) && !deletedEmails.includes(u.id?.toLowerCase());
-  });
-  localStorage.setItem('erikon_registered_users', JSON.stringify(filtered));
-  broadcastRealtimeEvent('STAFF_REGISTERED', filtered);
+  localStorage.setItem('erikon_registered_users', JSON.stringify(users));
+  broadcastRealtimeEvent('STAFF_REGISTERED', users);
 };
 
 /**
