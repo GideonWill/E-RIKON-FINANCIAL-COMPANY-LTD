@@ -167,8 +167,14 @@ export const FieldOfficerPage: React.FC = () => {
         <div className="flex items-center space-x-3 bg-slate-900 text-white p-3 rounded-2xl border border-slate-800">
           <Target className="w-5 h-5 text-amber-400" />
           <div className="text-xs font-mono">
-            <div className="text-[10px] text-slate-400 uppercase">Today's Route Target</div>
-            <div className="font-bold text-amber-400">GHS 4,500.00 (84% Achieved)</div>
+            <div className="text-[10px] text-slate-400 uppercase">Today's Route Collections</div>
+            <div className="font-bold text-amber-400">
+              GHS {accounts.reduce((total, acc) => {
+                const todayIso = new Date().toISOString().split('T')[0];
+                const todaySplits = (acc.dailyCycles?.flatMap((c) => c.dailySplits || []) || []).filter((s) => s.date === todayIso);
+                return total + todaySplits.reduce((sum, s) => sum + s.amount, 0);
+              }, 0).toFixed(2)} (0% Variance)
+            </div>
           </div>
         </div>
       </div>
@@ -196,7 +202,7 @@ export const FieldOfficerPage: React.FC = () => {
         <div className="lg:col-span-4 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Route Clients ({filteredAccounts.length})</h3>
-            <span className="text-[10px] font-mono text-amber-500 font-bold">Accra Central</span>
+            <span className="text-[10px] font-mono text-amber-500 font-bold">Live Route Ledger</span>
           </div>
 
           <div className="relative">
