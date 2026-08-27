@@ -12,6 +12,7 @@ import { connectSSE, disconnectSSE, useRealtimeSync } from '../services/realtime
 interface AuthContextType {
   currentUser: User | null;
   isAuthenticated: boolean;
+  setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
   login: (email?: string, password?: string, role?: RoleName) => Promise<{ success: boolean; error?: string }>;
   loginAsRole: (role: RoleName) => void;
   signupRole: (data: {
@@ -253,6 +254,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         currentUser,
         isAuthenticated: !!currentUser,
+        setCurrentUser,
         login,
         loginAsRole,
         signupRole,

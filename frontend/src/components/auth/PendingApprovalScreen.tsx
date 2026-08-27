@@ -15,7 +15,7 @@ import { useRealtimeSync } from '../../services/realtimeSync';
 import { pullCloudToLocal } from '../../services/cloudSync';
 
 export const PendingApprovalScreen: React.FC = () => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, setCurrentUser } = useAuth();
   const [isChecking, setIsChecking] = useState(false);
   const [statusNote, setStatusNote] = useState<string | null>(null);
 
@@ -32,29 +32,29 @@ export const PendingApprovalScreen: React.FC = () => {
           (u) => u.id === currentUser.id || u.email?.toLowerCase() === currentUser.email?.toLowerCase()
         );
         if (localMatch && (localMatch.isApproved || localMatch.role === 'SUPER_ADMIN')) {
-          const updated = {
+          const updated: any = {
             ...currentUser,
             isApproved: true,
             status: 'ACTIVE' as const,
           };
           localStorage.setItem('erikon_current_user', JSON.stringify(updated));
-          window.location.reload();
+          setCurrentUser(updated);
           return;
         }
       }
 
-      // 3. Check Live Backend API
-      const { data } = await apiClient.get('/auth/users');
+      // 3. Check Live API
+      const { data } = await apiClient.get('/auth/users').catch(() => ({ data: null }));
       if (Array.isArray(data) && currentUser) {
         const found = data.find((u: any) => u.id === currentUser.id || u.email?.toLowerCase() === currentUser.email?.toLowerCase());
         if (found && (found.isApproved || found.role === 'SUPER_ADMIN')) {
-          const updated = {
+          const updated: any = {
             ...currentUser,
             isApproved: true,
             status: 'ACTIVE' as const,
           };
           localStorage.setItem('erikon_current_user', JSON.stringify(updated));
-          window.location.reload();
+          setCurrentUser(updated);
           return;
         }
       }
