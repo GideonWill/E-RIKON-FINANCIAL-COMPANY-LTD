@@ -11,6 +11,7 @@ import {
 } from '../services/api';
 import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
 import { Account, Transaction, PaymentMode, SavingsPackage, SAVINGS_PACKAGES, User } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
 import { 
   Landmark, 
@@ -30,6 +31,7 @@ import {
 } from 'lucide-react';
 
 export const TellerPage: React.FC = () => {
+  const { currentUser } = useAuth();
   const [accounts, setAccounts] = useState<Account[]>(getStoredAccounts());
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAccount, setSelectedAccount] = useState<Account>(accounts[0] || getStoredAccounts()[0]);
@@ -81,13 +83,13 @@ export const TellerPage: React.FC = () => {
     e.preventDefault();
     if (!numAmount || numAmount <= 0 || !selectedAccount) return;
 
-    const tellerUser: User = {
-      id: 'user-03',
-      employeeId: 'EMP-005',
-      firstName: 'Abena',
-      lastName: 'Osei',
-      email: 'teller@erikon-group.com',
-      phone: '0245556677',
+    const tellerUser: User = currentUser || {
+      id: 'staff-active',
+      employeeId: 'EMP-OFFICER',
+      firstName: 'Authorized',
+      lastName: 'Teller',
+      email: 'teller@erikon.com',
+      phone: '0240000000',
       role: 'TELLER',
       branchId: 'br-01',
     };

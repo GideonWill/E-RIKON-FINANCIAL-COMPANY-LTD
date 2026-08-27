@@ -12,6 +12,7 @@ import { LoanApplication, LoanStatus, Transaction } from '../types';
 import { LoanCalculatorWidget } from '../components/ui/LoanCalculatorWidget';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
 import { useRealtimeSync } from '../services/realtimeSync';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   Calculator, 
   PlusCircle, 
@@ -29,6 +30,7 @@ import {
 } from 'lucide-react';
 
 export const LoansPage: React.FC = () => {
+  const { currentUser } = useAuth();
   const [loans, setLoans] = useState<LoanApplication[]>(getStoredLoans());
   const [selectedLoan, setSelectedLoan] = useState<LoanApplication | null>(loans[0] || null);
   const [showApplyModal, setShowApplyModal] = useState(false);
@@ -185,6 +187,7 @@ export const LoansPage: React.FC = () => {
       amount: Number(loanToDisburse.amountRequested),
       previousBal,
       newBal,
+      recordedBy: currentUser || undefined,
       remarks: `Disbursement for ER-Fast Loan ${loanToDisburse.applicationNo}`,
       createdAt: new Date().toISOString(),
     };
@@ -246,16 +249,7 @@ export const LoansPage: React.FC = () => {
       amount: paidAmt,
       previousBal: curBal,
       newBal: newBal,
-      recordedBy: {
-        id: 'user-05',
-        employeeId: 'EMP-012',
-        firstName: 'Ama',
-        lastName: 'Sarpong',
-        email: 'loan.officer@erikon-group.com',
-        phone: '+233 20 123 4567',
-        role: 'LOAN_OFFICER',
-        branchId: 'br-01',
-      },
+      recordedBy: currentUser || undefined,
       remarks: `Repayment for Loan ${selectedLoan.applicationNo}. Updated Balance Left: GHS ${newBal.toFixed(2)}`,
       createdAt: new Date().toISOString(),
     };

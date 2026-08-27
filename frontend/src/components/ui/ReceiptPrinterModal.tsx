@@ -1,5 +1,6 @@
 import React from 'react';
 import { Transaction } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
 import logoImg from '../../assets/logo.png';
 import { Printer, CheckCircle2, X, ShieldCheck, Building2, Sparkles, Check } from 'lucide-react';
 
@@ -14,7 +15,13 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
   onClose,
   onConfirmPaid,
 }) => {
+  const { currentUser } = useAuth();
   if (!transaction) return null;
+
+  const staff = transaction.recordedBy || currentUser;
+  const staffName = staff ? `${staff.firstName || ''} ${staff.lastName || ''}`.trim() || staff.email : 'Authorized Officer';
+  const staffRole = staff?.role ? staff.role.replace(/_/g, ' ') : 'OFFICER';
+  const staffEmpId = staff?.employeeId ? `[${staff.employeeId}]` : '';
 
   const handlePrint = () => {
     window.print();
@@ -138,9 +145,29 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
             </div>
           </div>
 
-          {/* Recorded By Staff */}
-          <div className="text-[9px] text-slate-500 dark:text-slate-400 text-center pt-1.5 border-t border-slate-200 dark:border-slate-800/60">
-            Recorded By Staff: {transaction.recordedBy?.firstName || 'Teller'} {transaction.recordedBy?.lastName || 'Officer'}
+          {/* Recorded & Certified By Staff Proof */}
+          <div className="pt-2 border-t border-dashed border-slate-300 dark:border-slate-800 space-y-1.5 text-[10px]">
+            <div className="flex justify-between items-center bg-slate-100 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+              <div className="flex flex-col text-left">
+                <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Processed & Certified By:</span>
+                <span className="font-extrabold text-slate-900 dark:text-white text-xs tracking-tight">
+                  {staffName}
+                </span>
+                <span className="text-[9px] text-amber-600 dark:text-amber-400 font-bold">
+                  {staffRole} {staffEmpId}
+                </span>
+              </div>
+              <div className="text-right flex flex-col items-end">
+                <span className="text-[8px] text-slate-400 font-mono">PROOF OF ACTION</span>
+                <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                  DIGITALLY STAMPED
+                </span>
+              </div>
+            </div>
+            <div className="flex justify-between items-center text-[8px] text-slate-400 font-mono px-0.5">
+              <span>{transaction.account?.branch?.name || 'Accra Central Main Branch'}</span>
+              <span>Ref: {transaction.referenceNo}</span>
+            </div>
           </div>
 
         </div>

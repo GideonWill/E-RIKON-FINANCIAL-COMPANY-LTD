@@ -14,6 +14,7 @@ import {
 } from '../services/api';
 import { subscribeRealtimeEvents, broadcastRealtimeEvent, useRealtimeSync } from '../services/realtimeSync';
 import { Customer, Account, SavingsPackage, SAVINGS_PACKAGES, Transaction, DailyCollectionCycle } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 import { GhanaCardModal } from '../components/ui/GhanaCardModal';
 import { GhanaCardInput, formatGhanaCardNumber, isValidGhanaCard } from '../components/ui/GhanaCardInput';
 import { GhanaPhoneInput, isValidGhanaPhone, formatGhanaianPhoneNumber } from '../components/ui/GhanaPhoneInput';
@@ -49,6 +50,7 @@ import {
 
 export const CustomersPage: React.FC = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>(getStoredCustomers());
   const [accounts, setAccounts] = useState<Account[]>(getStoredAccounts());
   const [searchTerm, setSearchTerm] = useState('');
@@ -345,6 +347,7 @@ export const CustomersPage: React.FC = () => {
           amount: depositNum,
           previousBal: 0,
           newBal: availableBalance,
+          recordedBy: currentUser || undefined,
           remarks: `Opening savings deposit on GH₵ ${chosenPackage}/day package (Days covered: ${currentDayCount}). Upfront fee of GH₵ ${packageFee} settled.`,
           createdAt: new Date().toISOString(),
         };
@@ -362,6 +365,7 @@ export const CustomersPage: React.FC = () => {
         amount: packageFee,
         previousBal: depositNum,
         newBal: depositNum,
+        recordedBy: currentUser || undefined,
         remarks: `Upfront package enrollment fee (GH₵ ${packageFee}) collected & retained for GH₵ ${chosenPackage}/day package cycle`,
         createdAt: new Date().toISOString(),
       };
