@@ -34,31 +34,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Auto-launch role-tailored walkthrough for every new user upon first hopping in
-  useEffect(() => {
-    if (!currentUser) return;
-    const userTourKey = `erikon_tour_completed_${currentUser.id || currentUser.email}`;
-    const isCompleted = localStorage.getItem(userTourKey);
-    if (!isCompleted) {
-      // Trigger after splash screen finishes or after safe 1.6s timeout
-      const timer = setTimeout(() => {
-        setShowWalkthroughModal(true);
-      }, 1600);
-
-      const handleSplashDone = () => {
-        setTimeout(() => {
-          setShowWalkthroughModal(true);
-        }, 200);
-      };
-
-      window.addEventListener('erikon_splash_completed', handleSplashDone);
-      return () => {
-        clearTimeout(timer);
-        window.removeEventListener('erikon_splash_completed', handleSplashDone);
-      };
-    }
-  }, [currentUser]);
-
   const calculateUnreadCount = () => {
     if (!currentUser) {
       setUnreadCount(0);
