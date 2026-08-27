@@ -146,15 +146,70 @@ export const saveStoredCustomers = (customers: Customer[]) => {
 
 export const getStoredAccounts = (): Account[] => {
   const data = localStorage.getItem('erikon_accounts');
-  if (!data) return [];
-  try {
-    const parsed = JSON.parse(data);
-    if (!Array.isArray(parsed)) return [];
-    const deletedIds = getDeletedCustomerIds();
-    return parsed.filter((a) => !deletedIds.includes(a.customerId) && !deletedIds.includes(a.id));
-  } catch {
-    return [];
+  let parsed: Account[] = [];
+  if (data) {
+    try {
+      const raw = JSON.parse(data);
+      if (Array.isArray(raw)) parsed = raw;
+    } catch {}
   }
+  const deletedIds = getDeletedCustomerIds();
+  parsed = parsed.filter((a) => !deletedIds.includes(a.customerId) && !deletedIds.includes(a.id));
+
+  // Sync with customers: Ensure every active customer has a valid savings account
+  const customers = getStoredCustomers();
+  if (customers.length > 0) {
+    let hasNewAcc = false;
+    customers.forEach((cust) => {
+      let acc = parsed.find((a) => a.customerId === cust.id || a.id === `acc-${cust.id.replace('cust-', '')}`);
+      if (!acc) {
+        acc = {
+          id: `acc-${cust.id.replace('cust-', '')}`,
+          accountNumber: `ACC-1001-${cust.customerNumber ? cust.customerNumber.replace(/\D/g, '').slice(-4) : Math.floor(1000 + Math.random() * 9000)}`,
+          customerId: cust.id,
+          customer: cust,
+          type: 'SAVINGS',
+          savingsPackage: 20,
+          currentBalance: 0,
+          availableBalance: 0,
+          interestRate: 0.0,
+          status: 'ACTIVE',
+          openingDate: cust.createdAt || new Date().toISOString(),
+          dailyCycles: [
+            {
+              id: `cyc-${cust.id.replace('cust-', '')}`,
+              cycleNumber: 1,
+              currentDayCount: 0,
+              dailyTargetAmount: 20,
+              totalDeposited: 0,
+              feeDeducted: false,
+              companyFeeAmount: 0,
+              isCompleted: false,
+              startDate: new Date().toISOString().split('T')[0],
+              dailySplits: [],
+            },
+          ],
+        };
+        parsed.push(acc);
+        hasNewAcc = true;
+      } else if (!acc.customer) {
+        acc.customer = cust;
+      }
+    });
+    if (hasNewAcc) {
+      localStorage.setItem('erikon_accounts', JSON.stringify(parsed));
+    }
+  }
+
+  // Ensure each account has customer details attached
+  parsed.forEach((acc) => {
+    if (!acc.customer && acc.customerId) {
+      const c = customers.find((cust) => cust.id === acc.customerId);
+      if (c) acc.customer = c;
+    }
+  });
+
+  return parsed;
 };
 
 export const saveStoredAccounts = (accounts: Account[]) => {

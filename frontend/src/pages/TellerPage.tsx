@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   getStoredAccounts, 
   saveStoredAccounts, 
@@ -31,15 +31,21 @@ import {
   Check,
   RotateCcw,
   Coins,
-  ShieldCheck
+  ShieldCheck,
+  UserPlus,
+  Users
 } from 'lucide-react';
 
 export const TellerPage: React.FC = () => {
   const { currentUser } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [accounts, setAccounts] = useState<Account[]>(getStoredAccounts());
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedAccount, setSelectedAccount] = useState<Account>(accounts[0] || getStoredAccounts()[0]);
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(() => {
+    const accs = getStoredAccounts();
+    return accs.length > 0 ? accs[0] : null;
+  });
   const [operationType, setOperationType] = useState<'DEPOSIT' | 'WITHDRAWAL'>('DEPOSIT');
   const [amount, setAmount] = useState<string>('100');
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('PHYSICAL_CASH');
@@ -48,6 +54,14 @@ export const TellerPage: React.FC = () => {
   const [isDailyPolicyTick, setIsDailyPolicyTick] = useState<boolean>(true);
   const [printedTx, setPrintedTx] = useState<Transaction | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Auto-select first account if none currently selected
+  useEffect(() => {
+    if (!selectedAccount && accounts.length > 0) {
+      setSelectedAccount(accounts[0]);
+      if (accounts[0].savingsPackage) setChosenPackage(accounts[0].savingsPackage);
+    }
+  }, [accounts, selectedAccount]);
 
   // Handle incoming routing state (e.g. when navigated from Customers, Accounts, or Dashboard)
   useEffect(() => {
@@ -80,6 +94,7 @@ export const TellerPage: React.FC = () => {
     if (selectedAccount) {
       const found = freshAccs.find((a) => a.id === selectedAccount.id);
       if (found) setSelectedAccount(found);
+      else if (freshAccs.length > 0) setSelectedAccount(freshAccs[0]);
     } else if (freshAccs.length > 0) {
       setSelectedAccount(freshAccs[0]);
     }
@@ -294,45 +309,71 @@ export const TellerPage: React.FC = () => {
           </div>
 
           <div className="space-y-3">
-            {filteredAccounts.map((acc) => {
-              const isSelected = selectedAccount?.id === acc.id;
-              const accCycle = acc.dailyCycles?.[0];
-              const accDay = accCycle ? accCycle.currentDayCount : 0;
-              const accCycleNo = accCycle ? accCycle.cycleNumber : 1;
-
-              return (
-                <div
-                  key={acc.id}
-                  onClick={() => setSelectedAccount(acc)}
-                  className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                    isSelected
-                      ? 'bg-amber-500/10 border-amber-500 dark:bg-amber-500/20 text-slate-900 dark:text-white shadow-md'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-mono text-xs font-extrabold text-amber-500">{acc.accountNumber}</div>
-                      <h4 className="font-bold text-xs mt-0.5 text-slate-900 dark:text-white">
-                        {acc.customer?.firstName} {acc.customer?.lastName}
-                      </h4>
-                    </div>
-                    <span className="font-mono text-xs font-extrabold text-emerald-500">
-                      GHS {acc.availableBalance.toFixed(2)}
-                    </span>
-                  </div>
-
-                  <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500 dark:text-slate-400 font-mono flex items-center gap-1">
-                      <CreditCard className="w-3 h-3 text-slate-500" /> {acc.customer?.ghanaCardNumber}
-                    </span>
-                    <span className="font-mono font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md">
-                      Cycle #{accCycleNo} • Day {accDay} / 31
-                    </span>
-                  </div>
+            {filteredAccounts.length === 0 ? (
+              <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-3 shadow-xs">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
+                  <Users className="w-6 h-6" />
                 </div>
-              );
-            })}
+                <div>
+                  <div className="font-extrabold text-xs text-slate-900 dark:text-white">
+                    {searchTerm ? 'No Matching Clients' : 'No Clients Found'}
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    {searchTerm
+                      ? `No account matches "${searchTerm}".`
+                      : 'Onboard a customer to open their savings scheme.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/customers')}
+                  className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Register Customer</span>
+                </button>
+              </div>
+            ) : (
+              filteredAccounts.map((acc) => {
+                const isSelected = selectedAccount?.id === acc.id;
+                const accCycle = acc.dailyCycles?.[0];
+                const accDay = accCycle ? accCycle.currentDayCount : 0;
+                const accCycleNo = accCycle ? accCycle.cycleNumber : 1;
+
+                return (
+                  <div
+                    key={acc.id}
+                    onClick={() => setSelectedAccount(acc)}
+                    className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                      isSelected
+                        ? 'bg-amber-500/10 border-amber-500 dark:bg-amber-500/20 text-slate-900 dark:text-white shadow-md'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-mono text-xs font-extrabold text-amber-500">{acc.accountNumber}</div>
+                        <h4 className="font-bold text-xs mt-0.5 text-slate-900 dark:text-white">
+                          {acc.customer?.firstName} {acc.customer?.lastName}
+                        </h4>
+                      </div>
+                      <span className="font-mono text-xs font-extrabold text-emerald-500">
+                        GHS {acc.availableBalance.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500 dark:text-slate-400 font-mono flex items-center gap-1">
+                        <CreditCard className="w-3 h-3 text-slate-500" /> {acc.customer?.ghanaCardNumber}
+                      </span>
+                      <span className="font-mono font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md">
+                        Cycle #{accCycleNo} • Day {accDay} / 31
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -617,6 +658,35 @@ export const TellerPage: React.FC = () => {
 
             </div>
 
+          </div>
+        )}
+
+        {/* Right Column Empty State when No Client Account is Selected */}
+        {!selectedAccount && (
+          <div className="lg:col-span-2 p-8 sm:p-14 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm text-center space-y-5 my-auto">
+            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-transparent text-amber-500 border border-amber-500/30 flex items-center justify-center mx-auto shadow-md">
+              <Landmark className="w-10 h-10" />
+            </div>
+            <div className="max-w-md mx-auto space-y-2">
+              <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                {accounts.length === 0 ? 'No Client Accounts Available' : 'Select a Customer to Begin'}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                {accounts.length === 0
+                  ? 'No customer savings accounts are currently loaded. Register a new customer with Ghana Card to immediately start recording deposits and processing withdrawals.'
+                  : 'Click any client from the directory on the left to view their 31-day contribution cycle, choose savings packages, and record cash deposits or withdrawal loans.'}
+              </p>
+            </div>
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('/customers')}
+                className="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs inline-flex items-center gap-2 shadow-xl shadow-amber-500/20 cursor-pointer transition-all hover:scale-[1.02]"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Onboard / Register Client Account</span>
+              </button>
+            </div>
           </div>
         )}
 
