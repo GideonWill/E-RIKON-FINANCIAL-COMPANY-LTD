@@ -560,8 +560,13 @@ export const createNewCustomer = (customerData: Omit<Customer, 'id' | 'customerN
   }
 
   const initialDayCount = Math.floor(initialDepositAmount / packageRate);
-  // Deduct 1 package fee just once: remaining amount is credited to client available savings
-  const initialAvailable = Math.max(0, toDecimal(initialDepositAmount - packageFee));
+  const isDay31Reached = initialDayCount >= 31;
+  const feeDeducted = isDay31Reached;
+  const companyFeeAmount = isDay31Reached ? packageRate : 0;
+  // Days 1-30: 100% of deposit credited to customer savings balance. Day 31: 1 day retained.
+  const initialAvailable = isDay31Reached 
+    ? Math.max(0, toDecimal(initialDepositAmount - packageRate))
+    : initialDepositAmount;
 
   const newAccount: Account = {
     id: `acc-${Date.now()}`,
@@ -585,16 +590,16 @@ export const createNewCustomer = (customerData: Omit<Customer, 'id' | 'customerN
         currentDayCount: initialDayCount,
         dailyTargetAmount: packageRate,
         totalDeposited: initialDepositAmount,
-        feeDeducted: true, // Upfront fee is retained once upon onboarding
-        companyFeeAmount: packageFee,
-        isCompleted: false,
+        feeDeducted,
+        companyFeeAmount,
+        isCompleted: isDay31Reached,
         startDate: new Date().toISOString().split('T')[0],
         dailySplits: initialDayCount > 0 ? Array.from({ length: initialDayCount }, (_, i) => ({
           dayNumber: i + 1,
           date: new Date().toISOString().split('T')[0],
           amount: packageRate,
           receiptNo: `RCP-INIT-${Date.now().toString().slice(-4)}-${i + 1}`,
-          isCompanyFee: i === 0, // Only 1st day is the 1-time package fee, all other days are client savings
+          isCompanyFee: i + 1 === 31,
         })) : [],
       },
     ],
@@ -603,8 +608,10 @@ export const createNewCustomer = (customerData: Omit<Customer, 'id' | 'customerN
   saveStoredCustomers([newCustomer, ...customers]);
   saveStoredAccounts([newAccount, ...accounts]);
 
-  // Record Company Interest Accumulation for the upfront package fee
-  accumulateCompanyInterest(newAccount, 1, packageFee);
+  // Record Company Interest Accumulation if Day 31 was reached
+  if (isDay31Reached) {
+    accumulateCompanyInterest(newAccount, 1, packageRate);
+  }
 
   const txs = getStoredTransactions();
   const newTxs: Transaction[] = [];
@@ -627,22 +634,23 @@ export const createNewCustomer = (customerData: Omit<Customer, 'id' | 'customerN
     newTxs.push(depTx);
   }
 
-  // Upfront package fee transaction record
-  const feeTx: Transaction = {
-    id: `tx-fee-${Date.now()}`,
-    referenceNo: `TX-FEE-${Date.now().toString().slice(-8)}`,
-    receiptNo: `RCP-FEE-${Date.now().toString().slice(-8)}`,
-    accountId: newAccount.id,
-    account: newAccount,
-    type: 'COMPANY_FEE_DEDUCTION',
-    paymentMode: 'PHYSICAL_CASH',
-    amount: packageFee,
-    previousBal: initialDepositAmount,
-    newBal: initialDepositAmount,
-    remarks: `Upfront package fee (GH₵ ${packageFee}) collected & retained for GH₵ ${packageRate}/day package cycle`,
-    createdAt: new Date().toISOString(),
-  };
-  newTxs.push(feeTx);
+  if (isDay31Reached) {
+    const feeTx: Transaction = {
+      id: `tx-fee-${Date.now()}`,
+      referenceNo: `TX-FEE-${Date.now().toString().slice(-8)}`,
+      receiptNo: `RCP-FEE-${Date.now().toString().slice(-8)}`,
+      accountId: newAccount.id,
+      account: newAccount,
+      type: 'COMPANY_FEE_DEDUCTION',
+      paymentMode: 'PHYSICAL_CASH',
+      amount: packageRate,
+      previousBal: initialDepositAmount,
+      newBal: initialAvailable,
+      remarks: `Day-31 management fee (GH₵ ${packageRate}) retained for GH₵ ${packageRate}/day package cycle`,
+      createdAt: new Date().toISOString(),
+    };
+    newTxs.push(feeTx);
+  }
 
   saveStoredTransactions([...newTxs, ...txs]);
 
@@ -724,8 +732,7 @@ export const splitPaymentIntoDays = (
   packageAmount: number,
   totalPaid: number,
   startingDay: number = 0,
-  startDateStr?: string,
-  feeAlreadyDeducted: boolean = false
+  startDateStr?: string
 ): PaymentSplitResult => {
   if (!packageAmount || packageAmount <= 0) {
     throw new Error('Invalid package amount');
@@ -741,9 +748,9 @@ export const splitPaymentIntoDays = (
 
   for (let i = 1; i <= daysCovered; i++) {
     const currentDayNo = startingDay + i;
-    // The package fee is deducted exactly once per cycle (on Day 1 if not already deducted, or Day 31)
-    const isFeeDay = (!feeAlreadyDeducted && currentDayNo === 1 && i === 1) || currentDayNo === 31;
-    if (isFeeDay && companyFeeIncluded === 0 && !feeAlreadyDeducted) {
+    // Standard 30-day cycle: Days 1 to 30 are client savings. Day 31 is the Company Retention Fee.
+    const isFeeDay = currentDayNo === 31;
+    if (isFeeDay && companyFeeIncluded === 0) {
       isDay31Included = true;
       companyFeeIncluded = packageAmount;
     }
@@ -756,7 +763,7 @@ export const splitPaymentIntoDays = (
       date: entryDate.toISOString().split('T')[0],
       amount: packageAmount,
       receiptNo: `RCP-SPLIT-${Date.now().toString().slice(-6)}-${i}`,
-      isCompanyFee: isFeeDay && !feeAlreadyDeducted && i === 1,
+      isCompanyFee: isFeeDay,
     });
   }
 
@@ -774,8 +781,35 @@ export const splitPaymentIntoDays = (
 };
 
 /**
+ * Calculates the Maximum Withdrawable Loan from a client's savings balance,
+ * strictly safeguarding the 1-day company retention fee so it is NEVER eaten into.
+ */
+export const getMaxWithdrawableLoan = (account: Account): {
+  maxLoanAmount: number;
+  protectedRetentionFee: number;
+  canBorrow: boolean;
+  activeCycleDay: number;
+} => {
+  const packageRate = account.savingsPackage || 20;
+  const activeCycle = account.dailyCycles?.[0];
+  const feeAlreadyDeducted = Boolean(activeCycle?.feeDeducted);
+  
+  // If Day 31 fee has already been deducted, full available balance is loanable.
+  // If before Day 31, 1 day's package contribution is strictly reserved for the company retention fee.
+  const protectedRetentionFee = feeAlreadyDeducted ? 0 : packageRate;
+  const maxLoanAmount = Math.max(0, toDecimal((account.availableBalance || 0) - protectedRetentionFee));
+
+  return {
+    maxLoanAmount,
+    protectedRetentionFee,
+    canBorrow: maxLoanAmount > 0,
+    activeCycleDay: activeCycle?.currentDayCount || 0,
+  };
+};
+
+/**
  * Record a single or multi-day package deposit with automatic splitting across 30/31 days
- * Deducts the 1-time package fee exactly once per cycle
+ * Retains the 1-time package fee on Day 31
  */
 export const recordPackageDeposit = (
   accountId: string,
@@ -790,7 +824,7 @@ export const recordPackageDeposit = (
 
   const acc = { ...accounts[accIndex] };
   const packageRate = acc.savingsPackage || 20;
-  const packageFee = packageRate; // Exactly 1 package rate fee
+  const packageFee = packageRate;
 
   if (amountPaid < packageRate) {
     throw new Error(`Deposit amount (GH₵ ${amountPaid.toFixed(2)}) cannot be lower than the chosen package (GH₵ ${packageRate}.00). Minimum deposit is GH₵ ${packageRate}.00.`);
@@ -802,7 +836,6 @@ export const recordPackageDeposit = (
 
   let cycles = acc.dailyCycles ? [...acc.dailyCycles] : [];
   let activeCycle = cycles[0];
-  let feeDeductedThisTx = false;
 
   if (!activeCycle || activeCycle.isCompleted || activeCycle.currentDayCount >= 31) {
     const nextCycleNo = activeCycle ? activeCycle.cycleNumber + 1 : 1;
@@ -812,31 +845,20 @@ export const recordPackageDeposit = (
       currentDayCount: 0,
       dailyTargetAmount: packageRate,
       totalDeposited: 0,
-      feeDeducted: true, // Fee applied once for the new cycle
-      companyFeeAmount: packageFee,
+      feeDeducted: false, // Fee retained on Day 31
+      companyFeeAmount: 0,
       isCompleted: false,
       startDate: customStartDate || new Date().toISOString().split('T')[0],
       dailySplits: [],
     };
     cycles = [activeCycle, ...cycles];
-    accumulateCompanyInterest(acc, nextCycleNo, toDecimal(packageFee));
-    feeDeductedThisTx = true;
-  } else if (!activeCycle.feeDeducted) {
-    // Fee has not yet been deducted for this cycle -> deduct the 1-time package fee once
-    activeCycle.feeDeducted = true;
-    activeCycle.companyFeeAmount = packageFee;
-    accumulateCompanyInterest(acc, activeCycle.cycleNumber, toDecimal(packageFee));
-    feeDeductedThisTx = true;
   }
-
-  const feeAlreadyDeducted = activeCycle.feeDeducted && !feeDeductedThisTx;
 
   const splitResult = splitPaymentIntoDays(
     packageRate,
     amountPaid,
     activeCycle.currentDayCount,
-    customStartDate || activeCycle.startDate,
-    feeAlreadyDeducted
+    customStartDate || activeCycle.startDate
   );
 
   // Update Cycle
@@ -844,12 +866,17 @@ export const recordPackageDeposit = (
   activeCycle.currentDayCount = newDayCount;
   activeCycle.totalDeposited = toDecimal(activeCycle.totalDeposited + amountPaid);
   activeCycle.dailySplits = [...(activeCycle.dailySplits || []), ...splitResult.entries];
-  if (newDayCount >= 31) {
+  
+  let feeDeductedThisTx = false;
+  if (newDayCount >= 31 && !activeCycle.feeDeducted) {
+    activeCycle.feeDeducted = true;
+    activeCycle.companyFeeAmount = packageFee;
     activeCycle.isCompleted = true;
+    accumulateCompanyInterest(acc, activeCycle.cycleNumber, toDecimal(packageFee));
+    feeDeductedThisTx = true;
   }
 
-  // If fee was deducted this transaction, available balance receives amountPaid minus 1 package fee (e.g. 70 - 10 = 60).
-  // If fee was already deducted previously for this cycle, available balance receives 100% of amountPaid (e.g. 70).
+  // Days 1-30: 100% is available savings. Day 31: 1 day retained as company fee.
   const addedAvailable = feeDeductedThisTx
     ? Math.max(0, toDecimal(amountPaid - packageFee))
     : toDecimal(amountPaid);

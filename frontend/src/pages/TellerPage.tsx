@@ -7,6 +7,7 @@ import {
   accumulateCompanyInterest,
   recordPackageDeposit,
   splitPaymentIntoDays,
+  getMaxWithdrawableLoan,
   toDecimal
 } from '../services/api';
 import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
@@ -78,6 +79,7 @@ export const TellerPage: React.FC = () => {
 
   const numAmount = Number(amount) || 0;
   const splitPreview = numAmount > 0 ? splitPaymentIntoDays(chosenPackage, numAmount, isCycleCompleted ? 0 : currentDay) : null;
+  const loanInfo = selectedAccount ? getMaxWithdrawableLoan(selectedAccount) : { maxLoanAmount: 0, protectedRetentionFee: 0, canBorrow: false, activeCycleDay: 0 };
 
   const handleProcessTransaction = (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,9 +130,15 @@ export const TellerPage: React.FC = () => {
         `🎉 Deposit of GHS ${numAmount.toFixed(2)} recorded! Covered ${splitResult.daysCovered} days (Days ${splitResult.startDay} to ${splitResult.endDay}) on GH₵ ${chosenPackage}/day package.`
       );
     } else {
-      // Withdrawal
-      if (numAmount > selectedAccount.availableBalance) {
-        alert(`❌ Insufficient available balance. Current available: GHS ${selectedAccount.availableBalance.toFixed(2)}`);
+      // Withdrawal as Savings-Backed Loan (Safeguards the 1-day retention fee)
+      if (numAmount > loanInfo.maxLoanAmount) {
+        alert(
+          `❌ Withdrawal/Loan exceeds allowable limit!\n\n` +
+          `• Total Savings Balance: GH₵ ${selectedAccount.availableBalance.toFixed(2)}\n` +
+          `• Protected 1-Day Retention Fee: GH₵ ${loanInfo.protectedRetentionFee.toFixed(2)}\n` +
+          `• Maximum Allowable Withdrawal Loan: GH₵ ${loanInfo.maxLoanAmount.toFixed(2)}\n\n` +
+          `The company 1-day retention fee is safeguarded and cannot be eaten into.`
+        );
         return;
       }
 
@@ -155,7 +163,7 @@ export const TellerPage: React.FC = () => {
         previousBal,
         newBal,
         recordedBy: tellerUser,
-        remarks: remarks || `Physical cash withdrawal across the counter`,
+        remarks: remarks || `Withdrawal loan against savings (Protected fee: GH₵ ${loanInfo.protectedRetentionFee.toFixed(2)})`,
         createdAt: new Date().toISOString(),
       };
 
@@ -174,7 +182,7 @@ export const TellerPage: React.FC = () => {
       setPrintedTx(newTx);
       broadcastRealtimeEvent('WITHDRAWAL_RECORDED', newTx);
 
-      setSuccessMessage(`✅ Physical withdrawal of GHS ${numAmount.toFixed(2)} completed successfully!`);
+      setSuccessMessage(`✅ Savings-backed withdrawal loan of GHS ${numAmount.toFixed(2)} completed successfully!`);
     }
 
     setAmount('100');
@@ -443,40 +451,40 @@ export const TellerPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Withdrawal Fee Settlement & Presets Banner */}
+              {/* Withdrawal as Savings-Backed Loan Fee Settlement & Presets Banner */}
               {operationType === 'WITHDRAWAL' && (
                 <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <h4 className="font-extrabold text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1.5 uppercase tracking-wider">
                         <ArrowDownLeft className="w-4 h-4 text-rose-500" />
-                        Early Withdrawal & Savings Liquidation
+                        Withdrawal as Savings-Backed Loan (30-Day Cycle)
                       </h4>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        Withdraw accumulated savings at any time within the 31-day cycle with 1-day fee retention.
+                        Withdrawals are disbursed as loans against client savings. The 1-day retention fee is safeguarded for Day 31.
                       </p>
                     </div>
 
                     <span className="font-mono text-xs font-black text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-xl border border-emerald-500/30 w-fit">
-                      Net Withdrawable: GHS {selectedAccount.availableBalance.toFixed(2)}
+                      Max Loan Withdrawable: GHS {loanInfo.maxLoanAmount.toFixed(2)}
                     </span>
                   </div>
 
                   {/* Net Payout Calculation Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                     <div className="p-2.5 rounded-xl bg-slate-900 text-white border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block font-medium">Daily Package</span>
-                      <span className="font-mono font-black text-amber-400 text-sm">GH₵ {selectedAccount.savingsPackage || 20}.00 / day</span>
+                      <span className="text-[10px] text-slate-400 block font-medium">Total Savings Balance</span>
+                      <span className="font-mono font-black text-amber-400 text-sm">GH₵ {selectedAccount.availableBalance.toFixed(2)}</span>
                     </div>
 
                     <div className="p-2.5 rounded-xl bg-slate-900 text-white border border-slate-800">
-                      <span className="text-[10px] text-rose-400 block font-medium">1-Day Retained Fee</span>
-                      <span className="font-mono font-black text-rose-400 text-sm">- GH₵ {selectedAccount.savingsPackage || 20}.00</span>
+                      <span className="text-[10px] text-rose-400 block font-medium">Protected 1-Day Fee</span>
+                      <span className="font-mono font-black text-rose-400 text-sm">- GH₵ {loanInfo.protectedRetentionFee.toFixed(2)}</span>
                     </div>
 
                     <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-white">
-                      <span className="text-[10px] text-emerald-300 block font-medium">Client Net Payout</span>
-                      <span className="font-mono font-black text-emerald-400 text-sm">GH₵ {selectedAccount.availableBalance.toFixed(2)}</span>
+                      <span className="text-[10px] text-emerald-300 block font-medium">Max Loan Available</span>
+                      <span className="font-mono font-black text-emerald-400 text-sm">GH₵ {loanInfo.maxLoanAmount.toFixed(2)}</span>
                     </div>
                   </div>
 
@@ -485,18 +493,19 @@ export const TellerPage: React.FC = () => {
                     <span className="text-[10px] text-slate-400 uppercase font-bold">Quick Select:</span>
                     <button
                       type="button"
-                      onClick={() => setAmount(String(selectedAccount.availableBalance))}
-                      className="px-2.5 py-1 rounded-lg bg-rose-500 text-white font-mono font-bold text-[11px] shadow-sm hover:bg-rose-600 cursor-pointer"
+                      disabled={loanInfo.maxLoanAmount <= 0}
+                      onClick={() => setAmount(String(loanInfo.maxLoanAmount))}
+                      className="px-2.5 py-1 rounded-lg bg-rose-500 disabled:opacity-50 text-white font-mono font-bold text-[11px] shadow-sm hover:bg-rose-600 cursor-pointer"
                     >
-                      Withdraw All (GHS {selectedAccount.availableBalance.toFixed(2)})
+                      Max Allowable Loan (GHS {loanInfo.maxLoanAmount.toFixed(2)})
                     </button>
-                    {selectedAccount.availableBalance >= 100 && (
+                    {loanInfo.maxLoanAmount >= 100 && (
                       <button
                         type="button"
-                        onClick={() => setAmount(String(Math.floor(selectedAccount.availableBalance / 2)))}
+                        onClick={() => setAmount(String(Math.floor(loanInfo.maxLoanAmount / 2)))}
                         className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 hover:border-rose-500 cursor-pointer"
                       >
-                        50% (GHS {Math.floor(selectedAccount.availableBalance / 2).toFixed(2)})
+                        50% (GHS {Math.floor(loanInfo.maxLoanAmount / 2).toFixed(2)})
                       </button>
                     )}
                   </div>
@@ -505,7 +514,7 @@ export const TellerPage: React.FC = () => {
                   <div className="p-2.5 rounded-xl bg-slate-900 text-white border border-slate-800 text-[11px] flex items-start gap-2">
                     <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                     <div className="text-slate-300 leading-relaxed">
-                      <b>1-Day Retained Fee Rule:</b> For instance, if a client on the <b>GH₵ 5 package</b> has deposited <b>GH₵ 25.00 (5 days)</b>, 1 day (<b>GH₵ 5.00</b>) is retained as the company fee, and <b>GH₵ 20.00 (4 days)</b> is paid out to the client.
+                      <b>Retention Protection Rule:</b> When a client withdraws early as a loan against their savings, the 1-day retention fee (<b>GH₵ {loanInfo.protectedRetentionFee.toFixed(2)}</b>) is never eaten into and remains safely reserved in the vault.
                     </div>
                   </div>
                 </div>

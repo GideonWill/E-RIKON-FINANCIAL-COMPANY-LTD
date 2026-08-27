@@ -274,11 +274,13 @@ export const CustomersPage: React.FC = () => {
         },
       };
 
-      // Multi-day split calculation for savings deposit
+      // Multi-day split calculation for savings deposit (Days 1-30 are 100% savings, Day 31 is retention fee)
       const currentDayCount = splitPreview ? splitPreview.daysCovered : (depositNum >= chosenPackage ? Math.floor(depositNum / chosenPackage) : (depositNum > 0 ? 1 : 0));
       const totalDeposited = depositNum;
-      // Deduct the 1-time package fee just once: remaining deposit is credited to client available savings
-      const availableBalance = Math.max(0, depositNum - packageFee);
+      const isDay31Reached = currentDayCount >= 31;
+      const feeDeducted = isDay31Reached;
+      const companyFeeAmount = isDay31Reached ? chosenPackage : 0;
+      const availableBalance = isDay31Reached ? Math.max(0, depositNum - chosenPackage) : depositNum;
 
       const initialCycle: DailyCollectionCycle = {
         id: `cyc-${Date.now()}`,
@@ -286,15 +288,15 @@ export const CustomersPage: React.FC = () => {
         currentDayCount: currentDayCount,
         dailyTargetAmount: chosenPackage,
         totalDeposited: totalDeposited,
-        feeDeducted: true, // Upfront package fee policy applied once
-        companyFeeAmount: packageFee,
-        isCompleted: currentDayCount >= 31,
+        feeDeducted,
+        companyFeeAmount,
+        isCompleted: isDay31Reached,
         dailySplits: splitPreview?.entries || (currentDayCount > 0 ? Array.from({ length: currentDayCount }, (_, i) => ({
           dayNumber: i + 1,
           date: new Date().toISOString().split('T')[0],
           amount: chosenPackage,
           receiptNo: `RCP-INIT-${Date.now().toString().slice(-4)}-${i + 1}`,
-          isCompanyFee: i === 0, // Only Day 1 is the 1-time package fee, all remaining days are client savings
+          isCompanyFee: i + 1 === 31,
         })) : []),
       };
 
@@ -324,8 +326,10 @@ export const CustomersPage: React.FC = () => {
       setAccounts(updatedAccs);
       saveStoredAccounts(updatedAccs);
 
-      // Automatically accumulate the upfront package fee for E-RIKON Company Interest
-      accumulateCompanyInterest(newAcc, 1, packageFee);
+      // Accumulate company interest only if Day 31 was reached
+      if (isDay31Reached) {
+        accumulateCompanyInterest(newAcc, 1, chosenPackage);
+      }
 
       // Record ledger deposit transaction & upfront fee transaction
       const txs = getStoredTransactions();
@@ -1339,28 +1343,22 @@ export const CustomersPage: React.FC = () => {
                       <span className="font-mono font-black text-amber-400 text-sm">GH₵ {chosenPackage}.00 / day</span>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80">
-                      <span className="text-[10px] text-amber-400/90 block font-medium">1-Day Retention Fee</span>
-                      <span className="font-mono font-black text-amber-300 text-sm">GH₵ {packageFee}.00 (Deducted)</span>
-                    </div>
-
                     <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40">
                       <span className="text-[10px] text-emerald-300 block font-medium">Total Cash Required</span>
                       <span className="font-mono font-black text-emerald-400 text-sm">GH₵ {totalPayable}.00</span>
                     </div>
+
+                    <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80">
+                      <span className="text-[10px] text-teal-300 block font-medium">Credited to Savings (Days 1–30)</span>
+                      <span className="font-mono font-black text-teal-400 text-sm">GH₵ {depositNum}.00</span>
+                    </div>
                   </div>
 
-                  {/* Net Balance Breakdown Badge */}
-                  <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700 flex items-center justify-between text-xs">
-                    <span className="text-slate-300 font-medium text-[11px]">Net Credited to Available Savings Balance:</span>
-                    <span className="font-mono font-black text-emerald-400 text-xs">GH₵ {netCreditedSavings}.00</span>
-                  </div>
-
-                  {/* Early Withdrawal Guarantee Policy Note */}
+                  {/* 30-Day Cycle & Day-31 Policy Note */}
                   <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] leading-relaxed flex items-start gap-2">
                     <Sparkles className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
                     <div>
-                      <b>1-Day Retained Fee Rule:</b> 1 day's package contribution is retained as the E-RIKON management fee. If a client deposits across any days and withdraws before Day 31 (e.g., <b>GH₵ 25.00 for 5 days on the GH₵ 5 package</b>), 1 day (<b>GH₵ 5.00</b>) is retained as the fee and <b>GH₵ 20.00 (4 days)</b> is paid out to the client.
+                      <b>30-Day Savings & Day-31 Retention Rule:</b> Days 1 to 30 contributions are 100% credited to the client's savings balance. On <b>Day 31</b>, 1 day's contribution (<b>GH₵ {chosenPackage}.00</b>) is retained as the E-RIKON management fee. Withdrawals during the cycle are processed as <b>loans against savings</b>, with the 1-day retention fee strictly protected from being eaten into.
                     </div>
                   </div>
                 </div>

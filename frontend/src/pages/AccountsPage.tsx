@@ -232,10 +232,10 @@ export const AccountsPage: React.FC = () => {
                 <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 text-xs space-y-1">
                   <div className="font-extrabold flex items-center gap-1.5">
                     <ShieldAlert className="w-4 h-4 text-amber-500" />
-                    Package Fee Retention & Early Withdrawal Settlement Policy
+                    30-Day Savings, Day-31 Retention & Savings Loan Policy
                   </div>
                   <p className="text-[11px] opacity-90 leading-relaxed">
-                    Upon account opening and for each savings cycle, 1 day's contribution is retained as the E-RIKON management fee. If a client deposits across any number of days before completing 31 days (for example, depositing <b>GH₵ 25.00 across 5 days on the GH₵ 5/day package</b>), 1 day (<b>GH₵ 5.00</b>) is retained as the fee, and <b>GH₵ 20.00 (4 days)</b> is paid out to the client.
+                    Days 1 through 30 contributions are 100% credited to the client's savings balance. On <b>Day 31</b>, the 31st contribution is retained as the E-RIKON management fee. If a client needs to withdraw early during the cycle, it is disbursed as a <b>loan against their savings</b>, with the 1-day retention fee strictly safeguarded and never eaten into.
                   </p>
                 </div>
 
