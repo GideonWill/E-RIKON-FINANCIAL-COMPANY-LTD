@@ -6,7 +6,7 @@ import { useRealtimeSync } from '../services/realtimeSync';
 import { pullCloudToLocal } from '../services/cloudSync';
 import { RoleName } from '../types';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
-import { GhanaCardInput } from '../components/ui/GhanaCardInput';
+import { GhanaCardInput, formatGhanaCardNumber, isValidGhanaCard } from '../components/ui/GhanaCardInput';
 import { GhanaPhoneInput, isValidGhanaPhone } from '../components/ui/GhanaPhoneInput';
 import logoImg from '../assets/logo.png';
 import { 
@@ -159,12 +159,11 @@ export const LoginPage: React.FC = () => {
       return;
     }
 
-    const cleanGhanaDigits = signupGhanaCard.replace(/\D/g, '');
-    if (!cleanGhanaDigits) {
-      setErrorMsg('Please enter your Ghana ID number (numbers only).');
+    const finalGhanaCard = formatGhanaCardNumber(signupGhanaCard);
+    if (!isValidGhanaCard(finalGhanaCard)) {
+      setErrorMsg('Please enter a valid Ghana Card PIN in the format GHA-XXXXXXXXX-X (e.g. GHA-000568509-7).');
       return;
     }
-    const finalGhanaCard = cleanGhanaDigits;
 
     setIsLoading(true);
     try {

@@ -1,33 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { 
-  getStoredCustomers, 
-  saveStoredCustomers, 
-  getStoredAccounts, 
-  saveStoredAccounts, 
+import {
+  getStoredCustomers,
+  saveStoredCustomers,
+  getStoredAccounts,
+  saveStoredAccounts,
   deleteCustomerRecord,
   splitPaymentIntoDays,
   getStoredTransactions,
   saveStoredTransactions,
   accumulateCompanyInterest,
-  MOCK_BRANCHES 
+  MOCK_BRANCHES
 } from '../services/api';
 import { subscribeRealtimeEvents, broadcastRealtimeEvent, useRealtimeSync } from '../services/realtimeSync';
 import { Customer, Account, SavingsPackage, SAVINGS_PACKAGES, Transaction, DailyCollectionCycle } from '../types';
 import { GhanaCardModal } from '../components/ui/GhanaCardModal';
-import { GhanaCardInput } from '../components/ui/GhanaCardInput';
+import { GhanaCardInput, formatGhanaCardNumber, isValidGhanaCard } from '../components/ui/GhanaCardInput';
 import { GhanaPhoneInput, isValidGhanaPhone, formatGhanaianPhoneNumber } from '../components/ui/GhanaPhoneInput';
-import { 
-  Users, 
+import {
+  Users,
   User,
-  UserPlus, 
-  Search, 
-  ShieldCheck, 
-  CreditCard, 
-  Phone, 
-  MapPin, 
-  Briefcase, 
-  Building2, 
+  UserPlus,
+  Search,
+  ShieldCheck,
+  CreditCard,
+  Phone,
+  MapPin,
+  Briefcase,
+  Building2,
   FileText,
   X,
   CheckCircle2,
@@ -92,7 +92,7 @@ export const CustomersPage: React.FC = () => {
     const activeCycle = targetCycleNo
       ? (cycles.find((c) => c.cycleNumber === targetCycleNo) || cycles[0])
       : cycles[0];
-    
+
     const packageRate = acc?.savingsPackage || activeCycle?.dailyTargetAmount || 20;
     const daysPaid = activeCycle?.currentDayCount || 0;
     const totalDeposited = activeCycle?.totalDeposited !== undefined
@@ -100,8 +100,8 @@ export const CustomersPage: React.FC = () => {
       : (acc?.currentBalance !== undefined ? acc.currentBalance : (daysPaid * packageRate));
     const isDay31FeeRetained = daysPaid >= 31 || (activeCycle?.feeDeducted === true);
     const companyFeeAmount = isDay31FeeRetained ? (activeCycle?.companyFeeAmount || packageRate) : 0;
-    const availableSavings = acc?.availableBalance !== undefined 
-      ? acc.availableBalance 
+    const availableSavings = acc?.availableBalance !== undefined
+      ? acc.availableBalance
       : Math.max(0, (acc?.currentBalance || totalDeposited) - companyFeeAmount);
 
     return {
@@ -211,13 +211,12 @@ export const CustomersPage: React.FC = () => {
       return;
     }
 
-    // 2. Ghana ID Validation (Numbers only, no enforced format)
-    const digitsOnly = formData.ghanaCardNumber.replace(/\D/g, '');
-    if (!digitsOnly) {
-      setFormError('⚠️ Ghana ID Number must contain numbers only.');
+    // 2. Ghana Card PIN Validation (Fixed Format GHA-XXXXXXXXX-X)
+    const finalGhanaCard = formatGhanaCardNumber(formData.ghanaCardNumber);
+    if (!isValidGhanaCard(finalGhanaCard)) {
+      setFormError('⚠️ Ghana Card PIN must be in the valid fixed format GHA-XXXXXXXXX-X (e.g. GHA-000568509-7).');
       return;
     }
-    const finalGhanaCard = digitsOnly;
 
     // 3. Phone Number Validation (Must be exactly 10 digits starting with 0)
     const cleanPhone = formatGhanaianPhoneNumber(formData.phone);
@@ -526,11 +525,10 @@ export const CustomersPage: React.FC = () => {
           <button
             type="button"
             onClick={() => handleSelectPackageFilter(null)}
-            className={`px-3 py-1.5 rounded-xl font-mono text-xs font-extrabold border shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
-              selectedPackageFilter === null
+            className={`px-3 py-1.5 rounded-xl font-mono text-xs font-extrabold border shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${selectedPackageFilter === null
                 ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md ring-2 ring-amber-500/30 font-black'
                 : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-amber-500/40'
-            }`}
+              }`}
           >
             <span>All Packages</span>
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/10 dark:bg-white/10">
@@ -546,24 +544,22 @@ export const CustomersPage: React.FC = () => {
                 type="button"
                 key={pkg}
                 onClick={() => handleSelectPackageFilter(isSelected ? null : pkg)}
-                className={`px-3 py-1.5 rounded-xl font-mono text-xs font-extrabold border shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
-                  isSelected
+                className={`px-3 py-1.5 rounded-xl font-mono text-xs font-extrabold border shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${isSelected
                     ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md ring-2 ring-amber-500/30 font-black'
                     : count > 0
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
-                    : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-amber-500/40'
-                }`}
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
+                      : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-amber-500/40'
+                  }`}
                 title={`Filter clients in GH₵ ${pkg}/Day package`}
               >
                 <span>GH₵ {pkg}</span>
                 <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                    isSelected
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] ${isSelected
                       ? 'bg-slate-950 text-white font-bold'
                       : count > 0
-                      ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 font-black'
-                      : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
-                  }`}
+                        ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 font-black'
+                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
+                    }`}
                 >
                   {count}
                 </span>
@@ -621,8 +617,8 @@ export const CustomersPage: React.FC = () => {
               {searchTerm ? 'No Matching Customers Found' : 'No Customers Registered Yet'}
             </h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              {searchTerm 
-                ? 'Try adjusting your search query (Name, Ghana Card #, Phone).' 
+              {searchTerm
+                ? 'Try adjusting your search query (Name, Ghana Card #, Phone).'
                 : 'Start onboarding genuine clients with Ghana Card verification to open daily savings accounts.'}
             </p>
           </div>
@@ -636,153 +632,152 @@ export const CustomersPage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredCustomers.map((cust) => {
-          const isJustAdded = cust.id === justAddedId;
-          const fin = getCustomerFinancialSummary(cust);
-          return (
-          <div
-            key={cust.id}
-            onClick={() => setSelectedDetailCustomer(cust)}
-            className={`p-6 rounded-3xl bg-white dark:bg-slate-900 border transition-all space-y-4 relative overflow-hidden cursor-pointer group hover:border-amber-500 hover:shadow-xl hover:scale-[1.01] ${
-              isJustAdded
-                ? 'border-amber-500 ring-2 ring-amber-500/50 shadow-2xl shadow-amber-500/20'
-                : 'border-slate-200 dark:border-slate-800 shadow-sm'
-            }`}
-            title="Click to view 360 financial overview, days paid, and savings balance"
-          >
-            {/* Just Onboarded Badge */}
-            {isJustAdded && (
-              <div className="absolute top-0 right-0 bg-amber-500 text-slate-950 text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-widest flex items-center gap-1 shadow-sm">
-                <Sparkles className="w-3 h-3" /> Just Onboarded
-              </div>
-            )}
-
-            {/* Top Row: Client Badge & Name */}
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 via-slate-800 to-slate-900 border-2 border-amber-500/40 shadow-sm flex items-center justify-center font-mono font-black text-amber-500 text-lg shrink-0 group-hover:scale-105 transition-transform">
-                  {cust.firstName[0]}{cust.lastName[0]}
-                </div>
-                <div>
-                  <div className="text-[11px] font-mono text-amber-500 font-extrabold flex items-center gap-2">
-                    <span>{cust.customerNumber}</span>
-                    <span className="text-[10px] text-slate-400 font-normal">• {fin.acc?.accountNumber || 'ACC-SAVINGS'}</span>
+          {filteredCustomers.map((cust) => {
+            const isJustAdded = cust.id === justAddedId;
+            const fin = getCustomerFinancialSummary(cust);
+            return (
+              <div
+                key={cust.id}
+                onClick={() => setSelectedDetailCustomer(cust)}
+                className={`p-6 rounded-3xl bg-white dark:bg-slate-900 border transition-all space-y-4 relative overflow-hidden cursor-pointer group hover:border-amber-500 hover:shadow-xl hover:scale-[1.01] ${isJustAdded
+                    ? 'border-amber-500 ring-2 ring-amber-500/50 shadow-2xl shadow-amber-500/20'
+                    : 'border-slate-200 dark:border-slate-800 shadow-sm'
+                  }`}
+                title="Click to view 360 financial overview, days paid, and savings balance"
+              >
+                {/* Just Onboarded Badge */}
+                {isJustAdded && (
+                  <div className="absolute top-0 right-0 bg-amber-500 text-slate-950 text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-widest flex items-center gap-1 shadow-sm">
+                    <Sparkles className="w-3 h-3" /> Just Onboarded
                   </div>
-                  <h3 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight group-hover:text-amber-500 transition-colors">
-                    {cust.firstName} {cust.otherNames || ''} {cust.lastName}
-                  </h3>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
-                    <Briefcase className="w-3.5 h-3.5 text-slate-400" /> {cust.occupation}
+                )}
+
+                {/* Top Row: Client Badge & Name */}
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 via-slate-800 to-slate-900 border-2 border-amber-500/40 shadow-sm flex items-center justify-center font-mono font-black text-amber-500 text-lg shrink-0 group-hover:scale-105 transition-transform">
+                      {cust.firstName[0]}{cust.lastName[0]}
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-mono text-amber-500 font-extrabold flex items-center gap-2">
+                        <span>{cust.customerNumber}</span>
+                        <span className="text-[10px] text-slate-400 font-normal">• {fin.acc?.accountNumber || 'ACC-SAVINGS'}</span>
+                      </div>
+                      <h3 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight group-hover:text-amber-500 transition-colors">
+                        {cust.firstName} {cust.otherNames || ''} {cust.lastName}
+                      </h3>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
+                        <Briefcase className="w-3.5 h-3.5 text-slate-400" /> {cust.occupation}
+                      </div>
+                    </div>
+                  </div>
+
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3" /> {cust.status}
+                  </span>
+                </div>
+
+                {/* Financial Performance Highlights: Package, Amount Started With, Days Paid, Balance, 31-Day Company Fee */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 text-xs">
+                  <div className="space-y-0.5">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                      <Coins className="w-3 h-3 text-amber-500" /> Package Tier
+                    </span>
+                    <div className="font-mono font-black text-amber-600 dark:text-amber-400 text-xs">
+                      GH₵ {fin.packageRate}/Day
+                    </div>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3 text-blue-500" /> Amount Started
+                    </span>
+                    <div className="font-mono font-black text-blue-600 dark:text-blue-400 text-xs">
+                      GH₵ {fin.totalDeposited.toFixed(2)}
+                    </div>
+                    <div className="text-[9px] text-slate-400 font-mono">
+                      {fin.daysPaid} / 31 Days
+                    </div>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                      <Wallet className="w-3 h-3 text-emerald-500" /> Available Balance
+                    </span>
+                    <div className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-xs">
+                      GH₵ {fin.availableSavings.toFixed(2)}
+                    </div>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                      <Building2 className="w-3 h-3 text-purple-500" /> 1-Time Co. Fee
+                    </span>
+                    <div className="font-mono font-bold text-xs truncate">
+                      {fin.isDay31FeeRetained ? (
+                        <span className="text-purple-600 dark:text-purple-400 font-black">
+                          GH₵ {fin.packageRate}.00 (Settled)
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-[10px]">
+                          GH₵ {fin.packageRate}.00 (Pending)
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3" /> {cust.status}
-              </span>
-            </div>
-
-            {/* Financial Performance Highlights: Package, Amount Started With, Days Paid, Balance, 31-Day Company Fee */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 text-xs">
-              <div className="space-y-0.5">
-                <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                  <Coins className="w-3 h-3 text-amber-500" /> Package Tier
-                </span>
-                <div className="font-mono font-black text-amber-600 dark:text-amber-400 text-xs">
-                  GH₵ {fin.packageRate}/Day
-                </div>
-              </div>
-
-              <div className="space-y-0.5">
-                <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3 text-blue-500" /> Amount Started
-                </span>
-                <div className="font-mono font-black text-blue-600 dark:text-blue-400 text-xs">
-                  GH₵ {fin.totalDeposited.toFixed(2)}
-                </div>
-                <div className="text-[9px] text-slate-400 font-mono">
-                  {fin.daysPaid} / 31 Days
-                </div>
-              </div>
-
-              <div className="space-y-0.5">
-                <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                  <Wallet className="w-3 h-3 text-emerald-500" /> Available Balance
-                </span>
-                <div className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-xs">
-                  GH₵ {fin.availableSavings.toFixed(2)}
-                </div>
-              </div>
-
-              <div className="space-y-0.5">
-                <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                  <Building2 className="w-3 h-3 text-purple-500" /> 1-Time Co. Fee
-                </span>
-                <div className="font-mono font-bold text-xs truncate">
-                  {fin.isDay31FeeRetained ? (
-                    <span className="text-purple-600 dark:text-purple-400 font-black">
-                      GH₵ {fin.packageRate}.00 (Settled)
+                {/* Middle Grid: Ghana Card & Phone */}
+                <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-slate-50/70 dark:bg-slate-950/70 text-xs border border-slate-100 dark:border-slate-800/60">
+                  <div className="space-y-0.5">
+                    <span className="text-[9px] text-slate-400 font-semibold uppercase flex items-center gap-1">
+                      <CreditCard className="w-3 h-3 text-amber-500" /> Ghana Card PIN
                     </span>
-                  ) : (
-                    <span className="text-slate-400 text-[10px]">
-                      GH₵ {fin.packageRate}.00 (Pending)
+                    <div className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                      {cust.ghanaCardNumber}
+                    </div>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <span className="text-[9px] text-slate-400 font-semibold uppercase flex items-center gap-1">
+                      <Phone className="w-3 h-3 text-blue-500" /> Phone Contact
                     </span>
-                  )}
+                    <div className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                      {cust.phone}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Middle Grid: Ghana Card & Phone */}
-            <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-slate-50/70 dark:bg-slate-950/70 text-xs border border-slate-100 dark:border-slate-800/60">
-              <div className="space-y-0.5">
-                <span className="text-[9px] text-slate-400 font-semibold uppercase flex items-center gap-1">
-                  <CreditCard className="w-3 h-3 text-amber-500" /> Ghana Card PIN
-                </span>
-                <div className="font-mono font-bold text-slate-800 dark:text-slate-200">
-                  {cust.ghanaCardNumber}
+                {/* Bottom Row: Address & Actions */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs pt-1 border-t border-slate-100 dark:border-slate-800/80">
+                  <div className="text-slate-500 dark:text-slate-400 flex items-center gap-1 text-[11px] truncate">
+                    <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" /> {cust.address}
+                  </div>
+
+                  <div className="flex items-center space-x-3 shrink-0">
+                    <span className="text-[11px] font-bold text-amber-500 group-hover:text-amber-600 dark:group-hover:text-amber-400 flex items-center gap-1">
+                      <span>View 360 Financial Details</span>
+                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteCustomer(cust);
+                      }}
+                      className="px-2.5 py-1 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 font-bold border border-rose-500/30 transition-all flex items-center gap-1 text-xs cursor-pointer"
+                      title="Close and delete client record"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
+
               </div>
-
-              <div className="space-y-0.5">
-                <span className="text-[9px] text-slate-400 font-semibold uppercase flex items-center gap-1">
-                  <Phone className="w-3 h-3 text-blue-500" /> Phone Contact
-                </span>
-                <div className="font-mono font-bold text-slate-800 dark:text-slate-200">
-                  {cust.phone}
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Row: Address & Actions */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs pt-1 border-t border-slate-100 dark:border-slate-800/80">
-              <div className="text-slate-500 dark:text-slate-400 flex items-center gap-1 text-[11px] truncate">
-                <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" /> {cust.address}
-              </div>
-
-              <div className="flex items-center space-x-3 shrink-0">
-                <span className="text-[11px] font-bold text-amber-500 group-hover:text-amber-600 dark:group-hover:text-amber-400 flex items-center gap-1">
-                  <span>View 360 Financial Details</span>
-                  <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                </span>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteCustomer(cust);
-                  }}
-                  className="px-2.5 py-1 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 font-bold border border-rose-500/30 transition-all flex items-center gap-1 text-xs cursor-pointer"
-                  title="Close and delete client record"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-          </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
       )}
 
       {/* Customer 360 Financial Overview & Days Paid Modal */}
@@ -791,14 +786,14 @@ export const CustomersPage: React.FC = () => {
         const percentCompleted = Math.min(100, Math.round((fin.daysPaid / 31) * 100));
 
         return (
-          <div 
+          <div
             className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
             onClick={() => {
               setSelectedDetailCustomer(null);
               setSelectedDetailCycleNumber(null);
             }}
           >
-            <div 
+            <div
               className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-5 my-auto max-h-[94vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
@@ -836,7 +831,7 @@ export const CustomersPage: React.FC = () => {
                     <span className="hidden sm:inline">Delete Record</span>
                   </button>
 
-                  <button 
+                  <button
                     onClick={() => {
                       setSelectedDetailCustomer(null);
                       setSelectedDetailCycleNumber(null);
@@ -862,11 +857,10 @@ export const CustomersPage: React.FC = () => {
                         key={c.cycleNumber}
                         type="button"
                         onClick={() => setSelectedDetailCycleNumber(c.cycleNumber)}
-                        className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
-                          isSelected
+                        className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${isSelected
                             ? 'bg-amber-500 text-slate-950 shadow-md font-black ring-2 ring-amber-500/40'
                             : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-amber-500 border border-slate-200 dark:border-slate-800'
-                        }`}
+                          }`}
                         title={`Switch to view detailed records of Cycle #${c.cycleNumber}`}
                       >
                         <Coins className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
@@ -882,7 +876,7 @@ export const CustomersPage: React.FC = () => {
 
               {/* 360 Financial Metrics Highlights Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                
+
                 {/* 1. Daily Package Card */}
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/30 space-y-1">
                   <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -917,8 +911,8 @@ export const CustomersPage: React.FC = () => {
                     <span className="text-xs font-mono font-bold text-blue-500">{percentCompleted}%</span>
                   </div>
                   <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                    <div 
-                      className="bg-blue-500 h-1.5 rounded-full transition-all duration-500" 
+                    <div
+                      className="bg-blue-500 h-1.5 rounded-full transition-all duration-500"
                       style={{ width: `${percentCompleted}%` }}
                     />
                   </div>
@@ -982,15 +976,14 @@ export const CustomersPage: React.FC = () => {
                     return (
                       <div
                         key={dayNo}
-                        className={`p-1.5 rounded-xl border text-center font-mono text-[10px] transition-all ${
-                          isDay31
+                        className={`p-1.5 rounded-xl border text-center font-mono text-[10px] transition-all ${isDay31
                             ? isPaid
                               ? 'bg-purple-500/20 border-purple-500 text-purple-600 dark:text-purple-400 font-black'
                               : 'bg-purple-500/5 border-purple-500/30 text-purple-400 font-medium'
                             : isPaid
-                            ? 'bg-emerald-500/20 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold'
-                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400'
-                        }`}
+                              ? 'bg-emerald-500/20 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold'
+                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400'
+                          }`}
                         title={
                           isDay31
                             ? `Day 31: Company 1-Day Management Fee (GH₵ ${fin.packageRate})`
@@ -1046,7 +1039,7 @@ export const CustomersPage: React.FC = () => {
                       Next of Kin
                     </span>
                     <div className="font-black text-sm text-slate-950 dark:text-white block">
-                      {selectedDetailCustomer.nextOfKin?.fullName || 'Not Specified'} 
+                      {selectedDetailCustomer.nextOfKin?.fullName || 'Not Specified'}
                       <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1">
                         ({selectedDetailCustomer.nextOfKin?.relationship || 'Family'})
                       </span>
@@ -1106,15 +1099,15 @@ export const CustomersPage: React.FC = () => {
 
       {/* Register Customer Modal */}
       {showRegisterModal && (
-        <div 
+        <div
           className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setShowRegisterModal(false)}
         >
-          <div 
+          <div
             className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            
+
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-amber-500" />
@@ -1271,11 +1264,10 @@ export const CustomersPage: React.FC = () => {
                           setChosenPackage(pkg);
                           setInitialDepositAmount(pkg.toString());
                         }}
-                        className={`py-2 px-1 rounded-xl font-mono text-xs font-extrabold border transition-all cursor-pointer text-center ${
-                          isSelected
+                        className={`py-2 px-1 rounded-xl font-mono text-xs font-extrabold border transition-all cursor-pointer text-center ${isSelected
                             ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md ring-2 ring-amber-500/30'
                             : 'bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-amber-500/50'
-                        }`}
+                          }`}
                       >
                         GH₵ {pkg}
                       </button>
@@ -1305,11 +1297,10 @@ export const CustomersPage: React.FC = () => {
                           setInitialDepositAmount(e.target.value);
                         }}
                         style={{ color: '#ffffff' }}
-                        className={`w-full pl-11 pr-3 py-2 rounded-xl bg-slate-800 border text-white font-mono font-black text-sm focus:outline-none ${
-                          depositNum < chosenPackage || depositNum % chosenPackage !== 0
+                        className={`w-full pl-11 pr-3 py-2 rounded-xl bg-slate-800 border text-white font-mono font-black text-sm focus:outline-none ${depositNum < chosenPackage || depositNum % chosenPackage !== 0
                             ? 'border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
                             : 'border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500'
-                        }`}
+                          }`}
                         placeholder={chosenPackage.toString()}
                       />
                     </div>

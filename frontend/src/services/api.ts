@@ -1,13 +1,13 @@
 import axios from 'axios';
-import { 
-  User, 
-  Customer, 
-  Account, 
-  Transaction, 
-  LoanApplication, 
-  AuditLog, 
-  Branch, 
-  RoleName, 
+import {
+  User,
+  Customer,
+  Account,
+  Transaction,
+  LoanApplication,
+  AuditLog,
+  Branch,
+  RoleName,
   SavingsPackage,
   DailyCollectionCycle,
   DailySplitEntry,
@@ -25,10 +25,10 @@ export const toDecimal = (val: number | string): number => {
 };
 
 // API Base URL (Defaults to live Render backend in production and localhost in dev)
-const API_BASE_URL = 
-  import.meta.env.VITE_API_URL || 
-  (typeof window !== 'undefined' && window.location.hostname === 'localhost' 
-    ? 'http://localhost:4000/api' 
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  (typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    ? 'http://localhost:4000/api'
     : 'https://e-rikon-ecfms-backend.onrender.com/api');
 
 export const apiClient = axios.create({
@@ -408,7 +408,7 @@ export const deleteRegisteredUser = async (userId: string, currentSuperAdmin: Us
   } catch (err: any) {
     try {
       await apiClient.delete(`/auth/reject/${userId}`);
-    } catch {}
+    } catch { }
   }
 
   broadcastRealtimeEvent('USER_DELETED', { userId, email: targetUser?.email });
@@ -417,9 +417,9 @@ export const deleteRegisteredUser = async (userId: string, currentSuperAdmin: Us
   setTimeout(() => {
     try {
       import('./cloudSync').then(({ pushLocalToCloud }) => {
-        pushLocalToCloud().catch(() => {});
+        pushLocalToCloud().catch(() => { });
       });
-    } catch {}
+    } catch { }
   }, 50);
 
   return true;
@@ -481,6 +481,9 @@ export const resetToCleanLiveState = () => {
   localStorage.removeItem('erikon_audit_logs');
   localStorage.removeItem('erikon_registered_users');
   localStorage.removeItem('erikon_current_user');
+  localStorage.removeItem('erikon_deleted_customer_ids');
+  localStorage.removeItem('erikon_deleted_user_emails');
+  localStorage.removeItem('erikon_access_token');
   broadcastRealtimeEvent('DATA_RESET', { resetAt: new Date().toISOString() });
 };
 
@@ -644,15 +647,15 @@ export const deleteCustomerRecord = (customerId: string): boolean => {
   broadcastRealtimeEvent('CUSTOMER_DELETED', { customerId });
 
   // 7. Delete from backend Neon database if connected
-  apiClient.delete(`/customers/${customerId}`).catch(() => {});
+  apiClient.delete(`/customers/${customerId}`).catch(() => { });
 
   // 8. Immediately push updated state to cloud relay
   setTimeout(() => {
     try {
       import('./cloudSync').then(({ pushLocalToCloud }) => {
-        pushLocalToCloud().catch(() => {});
+        pushLocalToCloud().catch(() => { });
       });
-    } catch {}
+    } catch { }
   }, 50);
 
   return true;
@@ -802,8 +805,8 @@ export const recordPackageDeposit = (
 
   // If fee was deducted this transaction, available balance receives amountPaid minus 1 package fee (e.g. 70 - 10 = 60).
   // If fee was already deducted previously for this cycle, available balance receives 100% of amountPaid (e.g. 70).
-  const addedAvailable = feeDeductedThisTx 
-    ? Math.max(0, toDecimal(amountPaid - packageFee)) 
+  const addedAvailable = feeDeductedThisTx
+    ? Math.max(0, toDecimal(amountPaid - packageFee))
     : toDecimal(amountPaid);
 
   acc.dailyCycles = cycles;
@@ -1007,7 +1010,7 @@ export const approveRequest = (
       saveRegisteredUsers(users);
     }
     // Sync approval to live backend
-    apiClient.patch(`/auth/approve/${req.targetId}`).catch(() => {});
+    apiClient.patch(`/auth/approve/${req.targetId}`).catch(() => { });
   }
 
   approvals[index] = req;
@@ -1057,7 +1060,7 @@ export const rejectRequest = (
     const updated = users.filter((u) => u.id !== req.targetId && u.email !== req.details?.email);
     saveRegisteredUsers(updated);
     // Sync rejection to live backend
-    apiClient.delete(`/auth/reject/${req.targetId}`).catch(() => {});
+    apiClient.delete(`/auth/reject/${req.targetId}`).catch(() => { });
   }
 
   approvals[index] = req;

@@ -1,3 +1,4 @@
+
 import { Injectable, UnauthorizedException, ConflictException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -246,7 +247,7 @@ export class AuthService {
           newValue: `Account approved for ${user.firstName} ${user.lastName} (${user.role})`,
         },
       });
-    } catch {}
+    } catch { }
 
     // Broadcast approval event in real-time
     this.eventsService.broadcast('APPROVAL_DECISION_MADE', {
@@ -277,7 +278,7 @@ export class AuthService {
     try {
       await this.prisma.auditLog.deleteMany({ where: { userId: user.id } });
       await this.prisma.dailyCashSummary.deleteMany({ where: { tellerId: user.id } });
-    } catch {}
+    } catch { }
 
     await this.prisma.user.delete({
       where: { id: userId },

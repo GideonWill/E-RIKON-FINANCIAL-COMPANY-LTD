@@ -1,20 +1,20 @@
-import { 
-  getRegisteredUsers, 
-  saveRegisteredUsers, 
-  getStoredCustomers, 
-  saveStoredCustomers, 
-  getStoredAccounts, 
-  saveStoredAccounts, 
-  getStoredTransactions, 
-  saveStoredTransactions, 
-  getStoredLoans, 
-  saveStoredLoans, 
-  getStoredCompanyInterest, 
-  saveStoredCompanyInterest, 
+import {
+  getRegisteredUsers,
+  saveRegisteredUsers,
+  getStoredCustomers,
+  saveStoredCustomers,
+  getStoredAccounts,
+  saveStoredAccounts,
+  getStoredTransactions,
+  saveStoredTransactions,
+  getStoredLoans,
+  saveStoredLoans,
+  getStoredCompanyInterest,
+  saveStoredCompanyInterest,
   getStoredCompanyWithdrawals,
   saveStoredCompanyWithdrawals,
-  getStoredApprovals, 
-  saveStoredApprovals, 
+  getStoredApprovals,
+  saveStoredApprovals,
   getStoredAuditLogs,
   saveStoredAuditLogs,
   getStoredBranches,
@@ -56,13 +56,13 @@ export const getLastSyncTime = () => lastSyncTimestamp;
 const getSyncEndpoints = (): string[] => {
   const endpoints: string[] = [];
 
-  // 1. Same-Origin / Vercel Serverless Function Endpoint (fastest when deployed)
+  // 1. Production Render Backend Endpoint (Primary Authoritative Source of Truth)
+  endpoints.push('https://e-rikon-ecfms-backend.onrender.com/api/sync');
+
+  // 2. Same-Origin / Vercel Serverless Function Endpoint (Relays to Render Backend)
   if (typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes('localhost')) {
     endpoints.push(`${window.location.origin}/api/sync`);
   }
-
-  // 2. Production Render Backend Endpoint
-  endpoints.push('https://e-rikon-ecfms-backend.onrender.com/api/sync');
 
   // 3. Localhost Dev Backend (if running locally)
   if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
@@ -166,7 +166,7 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
         const data = await res.json();
         const vault = data?.vault || data;
         if (
-          vault && 
+          vault &&
           (Array.isArray(vault.registeredUsers) || Array.isArray(vault.customers) || Array.isArray(vault.accounts))
         ) {
           cloudData = vault;
@@ -196,20 +196,20 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
   if (Array.isArray(cloudData.registeredUsers) && cloudData.registeredUsers.length > 0) {
     const localUsers = getRegisteredUsers();
     const userMap = new Map<string, RegisteredUserRecord>();
-    
+
     localUsers.forEach((u) => {
       const email = u.email?.toLowerCase();
       if (!deletedUserEmails.includes(email) && !deletedUserEmails.includes(u.id?.toLowerCase())) {
         userMap.set(email, u);
       }
     });
-    
+
     cloudData.registeredUsers.forEach((u) => {
       const key = u.email.toLowerCase();
       if (deletedUserEmails.includes(key) || deletedUserEmails.includes(u.id?.toLowerCase())) return;
       const existing = userMap.get(key);
       const isApproved = Boolean(existing?.isApproved || u.isApproved || u.role === 'SUPER_ADMIN');
-      
+
       userMap.set(key, {
         id: u.id || existing?.id || `user-${Date.now()}`,
         employeeId: u.employeeId || existing?.employeeId || `EMP-${Date.now().toString().slice(-4)}`,
@@ -411,6 +411,10 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
 
   if (hasUpdates) {
     broadcastRealtimeEvent('MANUAL_SYNC', { source: 'CLOUD_PULL' });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('erikon_realtime_update', { detail: { type: 'MANUAL_SYNC' } }));
+      window.dispatchEvent(new CustomEvent('erikon_cloud_synced', { detail: { timestamp: new Date().toISOString() } }));
+    }
   }
 
   lastSyncTimestamp = new Date().toLocaleTimeString();
@@ -425,36 +429,36 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
  */
 export const initCloudSync = () => {
   // Initial pull on app launch
-  pullCloudToLocal().catch(() => {});
+  pullCloudToLocal().catch(() => { });
 
   // Automatically push to cloud relay whenever any staff user, customer, deposit, or account is created locally
   const unsubscribeEvents = subscribeRealtimeEvents((event) => {
     if (event.type !== 'MANUAL_SYNC') {
-      pushLocalToCloud().catch(() => {});
+      pushLocalToCloud().catch(() => { });
     } else {
-      pullCloudToLocal().catch(() => {});
+      pullCloudToLocal().catch(() => { });
     }
   });
 
   // Fast background poller (every 1.5s) to guarantee zero delay across devices
   const pollTimer = setInterval(() => {
-    pullCloudToLocal().catch(() => {});
+    pullCloudToLocal().catch(() => { });
   }, 1500);
 
   // Instant sync on screen resume / tab focus
   const handleVisibilityChange = () => {
     if (document.visibilityState === 'visible') {
-      pullCloudToLocal().catch(() => {});
+      pullCloudToLocal().catch(() => { });
     }
   };
 
   const handleFocus = () => {
-    pullCloudToLocal().catch(() => {});
+    pullCloudToLocal().catch(() => { });
   };
 
   const handleOnline = () => {
-    pullCloudToLocal().catch(() => {});
-    pushLocalToCloud().catch(() => {});
+    pullCloudToLocal().catch(() => { });
+    pushLocalToCloud().catch(() => { });
   };
 
   if (typeof window !== 'undefined') {
@@ -500,7 +504,7 @@ export const importPairingBundle = (encodedBundle: string): boolean => {
       parsed.u.forEach((u: RegisteredUserRecord) => userMap.set(u.email.toLowerCase(), u));
       const merged = Array.from(userMap.values());
       saveRegisteredUsers(merged);
-      pushLocalToCloud().catch(() => {});
+      pushLocalToCloud().catch(() => { });
       return true;
     }
     return false;

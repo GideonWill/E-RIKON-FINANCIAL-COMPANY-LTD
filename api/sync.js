@@ -32,25 +32,28 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
-    // If in-memory vault is empty, attempt to pull from Render backend
-    if (
-      (!globalCloudVault.registeredUsers || globalCloudVault.registeredUsers.length === 0) &&
-      (!globalCloudVault.customers || globalCloudVault.customers.length === 0)
-    ) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
-        const rRes = await fetch(RENDER_BACKEND_SYNC_URL, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (rRes.ok) {
-          const rData = await rRes.json();
-          if (rData && rData.vault) {
-            globalCloudVault = { ...globalCloudVault, ...rData.vault };
-          }
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const rRes = await fetch(RENDER_BACKEND_SYNC_URL, {
+        headers: { 'Accept': 'application/json' },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (rRes.ok) {
+        const rData = await rRes.json();
+        if (rData && (rData.vault || rData.success)) {
+          const fetchedVault = rData.vault || rData;
+          globalCloudVault = { ...globalCloudVault, ...fetchedVault };
+          return res.status(200).json({
+            success: true,
+            vault: fetchedVault,
+            updatedAt: fetchedVault.updatedAt || new Date().toISOString(),
+          });
         }
-      } catch (e) {
-        // Fallback to in-memory vault
       }
+    } catch (e) {
+      // Fallback to in-memory vault
     }
 
     return res.status(200).json({
@@ -63,7 +66,7 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
       const incoming = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      
+
       // 1. Merge registered staff accounts & apply permanent user deletions
       const deletedUserEmails = (Array.isArray(incoming.deletedUserEmails) ? incoming.deletedUserEmails : []).map(e => String(e).toLowerCase());
       if (Array.isArray(incoming.registeredUsers)) {
@@ -73,12 +76,12 @@ export default async function handler(req, res) {
             existingUsersMap.set(u.email.toLowerCase(), u);
           }
         });
-        
+
         incoming.registeredUsers.forEach(incomingUser => {
           const key = incomingUser.email.toLowerCase();
           if (deletedUserEmails.includes(key) || deletedUserEmails.includes(incomingUser.id)) return;
           const existingUser = existingUsersMap.get(key);
-          
+
           if (existingUser) {
             // Once approved on any device, keep approved status
             const isApproved = Boolean(existingUser.isApproved || incomingUser.isApproved || incomingUser.role === 'SUPER_ADMIN');
@@ -92,7 +95,7 @@ export default async function handler(req, res) {
             existingUsersMap.set(key, incomingUser);
           }
         });
-        
+
         globalCloudVault.registeredUsers = Array.from(existingUsersMap.values());
       } else if (deletedUserEmails.length > 0) {
         globalCloudVault.registeredUsers = (globalCloudVault.registeredUsers || []).filter(
@@ -109,7 +112,7 @@ export default async function handler(req, res) {
             apprMap.set(a.id, a);
           }
         });
-        
+
         incoming.approvals.forEach(incomingAppr => {
           const email = incomingAppr.details?.email?.toLowerCase();
           if (deletedUserEmails.includes(email) || deletedUserEmails.includes(incomingAppr.targetId)) return;
@@ -124,7 +127,7 @@ export default async function handler(req, res) {
             apprMap.set(incomingAppr.id, incomingAppr);
           }
         });
-        
+
         globalCloudVault.approvals = Array.from(apprMap.values());
       } else if (deletedUserEmails.length > 0) {
         globalCloudVault.approvals = (globalCloudVault.approvals || []).filter(
@@ -212,7 +215,7 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(globalCloudVault),
-      }).catch(() => {});
+      }).catch(() => { });
 
       return res.status(200).json({
         success: true,
