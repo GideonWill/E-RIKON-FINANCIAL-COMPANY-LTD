@@ -234,17 +234,19 @@ export class AuthService {
     });
 
     // Record audit log
-    await this.prisma.auditLog.create({
-      data: {
-        userId: approverId || user.id,
-        userEmail: user.email,
-        userRole: user.role,
-        branchName: user.branch.name,
-        action: 'STAFF_ACCOUNT_APPROVED',
-        resource: 'AUTH',
-        newValue: `Account approved for ${user.firstName} ${user.lastName} (${user.role})`,
-      },
-    });
+    try {
+      await this.prisma.auditLog.create({
+        data: {
+          userId: approverId || user.id,
+          userEmail: user.email,
+          userRole: user.role,
+          branchName: user.branch?.name || 'Accra Central Main Branch',
+          action: 'STAFF_ACCOUNT_APPROVED',
+          resource: 'AUTH',
+          newValue: `Account approved for ${user.firstName} ${user.lastName} (${user.role})`,
+        },
+      });
+    } catch {}
 
     // Broadcast approval event in real-time
     this.eventsService.broadcast('APPROVAL_DECISION_MADE', {
@@ -271,33 +273,30 @@ export class AuthService {
       throw new NotFoundException('User not found.');
     }
 
+    // Clean up dependent audit logs or daily summaries before deletion
+    try {
+      await this.prisma.auditLog.deleteMany({ where: { userId: user.id } });
+      await this.prisma.dailyCashSummary.deleteMany({ where: { tellerId: user.id } });
+    } catch {}
+
     await this.prisma.user.delete({
       where: { id: userId },
     });
 
-    // Record audit log
-    await this.prisma.auditLog.create({
-      data: {
-        userId: approverId || user.id,
-        userEmail: user.email,
-        userRole: user.role,
-        branchName: user.branch.name,
-        action: 'STAFF_ACCOUNT_REJECTED',
-        resource: 'AUTH',
-        newValue: `Registration rejected for ${user.firstName} ${user.lastName} (${user.role})`,
-      },
-    });
-
-    // Broadcast rejection event in real-time
+    // Broadcast deletion in real-time
     this.eventsService.broadcast('APPROVAL_DECISION_MADE', {
       userId: user.id,
       action: 'REJECTED',
       role: user.role,
     });
 
+    this.eventsService.broadcast('USER_DELETED', {
+      userId: user.id,
+    });
+
     return {
       success: true,
-      message: `Registration for ${user.firstName} ${user.lastName} was rejected.`,
+      message: `Registration for ${user.firstName} ${user.lastName} was removed.`,
     };
   }
 

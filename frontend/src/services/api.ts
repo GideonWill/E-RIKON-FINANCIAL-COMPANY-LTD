@@ -282,7 +282,11 @@ export const getRegisteredUsers = (): RegisteredUserRecord[] => {
   const data = localStorage.getItem('erikon_registered_users');
   if (!data) return [];
   try {
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    if (!Array.isArray(parsed)) return [];
+    // Ensure deleted test accounts are purged
+    const purgedEmails = ['kwakumensah@gmail.com', 'kofikofi@gmail.com', 'testadmin@erikon-group.com'];
+    return parsed.filter((u) => !purgedEmails.includes(u.email?.toLowerCase()));
   } catch {
     return [];
   }

@@ -7,6 +7,7 @@ import { NotificationsModal, getSystemNotifications } from '../ui/NotificationsM
 import { LoadingScreen } from '../ui/LoadingScreen';
 import { triggerAppRefresh } from '../ui/SplashScreen';
 import { useRealtimeSync } from '../../services/realtimeSync';
+import { pushLocalToCloud, pullCloudToLocal } from '../../services/cloudSync';
 import logoImg from '../../assets/logo.png';
 import { 
   Building2, 
@@ -168,9 +169,15 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
             {/* Instant Full System Refresh & Sync Button */}
             <button
               type="button"
-              onClick={() => triggerAppRefresh()}
+              onClick={async () => {
+                try {
+                  await pushLocalToCloud();
+                  await pullCloudToLocal();
+                } catch {}
+                triggerAppRefresh();
+              }}
               className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#0d9488] dark:hover:text-teal-400 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer group shadow-2xs shrink-0"
-              title="Refresh Page & Sync Latest System Updates"
+              title="Refresh Page & Sync Latest Cloud System Updates"
             >
               <RotateCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500 text-[#0d9488]" />
             </button>
