@@ -8,6 +8,7 @@ import { EventsService } from '../events/events.service';
 export interface LoginDto {
   email: string;
   password: string;
+  role?: RoleName;
 }
 
 export interface RegisterDto {
@@ -28,7 +29,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly eventsService: EventsService,
-  ) {}
+  ) { }
 
   async validateUser(dto: LoginDto) {
     const cleanEmail = dto.email?.trim().toLowerCase();
@@ -39,6 +40,12 @@ export class AuthService {
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid email or account disabled.');
+    }
+
+    if (dto.role && user.role !== dto.role) {
+      throw new UnauthorizedException(
+        `Access denied: This account is registered as ${user.role.replace(/_/g, ' ')}, not ${dto.role.replace(/_/g, ' ')}.`
+      );
     }
 
     const isMatch = await bcrypt.compare(dto.password, user.passwordHash);
@@ -98,7 +105,7 @@ export class AuthService {
 
   async registerUser(dto: RegisterDto) {
     const cleanEmail = dto.email?.trim().toLowerCase();
-    
+
     // Check if user exists
     const existing = await this.prisma.user.findUnique({
       where: { email: cleanEmail },

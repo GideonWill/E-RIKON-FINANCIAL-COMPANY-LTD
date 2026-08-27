@@ -124,6 +124,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  const formatRoleLabel = (r?: string) => {
+    if (!r) return 'Assigned Role';
+    return r.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
   const login = async (email?: string, password?: string, role?: RoleName): Promise<{ success: boolean; error?: string }> => {
     const cleanEmail = email?.trim().toLowerCase();
     const cleanPass = password?.trim();
@@ -137,9 +142,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data } = await apiClient.post('/auth/login', {
         email: cleanEmail,
         password: cleanPass,
+        role,
       });
 
       if (data && data.user) {
+        // Enforce role check: User must be in the selected role
+        if (role && data.user.role !== role) {
+          return {
+            success: false,
+            error: `Access Denied: This account is registered as "${formatRoleLabel(data.user.role)}", not "${formatRoleLabel(role)}". Please switch to the ${formatRoleLabel(data.user.role)} role tab to sign in.`,
+          };
+        }
+
         if (data.accessToken) {
           localStorage.setItem('erikon_access_token', data.accessToken);
           connectSSE(data.accessToken);
@@ -171,7 +185,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (apiErr: any) {
       console.warn('Backend login notice:', apiErr?.response?.data?.message || apiErr?.message);
       const serverMsg = apiErr?.response?.data?.message;
-      if (typeof serverMsg === 'string' && serverMsg.toLowerCase().includes('password')) {
+      if (typeof serverMsg === 'string' && (serverMsg.toLowerCase().includes('password') || serverMsg.toLowerCase().includes('role') || serverMsg.toLowerCase().includes('denied'))) {
         return { success: false, error: serverMsg };
       }
     }
@@ -181,6 +195,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const match = localUsers.find((u) => u.email.toLowerCase() === cleanEmail);
 
     if (match) {
+      // Enforce role check: User must be in the selected role
+      if (role && match.role !== role) {
+        return {
+          success: false,
+          error: `Access Denied: This account is registered as "${formatRoleLabel(match.role)}", not "${formatRoleLabel(role)}". Please switch to the ${formatRoleLabel(match.role)} role tab to sign in.`,
+        };
+      }
+
       if (match.password && match.password !== cleanPass) {
         return { success: false, error: 'Incorrect password for this account. Please verify and try again.' };
       }
@@ -193,7 +215,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 3. No account found in system: Reject login
     return { 
       success: false, 
-      error: 'No registered account found with these credentials. Please click "sign up" to create your account first.' 
+      error: `No registered account found for "${cleanEmail}". Please click "Sign Up" to register first.` 
     };
   };
 

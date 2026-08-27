@@ -57,7 +57,7 @@ export const LoansPage: React.FC = () => {
   });
 
   const [selectedCustId, setSelectedCustId] = useState<string>(customers[0]?.id || '');
-  const [amountReq, setAmountReq] = useState<number>(5000);
+  const [amountReq, setAmountReq] = useState<number>(0);
   const [tenorDays, setTenorDays] = useState<number>(90);
   const [purpose, setPurpose] = useState('Stock Inventory Purchase');
 

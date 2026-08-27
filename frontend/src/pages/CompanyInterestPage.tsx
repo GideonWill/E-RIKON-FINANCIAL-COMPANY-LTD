@@ -3,7 +3,8 @@ import {
   getStoredCompanyInterest, 
   getStoredCompanyWithdrawals, 
   requestCompanyInterestWithdrawal, 
-  getStoredAccounts
+  getStoredAccounts,
+  emptyVaultBalance
 } from '../services/api';
 import { useRealtimeSync } from '../services/realtimeSync';
 import { CompanyInterestRecord, CompanyInterestWithdrawal } from '../types';
@@ -25,7 +26,8 @@ import {
   Calendar,
   Layers,
   Sparkles,
-  ArrowDownRight
+  ArrowDownRight,
+  Trash2
 } from 'lucide-react';
 
 export const CompanyInterestPage: React.FC = () => {
@@ -44,6 +46,7 @@ export const CompanyInterestPage: React.FC = () => {
   
   // Modal State
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [isConfirmEmptyOpen, setIsConfirmEmptyOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [destinationType, setDestinationType] = useState<'COMPANY_BANK_ACCOUNT' | 'MTN_MOMO_MERCHANT' | 'VAULT_CASH'>('COMPANY_BANK_ACCOUNT');
   const [destinationDetails, setDestinationDetails] = useState('GCB Bank Corporate Account #10129384910');
@@ -57,7 +60,18 @@ export const CompanyInterestPage: React.FC = () => {
     .reduce((sum, w) => sum + w.amount, 0);
   const availableVaultBalance = Math.max(0, totalPiledUp - totalApprovedWithdrawn);
 
-  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN';
+
+  const handleEmptyVault = () => {
+    emptyVaultBalance();
+    setInterestRecords([]);
+    setWithdrawals([]);
+    setIsConfirmEmptyOpen(false);
+    setSuccessMsg('🎉 Company Interest Vault balance has been successfully emptied to GHS 0.00.');
+    setTimeout(() => {
+      setSuccessMsg(null);
+    }, 5000);
+  };
 
   const handleWithdrawalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,14 +134,25 @@ export const CompanyInterestPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Action Button */}
-        <button
-          onClick={() => setIsWithdrawModalOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold text-xs flex items-center space-x-2 transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
-        >
-          <ArrowUpRight className="w-4 h-4" />
-          <span>Withdraw Company Interest</span>
-        </button>
+        {/* Action Buttons */}
+        <div className="flex items-center space-x-2.5">
+          <button
+            type="button"
+            onClick={() => setIsConfirmEmptyOpen(true)}
+            className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-rose-500/10 text-slate-700 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-rose-500/20 hover:text-rose-500 dark:hover:text-rose-400 font-bold text-xs flex items-center space-x-1.5 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
+          >
+            <Trash2 className="w-4 h-4 text-rose-500" />
+            <span>Empty Vault Balance</span>
+          </button>
+
+          <button
+            onClick={() => setIsWithdrawModalOpen(true)}
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold text-xs flex items-center space-x-2 transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
+          >
+            <ArrowUpRight className="w-4 h-4" />
+            <span>Withdraw Company Interest</span>
+          </button>
+        </div>
       </div>
 
       {/* Success Notification */}
@@ -447,6 +472,61 @@ export const CompanyInterestPage: React.FC = () => {
               </div>
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Empty Vault Modal */}
+      {isConfirmEmptyOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setIsConfirmEmptyOpen(false)}
+        >
+          <div 
+            className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center space-x-3 text-rose-500">
+              <div className="p-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+                <Trash2 className="w-6 h-6 text-rose-500" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-white">Empty Interest Vault?</h3>
+                <p className="text-xs text-slate-400">Reset Vault Balance to GHS 0.00</p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
+              <div className="flex justify-between text-slate-400">
+                <span>Current Vault Balance:</span>
+                <span className="font-extrabold text-amber-400 font-mono">GHS {availableVaultBalance.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>Target Vault Balance:</span>
+                <span className="font-extrabold text-emerald-400 font-mono">GHS 0.00</span>
+              </div>
+              <p className="text-[11px] text-slate-400 pt-2 border-t border-slate-800">
+                This will clear all accrued company interest records and reset net vault liquidity across all connected devices.
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsConfirmEmptyOpen(false)}
+                className="w-1/2 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleEmptyVault}
+                className="w-1/2 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-lg shadow-rose-600/20 cursor-pointer flex items-center justify-center space-x-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Confirm Empty</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

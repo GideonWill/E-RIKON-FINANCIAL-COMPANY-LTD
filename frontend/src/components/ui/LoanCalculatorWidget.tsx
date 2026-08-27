@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Calculator, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Calculator, Sparkles } from 'lucide-react';
 
 export const LoanCalculatorWidget: React.FC = () => {
-  const [amount, setAmount] = useState<number>(5000);
+  const [amount, setAmount] = useState<number>(0);
   const [tenorDays, setTenorDays] = useState<number>(30);
 
   // E-RIKON Rate Policy Logic
@@ -19,9 +19,9 @@ export const LoanCalculatorWidget: React.FC = () => {
   };
 
   const policy = getTenorPolicy(tenorDays);
-  const interestAmount = amount * policy.rate;
-  const totalRepayable = amount + interestAmount;
-  const monthlyRepayment = totalRepayable / Math.max(1, Math.ceil(tenorDays / 30));
+  const interestAmount = amount > 0 ? amount * policy.rate : 0;
+  const totalRepayable = amount > 0 ? amount + interestAmount : 0;
+  const monthlyRepayment = amount > 0 ? totalRepayable / Math.max(1, Math.ceil(tenorDays / 30)) : 0;
 
   return (
     <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-slate-800 text-white shadow-2xl space-y-6">
@@ -53,11 +53,13 @@ export const LoanCalculatorWidget: React.FC = () => {
         <div className="space-y-2">
           <label className="text-xs font-bold text-slate-300 flex justify-between">
             <span>Requested Principal</span>
-            <span className="text-amber-400 font-mono font-extrabold">GHS {amount.toLocaleString()}</span>
+            <span className="text-amber-400 font-mono font-extrabold">
+              GHS {amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
           </label>
           <input
             type="range"
-            min="500"
+            min="0"
             max="50000"
             step="500"
             value={amount}
@@ -65,8 +67,8 @@ export const LoanCalculatorWidget: React.FC = () => {
             className="w-full accent-amber-500 bg-slate-800 rounded-lg cursor-pointer h-2"
           />
           <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-            <span>GHS 500</span>
-            <span>GHS 50,000</span>
+            <span>GHS 0.00</span>
+            <span>GHS 50,000.00</span>
           </div>
         </div>
 

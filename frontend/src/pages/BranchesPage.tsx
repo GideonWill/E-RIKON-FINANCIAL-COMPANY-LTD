@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { getStoredBranches, saveStoredBranches } from '../services/api';
+import { getStoredBranches, saveStoredBranches, getStoredTransactions } from '../services/api';
 import { useRealtimeSync } from '../services/realtimeSync';
-import { Branch } from '../types';
+import { Branch, Transaction } from '../types';
 import {
   GitBranch,
   Building2,
@@ -67,10 +67,12 @@ export const BranchesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
+  const [transactions, setTransactions] = useState<Transaction[]>(getStoredTransactions());
 
   // Real-time synchronization
   useRealtimeSync(() => {
     setBranches(getStoredBranches());
+    setTransactions(getStoredTransactions());
   });
 
   // Notification state
@@ -449,9 +451,12 @@ export const BranchesPage: React.FC = () => {
               { id: `st-gen2-${b.id}`, name: 'Field Collection Lead', role: 'Field Officer', phone: b.phone, status: 'ACTIVE' },
             ];
 
-            // Simulated vault usage percentage
-            const mockVaultUsed = Math.round(b.cashLimit * 0.42);
-            const vaultUsagePercent = Math.round((mockVaultUsed / b.cashLimit) * 100);
+            // Dynamic branch vault cash calculated from actual recorded branch transactions
+            const branchTxs = transactions.filter((t) => t.recordedBy?.branchId === b.id);
+            const branchDeposits = branchTxs.filter((t) => t.type === 'DEPOSIT').reduce((s, t) => s + t.amount, 0);
+            const branchWithdrawals = branchTxs.filter((t) => t.type === 'WITHDRAWAL').reduce((s, t) => s + t.amount, 0);
+            const branchVaultUsed = Math.max(0, branchDeposits - branchWithdrawals);
+            const vaultUsagePercent = b.cashLimit > 0 ? Math.min(100, Math.round((branchVaultUsed / b.cashLimit) * 100)) : 0;
 
             return (
               <div
@@ -505,7 +510,7 @@ export const BranchesPage: React.FC = () => {
                         Vault Limit Usage
                       </span>
                       <span className="font-mono font-bold text-slate-900 dark:text-white">
-                        {vaultUsagePercent}% (GHS {mockVaultUsed.toLocaleString()})
+                        {vaultUsagePercent}% (GHS {branchVaultUsed.toLocaleString('en-US', { minimumFractionDigits: 2 })})
                       </span>
                     </div>
                     <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">

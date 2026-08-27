@@ -11,10 +11,13 @@ let globalCloudVault = {
   companyWithdrawals: [],
   approvals: [],
   auditLogs: [],
+  branches: [],
   updatedAt: new Date().toISOString(),
 };
 
-export default function handler(req, res) {
+const RENDER_BACKEND_SYNC_URL = 'https://e-rikon-ecfms-backend.onrender.com/api/sync';
+
+export default async function handler(req, res) {
   // CORS Headers for multi-device access
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -29,6 +32,27 @@ export default function handler(req, res) {
   }
 
   if (req.method === 'GET') {
+    // If in-memory vault is empty, attempt to pull from Render backend
+    if (
+      (!globalCloudVault.registeredUsers || globalCloudVault.registeredUsers.length === 0) &&
+      (!globalCloudVault.customers || globalCloudVault.customers.length === 0)
+    ) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const rRes = await fetch(RENDER_BACKEND_SYNC_URL, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (rRes.ok) {
+          const rData = await rRes.json();
+          if (rData && rData.vault) {
+            globalCloudVault = { ...globalCloudVault, ...rData.vault };
+          }
+        }
+      } catch (e) {
+        // Fallback to in-memory vault
+      }
+    }
+
     return res.status(200).json({
       success: true,
       vault: globalCloudVault,
@@ -74,7 +98,6 @@ export default function handler(req, res) {
         incoming.approvals.forEach(incomingAppr => {
           const existingAppr = apprMap.get(incomingAppr.id);
           if (existingAppr) {
-            // If already reviewed (APPROVED/REJECTED), keep the decision
             if (existingAppr.status === 'APPROVED' || existingAppr.status === 'REJECTED') {
               apprMap.set(incomingAppr.id, existingAppr);
             } else {
@@ -140,7 +163,18 @@ export default function handler(req, res) {
         globalCloudVault.auditLogs = Array.from(logMap.values());
       }
 
+      if (Array.isArray(incoming.branches)) {
+        globalCloudVault.branches = incoming.branches;
+      }
+
       globalCloudVault.updatedAt = new Date().toISOString();
+
+      // Asynchronously forward to Render backend
+      fetch(RENDER_BACKEND_SYNC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(globalCloudVault),
+      }).catch(() => {});
 
       return res.status(200).json({
         success: true,

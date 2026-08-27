@@ -43,6 +43,7 @@ export type SyncEventType =
   | 'USER_DELETED'
   | 'STAFF_POSITION_APPLIED'
   | 'FINANCIAL_RECEIPTS_CLEARED'
+  | 'VAULT_CLEARED'
   | 'DATA_RESET'
   | 'MANUAL_SYNC';
 

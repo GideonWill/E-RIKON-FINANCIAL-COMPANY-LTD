@@ -60,7 +60,9 @@ export const CustomersPage: React.FC = () => {
     customerName: string;
     customerNumber: string;
     packageRate: number;
-    amountPaid: number;
+    amountStartedWith: number;
+    availableSavings: number;
+    companyFee: number;
     daysCovered: number;
   } | null>(null);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
@@ -85,7 +87,7 @@ export const CustomersPage: React.FC = () => {
 
   // Helper to calculate comprehensive financial summary for any customer (and specific cycle)
   const getCustomerFinancialSummary = (cust: Customer, targetCycleNo?: number | null) => {
-    const acc = accounts.find((a) => a.customerId === cust.id) || cust.accounts?.[0];
+    const acc = accounts.find((a) => a.customerId === cust.id) || getStoredAccounts().find((a) => a.customerId === cust.id) || cust.accounts?.[0];
     const cycles = acc?.dailyCycles && acc.dailyCycles.length > 0 ? acc.dailyCycles : [];
     const activeCycle = targetCycleNo
       ? (cycles.find((c) => c.cycleNumber === targetCycleNo) || cycles[0])
@@ -95,7 +97,7 @@ export const CustomersPage: React.FC = () => {
     const daysPaid = activeCycle?.currentDayCount || 0;
     const totalDeposited = activeCycle?.totalDeposited !== undefined
       ? activeCycle.totalDeposited
-      : (daysPaid * packageRate);
+      : (acc?.currentBalance !== undefined ? acc.currentBalance : (daysPaid * packageRate));
     const isDay31FeeRetained = daysPaid >= 31 || (activeCycle?.feeDeducted === true);
     const companyFeeAmount = isDay31FeeRetained ? (activeCycle?.companyFeeAmount || packageRate) : 0;
     const availableSavings = acc?.availableBalance !== undefined 
@@ -276,7 +278,8 @@ export const CustomersPage: React.FC = () => {
       // Multi-day split calculation for savings deposit
       const currentDayCount = splitPreview ? splitPreview.daysCovered : (depositNum >= chosenPackage ? Math.floor(depositNum / chosenPackage) : (depositNum > 0 ? 1 : 0));
       const totalDeposited = depositNum;
-      const availableBalance = depositNum;
+      // Deduct the 1-time package fee just once: remaining deposit is credited to client available savings
+      const availableBalance = Math.max(0, depositNum - packageFee);
 
       const initialCycle: DailyCollectionCycle = {
         id: `cyc-${Date.now()}`,
@@ -284,16 +287,16 @@ export const CustomersPage: React.FC = () => {
         currentDayCount: currentDayCount,
         dailyTargetAmount: chosenPackage,
         totalDeposited: totalDeposited,
-        feeDeducted: true, // Upfront package fee policy applied
+        feeDeducted: true, // Upfront package fee policy applied once
         companyFeeAmount: packageFee,
         isCompleted: currentDayCount >= 31,
-        dailySplits: splitPreview?.entries || (depositNum > 0 ? [{
-          dayNumber: 1,
+        dailySplits: splitPreview?.entries || (currentDayCount > 0 ? Array.from({ length: currentDayCount }, (_, i) => ({
+          dayNumber: i + 1,
           date: new Date().toISOString().split('T')[0],
-          amount: depositNum,
-          receiptNo: `RCP-INIT-${Date.now().toString().slice(-4)}-1`,
-          isCompanyFee: false,
-        }] : []),
+          amount: chosenPackage,
+          receiptNo: `RCP-INIT-${Date.now().toString().slice(-4)}-${i + 1}`,
+          isCompanyFee: i === 0, // Only Day 1 is the 1-time package fee, all remaining days are client savings
+        })) : []),
       };
 
       // Create Savings Account on the chosen package
@@ -320,7 +323,9 @@ export const CustomersPage: React.FC = () => {
       saveStoredCustomers(updatedCusts);
 
       const existingAccs = getStoredAccounts();
-      saveStoredAccounts([newAcc, ...existingAccs]);
+      const updatedAccs = [newAcc, ...existingAccs];
+      setAccounts(updatedAccs);
+      saveStoredAccounts(updatedAccs);
 
       // Automatically accumulate the upfront package fee for E-RIKON Company Interest
       accumulateCompanyInterest(newAcc, 1, packageFee);
@@ -376,7 +381,9 @@ export const CustomersPage: React.FC = () => {
         customerName: `${newCust.firstName} ${newCust.lastName}`,
         customerNumber: newCustNo,
         packageRate: chosenPackage,
-        amountPaid: totalPayable,
+        amountStartedWith: depositNum,
+        availableSavings: availableBalance,
+        companyFee: packageFee,
         daysCovered: currentDayCount,
       });
 
@@ -427,19 +434,27 @@ export const CustomersPage: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full">
-                  Customer Record Created
+                  Account Created & Funded
                 </span>
                 <span className="font-mono text-xs font-bold text-amber-500">{successBanner.customerNumber}</span>
               </div>
               <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mt-0.5">
-                {successBanner.customerName} Onboarded Successfully!
+                {successBanner.customerName} Account Created Successfully!
               </h4>
-              <p className="text-xs text-slate-600 dark:text-slate-300">
-                Package: <b>GH₵ {successBanner.packageRate}.00 / Day</b>
-                {successBanner.amountPaid > 0 && (
-                  <span> • Initial Payment: <b>GH₵ {successBanner.amountPaid.toFixed(2)}</b> ({successBanner.daysCovered} Days Spread)</span>
-                )}
-              </p>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-300 mt-1 font-mono">
+                <span className="bg-amber-500/20 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-md font-bold">
+                  Package: GH₵ {successBanner.packageRate}.00/Day
+                </span>
+                <span className="bg-blue-500/20 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md font-black">
+                  Amount Started With: GH₵ {successBanner.amountStartedWith.toFixed(2)} ({successBanner.daysCovered} Days Spread)
+                </span>
+                <span className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md font-black">
+                  Available Savings: GH₵ {successBanner.availableSavings.toFixed(2)}
+                </span>
+                <span className="bg-purple-500/20 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-md font-bold">
+                  1-Day Fee: GH₵ {successBanner.companyFee.toFixed(2)}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -662,7 +677,7 @@ export const CustomersPage: React.FC = () => {
               </span>
             </div>
 
-            {/* Financial Performance Highlights: Package, Days Paid, Balance, 31-Day Company Fee */}
+            {/* Financial Performance Highlights: Package, Amount Started With, Days Paid, Balance, 31-Day Company Fee */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 text-xs">
               <div className="space-y-0.5">
                 <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
@@ -675,16 +690,19 @@ export const CustomersPage: React.FC = () => {
 
               <div className="space-y-0.5">
                 <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                  <CalendarCheck className="w-3 h-3 text-blue-500" /> Days Paid
+                  <TrendingUp className="w-3 h-3 text-blue-500" /> Amount Started
                 </span>
-                <div className="font-mono font-black text-slate-900 dark:text-white text-xs">
+                <div className="font-mono font-black text-blue-600 dark:text-blue-400 text-xs">
+                  GH₵ {fin.totalDeposited.toFixed(2)}
+                </div>
+                <div className="text-[9px] text-slate-400 font-mono">
                   {fin.daysPaid} / 31 Days
                 </div>
               </div>
 
               <div className="space-y-0.5">
                 <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                  <Wallet className="w-3 h-3 text-emerald-500" /> Balance
+                  <Wallet className="w-3 h-3 text-emerald-500" /> Available Balance
                 </span>
                 <div className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-xs">
                   GH₵ {fin.availableSavings.toFixed(2)}
@@ -693,16 +711,16 @@ export const CustomersPage: React.FC = () => {
 
               <div className="space-y-0.5">
                 <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                  <Building2 className="w-3 h-3 text-purple-500" /> 31-Day Co. Fee
+                  <Building2 className="w-3 h-3 text-purple-500" /> 1-Time Co. Fee
                 </span>
                 <div className="font-mono font-bold text-xs truncate">
                   {fin.isDay31FeeRetained ? (
                     <span className="text-purple-600 dark:text-purple-400 font-black">
-                      GH₵ {fin.packageRate}.00 (Retained)
+                      GH₵ {fin.packageRate}.00 (Settled)
                     </span>
                   ) : (
                     <span className="text-slate-400 text-[10px]">
-                      Due Day 31 (GH₵ {fin.packageRate})
+                      GH₵ {fin.packageRate}.00 (Pending)
                     </span>
                   )}
                 </div>
@@ -845,7 +863,7 @@ export const CustomersPage: React.FC = () => {
               )}
 
               {/* 360 Financial Metrics Highlights Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 
                 {/* 1. Daily Package Card */}
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/30 space-y-1">
@@ -858,14 +876,25 @@ export const CustomersPage: React.FC = () => {
                   <p className="text-[10px] text-slate-500">Daily Target Tier</p>
                 </div>
 
-                {/* 2. Days Paid Progress Card */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/10 to-transparent border border-blue-500/30 space-y-1.5">
+                {/* 2. Amount Started With / Total Deposited Card */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent border-2 border-blue-500/40 space-y-1 shadow-sm">
                   <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5" /> Amount Started With
+                  </span>
+                  <div className="text-xl font-black font-mono text-blue-500">
+                    GH₵ {fin.totalDeposited.toFixed(2)}
+                  </div>
+                  <p className="text-[10px] text-slate-500">Initial Opening Deposit</p>
+                </div>
+
+                {/* 3. Days Paid Progress Card */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
+                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                     <CalendarCheck className="w-3.5 h-3.5" /> Days Paid Progress
                   </span>
                   <div className="flex items-baseline justify-between">
-                    <span className="text-xl font-black font-mono text-blue-500">
-                      {fin.daysPaid} <span className="text-xs text-slate-400 font-sans">/ 31 Days</span>
+                    <span className="text-xl font-black font-mono text-slate-800 dark:text-slate-200">
+                      {fin.daysPaid} <span className="text-xs text-slate-400 font-sans">/ 31</span>
                     </span>
                     <span className="text-xs font-mono font-bold text-blue-500">{percentCompleted}%</span>
                   </div>
@@ -877,7 +906,7 @@ export const CustomersPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 3. Available Net Savings Card */}
+                {/* 4. Available Net Savings Card */}
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent border-2 border-emerald-500/40 space-y-1 shadow-sm">
                   <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
                     <Wallet className="w-3.5 h-3.5" /> Current Balance
