@@ -21,6 +21,8 @@ import {
   saveStoredBranches,
   getDeletedCustomerIds,
   addDeletedCustomerId,
+  getDeletedUserEmails,
+  addDeletedUserEmail,
   RegisteredUserRecord
 } from './api';
 import { ApprovalRequest } from '../types';
@@ -38,6 +40,7 @@ export interface CloudVaultPayload {
   auditLogs?: any[];
   branches?: any[];
   deletedCustomerIds?: string[];
+  deletedUserEmails?: string[];
   updatedAt?: string;
 }
 
@@ -100,6 +103,7 @@ export const pushLocalToCloud = async (): Promise<boolean> => {
     auditLogs: getStoredAuditLogs(),
     branches: getStoredBranches(),
     deletedCustomerIds: getDeletedCustomerIds(),
+    deletedUserEmails: getDeletedUserEmails(),
     updatedAt: new Date().toISOString(),
   };
 
@@ -178,21 +182,31 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
 
   let hasUpdates = false;
 
-  // Process incoming deleted customer tombstones
+  // Process incoming deleted customer and user tombstones
   if (Array.isArray(cloudData.deletedCustomerIds)) {
     cloudData.deletedCustomerIds.forEach((id) => addDeletedCustomerId(id));
   }
+  if (Array.isArray(cloudData.deletedUserEmails)) {
+    cloudData.deletedUserEmails.forEach((email) => addDeletedUserEmail(email));
+  }
   const deletedCustIds = getDeletedCustomerIds();
+  const deletedUserEmails = getDeletedUserEmails();
 
   // 1. Merge & Sync Registered Users
   if (Array.isArray(cloudData.registeredUsers) && cloudData.registeredUsers.length > 0) {
     const localUsers = getRegisteredUsers();
     const userMap = new Map<string, RegisteredUserRecord>();
     
-    localUsers.forEach((u) => userMap.set(u.email.toLowerCase(), u));
+    localUsers.forEach((u) => {
+      const email = u.email?.toLowerCase();
+      if (!deletedUserEmails.includes(email) && !deletedUserEmails.includes(u.id?.toLowerCase())) {
+        userMap.set(email, u);
+      }
+    });
     
     cloudData.registeredUsers.forEach((u) => {
       const key = u.email.toLowerCase();
+      if (deletedUserEmails.includes(key) || deletedUserEmails.includes(u.id?.toLowerCase())) return;
       const existing = userMap.get(key);
       const isApproved = Boolean(existing?.isApproved || u.isApproved || u.role === 'SUPER_ADMIN');
       
@@ -224,10 +238,17 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
   // 2. Merge & Sync Approvals + Guarantee Pending Clearance Tickets for Super Admin
   const localApprovals = getStoredApprovals();
   const apprMap = new Map<string, ApprovalRequest>();
-  localApprovals.forEach((a) => apprMap.set(a.id, a));
+  localApprovals.forEach((a) => {
+    const email = a.details?.email?.toLowerCase();
+    if (!deletedUserEmails.includes(email) && !deletedUserEmails.includes(a.targetId)) {
+      apprMap.set(a.id, a);
+    }
+  });
 
   if (Array.isArray(cloudData.approvals)) {
     cloudData.approvals.forEach((incomingAppr: ApprovalRequest) => {
+      const email = incomingAppr.details?.email?.toLowerCase();
+      if (deletedUserEmails.includes(email) || deletedUserEmails.includes(incomingAppr.targetId)) return;
       const existingAppr = apprMap.get(incomingAppr.id);
       if (existingAppr) {
         if (existingAppr.status === 'APPROVED' || existingAppr.status === 'REJECTED') {

@@ -64,13 +64,19 @@ export default async function handler(req, res) {
     try {
       const incoming = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       
-      // 1. Merge registered users by email & preserve approval elevation
-      if (Array.isArray(incoming.registeredUsers) && incoming.registeredUsers.length > 0) {
+      // 1. Merge registered staff accounts & apply permanent user deletions
+      const deletedUserEmails = (Array.isArray(incoming.deletedUserEmails) ? incoming.deletedUserEmails : []).map(e => String(e).toLowerCase());
+      if (Array.isArray(incoming.registeredUsers)) {
         const existingUsersMap = new Map();
-        (globalCloudVault.registeredUsers || []).forEach(u => existingUsersMap.set(u.email.toLowerCase(), u));
+        (globalCloudVault.registeredUsers || []).forEach(u => {
+          if (!deletedUserEmails.includes(u.email.toLowerCase()) && !deletedUserEmails.includes(u.id)) {
+            existingUsersMap.set(u.email.toLowerCase(), u);
+          }
+        });
         
         incoming.registeredUsers.forEach(incomingUser => {
           const key = incomingUser.email.toLowerCase();
+          if (deletedUserEmails.includes(key) || deletedUserEmails.includes(incomingUser.id)) return;
           const existingUser = existingUsersMap.get(key);
           
           if (existingUser) {
@@ -88,14 +94,25 @@ export default async function handler(req, res) {
         });
         
         globalCloudVault.registeredUsers = Array.from(existingUsersMap.values());
+      } else if (deletedUserEmails.length > 0) {
+        globalCloudVault.registeredUsers = (globalCloudVault.registeredUsers || []).filter(
+          u => !deletedUserEmails.includes(u.email.toLowerCase()) && !deletedUserEmails.includes(u.id)
+        );
       }
 
-      // 2. Merge approvals by id / targetId & preserve review decisions
+      // 2. Merge approvals & apply deletions
       if (Array.isArray(incoming.approvals)) {
         const apprMap = new Map();
-        (globalCloudVault.approvals || []).forEach(a => apprMap.set(a.id, a));
+        (globalCloudVault.approvals || []).forEach(a => {
+          const email = a.details?.email?.toLowerCase();
+          if (!deletedUserEmails.includes(email) && !deletedUserEmails.includes(a.targetId)) {
+            apprMap.set(a.id, a);
+          }
+        });
         
         incoming.approvals.forEach(incomingAppr => {
+          const email = incomingAppr.details?.email?.toLowerCase();
+          if (deletedUserEmails.includes(email) || deletedUserEmails.includes(incomingAppr.targetId)) return;
           const existingAppr = apprMap.get(incomingAppr.id);
           if (existingAppr) {
             if (existingAppr.status === 'APPROVED' || existingAppr.status === 'REJECTED') {
@@ -109,6 +126,10 @@ export default async function handler(req, res) {
         });
         
         globalCloudVault.approvals = Array.from(apprMap.values());
+      } else if (deletedUserEmails.length > 0) {
+        globalCloudVault.approvals = (globalCloudVault.approvals || []).filter(
+          a => !deletedUserEmails.includes(a.details?.email?.toLowerCase()) && !deletedUserEmails.includes(a.targetId)
+        );
       }
 
       // 3. Merge customers & apply deletions

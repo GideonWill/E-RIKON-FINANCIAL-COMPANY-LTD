@@ -312,23 +312,51 @@ export interface RegisteredUserRecord extends User {
   ghanaCard?: string;
 }
 
+export const getDeletedUserEmails = (): string[] => {
+  const data = localStorage.getItem('erikon_deleted_user_emails');
+  if (!data) return [];
+  try {
+    const parsed = JSON.parse(data);
+    return Array.isArray(parsed) ? parsed.map((e) => String(e).toLowerCase()) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const addDeletedUserEmail = (emailOrId: string) => {
+  if (!emailOrId) return;
+  const clean = emailOrId.trim().toLowerCase();
+  const existing = getDeletedUserEmails();
+  if (!existing.includes(clean)) {
+    const updated = [...existing, clean];
+    localStorage.setItem('erikon_deleted_user_emails', JSON.stringify(updated));
+  }
+};
+
 export const getRegisteredUsers = (): RegisteredUserRecord[] => {
   const data = localStorage.getItem('erikon_registered_users');
   if (!data) return [];
   try {
     const parsed = JSON.parse(data);
     if (!Array.isArray(parsed)) return [];
-    // Ensure deleted test accounts are purged
-    const purgedEmails = ['kwakumensah@gmail.com', 'kofikofi@gmail.com', 'testadmin@erikon-group.com'];
-    return parsed.filter((u) => !purgedEmails.includes(u.email?.toLowerCase()));
+    const deletedEmails = getDeletedUserEmails();
+    return parsed.filter((u) => {
+      const email = u.email?.toLowerCase();
+      return !deletedEmails.includes(email) && !deletedEmails.includes(u.id?.toLowerCase());
+    });
   } catch {
     return [];
   }
 };
 
 export const saveRegisteredUsers = (users: RegisteredUserRecord[]) => {
-  localStorage.setItem('erikon_registered_users', JSON.stringify(users));
-  broadcastRealtimeEvent('STAFF_REGISTERED', users);
+  const deletedEmails = getDeletedUserEmails();
+  const filtered = users.filter((u) => {
+    const email = u.email?.toLowerCase();
+    return !deletedEmails.includes(email) && !deletedEmails.includes(u.id?.toLowerCase());
+  });
+  localStorage.setItem('erikon_registered_users', JSON.stringify(filtered));
+  broadcastRealtimeEvent('STAFF_REGISTERED', filtered);
 };
 
 /**
@@ -339,18 +367,26 @@ export const deleteRegisteredUser = async (userId: string, currentSuperAdmin: Us
     throw new Error('Security Clearance Violation: Only the Super Admin can permanently delete user accounts.');
   }
 
-  // 1. Remove from registered users storage
+  // 1. Find user & record tombstone
   const users = getRegisteredUsers();
-  const targetUser = users.find((u) => u.id === userId);
-  const updatedUsers = users.filter((u) => u.id !== userId);
+  const targetUser = users.find((u) => u.id === userId || u.email?.toLowerCase() === userId.toLowerCase());
+  if (targetUser?.email) {
+    addDeletedUserEmail(targetUser.email);
+  }
+  addDeletedUserEmail(userId);
+
+  // 2. Remove from registered users storage
+  const updatedUsers = users.filter((u) => u.id !== userId && u.email?.toLowerCase() !== targetUser?.email?.toLowerCase());
   saveRegisteredUsers(updatedUsers);
 
-  // 2. Remove any associated pending approvals
+  // 3. Remove any associated pending approvals
   const approvals = getStoredApprovals();
-  const updatedApprovals = approvals.filter((a) => a.targetId !== userId && a.details?.email !== targetUser?.email);
+  const updatedApprovals = approvals.filter(
+    (a) => a.targetId !== userId && a.details?.email?.toLowerCase() !== targetUser?.email?.toLowerCase()
+  );
   saveStoredApprovals(updatedApprovals);
 
-  // 3. Log to Immutable Audit Trail
+  // 4. Log to Immutable Audit Trail
   const auditLogs = getStoredAuditLogs();
   const newLog: AuditLog = {
     id: `audit-${Date.now()}`,
@@ -366,7 +402,7 @@ export const deleteRegisteredUser = async (userId: string, currentSuperAdmin: Us
   };
   saveStoredAuditLogs([newLog, ...auditLogs]);
 
-  // 4. Delete on live backend
+  // 5. Delete on live backend & serverless relays
   try {
     await apiClient.delete(`/auth/users/${userId}`);
   } catch (err: any) {
@@ -375,7 +411,17 @@ export const deleteRegisteredUser = async (userId: string, currentSuperAdmin: Us
     } catch {}
   }
 
-  broadcastRealtimeEvent('USER_DELETED', { userId });
+  broadcastRealtimeEvent('USER_DELETED', { userId, email: targetUser?.email });
+
+  // 6. Immediately trigger cloud sync to wipe user across all devices
+  setTimeout(() => {
+    try {
+      import('./cloudSync').then(({ pushLocalToCloud }) => {
+        pushLocalToCloud().catch(() => {});
+      });
+    } catch {}
+  }, 50);
+
   return true;
 };
 
