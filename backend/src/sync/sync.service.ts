@@ -43,87 +43,55 @@ export class SyncService {
   }
 
   updateVault(incoming: Partial<CloudVaultPayload>): CloudVaultPayload {
-    const deletedUserEmails = new Set<string>(
-      (incoming.deletedUserEmails || []).map((e: string) => e.toLowerCase())
-    );
-    (this.vault.deletedUserEmails || []).forEach((e: string) => deletedUserEmails.add(e.toLowerCase()));
-    this.vault.deletedUserEmails = Array.from(deletedUserEmails);
-
     // 1. Registered Users
     if (Array.isArray(incoming.registeredUsers)) {
-      if (incoming.authoritative || incoming.registeredUsers.length <= 1) {
-        // Authoritative replacement filtered by tombstones
-        this.vault.registeredUsers = incoming.registeredUsers.filter(
-          (u) => !deletedUserEmails.has(u.email?.toLowerCase())
-        );
-      } else {
-        const existingUsersMap = new Map<string, any>();
-        (this.vault.registeredUsers || []).forEach((u) => {
-          if (!deletedUserEmails.has(u.email?.toLowerCase())) {
-            existingUsersMap.set(u.email.toLowerCase(), u);
-          }
-        });
+      const existingUsersMap = new Map<string, any>();
+      (this.vault.registeredUsers || []).forEach((u) => {
+        if (u.email) existingUsersMap.set(u.email.toLowerCase(), u);
+      });
 
-        incoming.registeredUsers.forEach((incomingUser) => {
-          const key = incomingUser.email?.toLowerCase();
-          if (!key || deletedUserEmails.has(key)) return;
+      incoming.registeredUsers.forEach((incomingUser) => {
+        const key = incomingUser.email?.toLowerCase();
+        if (!key) return;
 
-          const existingUser = existingUsersMap.get(key);
-          if (existingUser) {
-            const isApproved = Boolean(
-              existingUser.isApproved || incomingUser.isApproved || incomingUser.role === 'SUPER_ADMIN'
-            );
-            existingUsersMap.set(key, {
-              ...existingUser,
-              ...incomingUser,
-              isApproved,
-              status: isApproved ? 'ACTIVE' : (existingUser.status === 'ACTIVE' ? 'ACTIVE' : incomingUser.status || 'PENDING_APPROVAL'),
-            });
-          } else {
-            existingUsersMap.set(key, incomingUser);
-          }
-        });
-        this.vault.registeredUsers = Array.from(existingUsersMap.values());
-      }
-    } else {
-      this.vault.registeredUsers = (this.vault.registeredUsers || []).filter(
-        (u) => !deletedUserEmails.has(u.email?.toLowerCase())
-      );
+        const existingUser = existingUsersMap.get(key);
+        if (existingUser) {
+          const isApproved = Boolean(
+            existingUser.isApproved || incomingUser.isApproved || incomingUser.role === 'SUPER_ADMIN'
+          );
+          existingUsersMap.set(key, {
+            ...existingUser,
+            ...incomingUser,
+            isApproved,
+            status: isApproved ? 'ACTIVE' : (existingUser.status === 'ACTIVE' ? 'ACTIVE' : incomingUser.status || 'PENDING_APPROVAL'),
+          });
+        } else {
+          existingUsersMap.set(key, incomingUser);
+        }
+      });
+      this.vault.registeredUsers = Array.from(existingUsersMap.values());
     }
 
     // 2. Approvals
     if (Array.isArray(incoming.approvals)) {
-      if (incoming.authoritative) {
-        this.vault.approvals = incoming.approvals.filter(
-          (a) => !deletedUserEmails.has(a.details?.email?.toLowerCase())
-        );
-      } else {
-        const apprMap = new Map<string, any>();
-        (this.vault.approvals || []).forEach((a) => {
-          if (!deletedUserEmails.has(a.details?.email?.toLowerCase())) {
-            apprMap.set(a.id, a);
-          }
-        });
+      const apprMap = new Map<string, any>();
+      (this.vault.approvals || []).forEach((a) => {
+        apprMap.set(a.id, a);
+      });
 
-        incoming.approvals.forEach((incomingAppr) => {
-          if (deletedUserEmails.has(incomingAppr.details?.email?.toLowerCase())) return;
-          const existingAppr = apprMap.get(incomingAppr.id);
-          if (existingAppr) {
-            if (existingAppr.status === 'APPROVED' || existingAppr.status === 'REJECTED') {
-              apprMap.set(incomingAppr.id, existingAppr);
-            } else {
-              apprMap.set(incomingAppr.id, incomingAppr);
-            }
+      incoming.approvals.forEach((incomingAppr) => {
+        const existingAppr = apprMap.get(incomingAppr.id);
+        if (existingAppr) {
+          if (existingAppr.status === 'APPROVED' || existingAppr.status === 'REJECTED') {
+            apprMap.set(incomingAppr.id, existingAppr);
           } else {
             apprMap.set(incomingAppr.id, incomingAppr);
           }
-        });
-        this.vault.approvals = Array.from(apprMap.values());
-      }
-    } else {
-      this.vault.approvals = (this.vault.approvals || []).filter(
-        (a) => !deletedUserEmails.has(a.details?.email?.toLowerCase())
-      );
+        } else {
+          apprMap.set(incomingAppr.id, incomingAppr);
+        }
+      });
+      this.vault.approvals = Array.from(apprMap.values());
     }
 
     // 3. Customers

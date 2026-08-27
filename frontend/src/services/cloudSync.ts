@@ -197,18 +197,21 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
     cloudData.deletedUserEmails.forEach((email) => addDeletedUserEmail(email));
   }
   const deletedCustIds = getDeletedCustomerIds();
-  const deletedUserEmails = getDeletedUserEmails();
-
-  // 1. Authoritative Registered Users Sync
-  if (Array.isArray(cloudData.registeredUsers)) {
+  // 1. Authoritative Registered Users Sync (Merge all active registered accounts)
+  if (Array.isArray(cloudData.registeredUsers) && cloudData.registeredUsers.length > 0) {
     const localUsers = getRegisteredUsers();
-    const cleanUsers = cloudData.registeredUsers.filter((u) => {
-      const email = u.email?.toLowerCase();
-      return !deletedUserEmails.includes(email) && !deletedUserEmails.includes(u.id?.toLowerCase());
+    const userMap = new Map<string, RegisteredUserRecord>();
+    localUsers.forEach((u) => userMap.set(u.email.toLowerCase(), u));
+    cloudData.registeredUsers.forEach((u) => {
+      const key = u.email?.toLowerCase();
+      if (!key) return;
+      const existing = userMap.get(key);
+      userMap.set(key, { ...existing, ...u });
     });
 
-    if (cleanUsers.length !== localUsers.length || JSON.stringify(cleanUsers) !== JSON.stringify(localUsers)) {
-      saveRegisteredUsers(cleanUsers);
+    const mergedUsers = Array.from(userMap.values());
+    if (mergedUsers.length !== localUsers.length || JSON.stringify(mergedUsers) !== JSON.stringify(localUsers)) {
+      saveRegisteredUsers(mergedUsers);
       hasUpdates = true;
     }
   }
@@ -216,13 +219,16 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
   // 2. Authoritative Approvals Sync
   if (Array.isArray(cloudData.approvals)) {
     const localApprovals = getStoredApprovals();
-    const cleanApprovals = cloudData.approvals.filter((a) => {
-      const email = a.details?.email?.toLowerCase();
-      return !deletedUserEmails.includes(email) && !deletedUserEmails.includes(a.targetId);
+    const apprMap = new Map<string, any>();
+    localApprovals.forEach((a) => apprMap.set(a.id, a));
+    cloudData.approvals.forEach((a) => {
+      const existing = apprMap.get(a.id);
+      apprMap.set(a.id, { ...existing, ...a });
     });
 
-    if (cleanApprovals.length !== localApprovals.length || JSON.stringify(cleanApprovals) !== JSON.stringify(localApprovals)) {
-      saveStoredApprovals(cleanApprovals);
+    const mergedApprovals = Array.from(apprMap.values());
+    if (mergedApprovals.length !== localApprovals.length || JSON.stringify(mergedApprovals) !== JSON.stringify(localApprovals)) {
+      saveStoredApprovals(mergedApprovals);
       hasUpdates = true;
     }
   }

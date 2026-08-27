@@ -65,23 +65,19 @@ export default async function handler(req, res) {
     try {
       const incoming = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
 
-      // 1. Merge registered staff accounts & apply permanent user deletions
-      const deletedUserEmails = (Array.isArray(incoming.deletedUserEmails) ? incoming.deletedUserEmails : []).map(e => String(e).toLowerCase());
+      // 1. Merge registered staff accounts
       if (Array.isArray(incoming.registeredUsers)) {
         const existingUsersMap = new Map();
         (globalCloudVault.registeredUsers || []).forEach(u => {
-          if (!deletedUserEmails.includes(u.email.toLowerCase()) && !deletedUserEmails.includes(u.id)) {
-            existingUsersMap.set(u.email.toLowerCase(), u);
-          }
+          if (u.email) existingUsersMap.set(u.email.toLowerCase(), u);
         });
 
         incoming.registeredUsers.forEach(incomingUser => {
+          if (!incomingUser.email) return;
           const key = incomingUser.email.toLowerCase();
-          if (deletedUserEmails.includes(key) || deletedUserEmails.includes(incomingUser.id)) return;
           const existingUser = existingUsersMap.get(key);
 
           if (existingUser) {
-            // Once approved on any device, keep approved status
             const isApproved = Boolean(existingUser.isApproved || incomingUser.isApproved || incomingUser.role === 'SUPER_ADMIN');
             existingUsersMap.set(key, {
               ...existingUser,
@@ -95,10 +91,6 @@ export default async function handler(req, res) {
         });
 
         globalCloudVault.registeredUsers = Array.from(existingUsersMap.values());
-      } else if (deletedUserEmails.length > 0) {
-        globalCloudVault.registeredUsers = (globalCloudVault.registeredUsers || []).filter(
-          u => !deletedUserEmails.includes(u.email.toLowerCase()) && !deletedUserEmails.includes(u.id)
-        );
       }
 
       // 2. Merge approvals & apply deletions
