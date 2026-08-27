@@ -68,26 +68,7 @@ export const BranchesPage: React.FC = () => {
   const [transferNotes, setTransferNotes] = useState('');
 
   // Transfer Logs
-  const [transferLogs, setTransferLogs] = useState<VaultTransferLog[]>([
-    {
-      id: 'VTR-2026-001',
-      sourceBranch: 'Accra Central Main Branch',
-      destBranch: 'Kumasi Adum Branch',
-      amount: 50000.0,
-      initiatedBy: 'Kwame Mensah (Super Admin)',
-      timestamp: '2026-08-08 14:30',
-      status: 'COMPLETED',
-    },
-    {
-      id: 'VTR-2026-002',
-      sourceBranch: 'Accra Central Main Branch',
-      destBranch: 'Takoradi Market Circle Branch',
-      amount: 30000.0,
-      initiatedBy: 'Kwame Mensah (Super Admin)',
-      timestamp: '2026-08-09 09:15',
-      status: 'COMPLETED',
-    },
-  ]);
+  const [transferLogs, setTransferLogs] = useState<VaultTransferLog[]>([]);
 
   // Form State for New Branch
   const [newBranchData, setNewBranchData] = useState({

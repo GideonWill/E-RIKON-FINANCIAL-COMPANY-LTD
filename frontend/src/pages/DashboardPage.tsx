@@ -107,14 +107,17 @@ export const DashboardPage: React.FC = () => {
     .filter((t) => t.type === 'DEPOSIT' || t.type === 'COMPANY_FEE_DEDUCTION')
     .reduce((sum, t) => sum + t.amount, 0);
 
+  const currentMonthName = new Date().toLocaleString('en-US', { month: 'short' });
   const chartData = [
-    { month: 'Jan', deposits: 45000, interest: 1500, loans: 18000 },
-    { month: 'Feb', deposits: 52000, interest: 2200, loans: 22000 },
-    { month: 'Mar', deposits: 61000, interest: 3100, loans: 30000 },
-    { month: 'Apr', deposits: 58000, interest: 2900, loans: 25000 },
-    { month: 'May', deposits: 72000, interest: 4200, loans: 40000 },
-    { month: 'Jun', deposits: 84000, interest: 5400, loans: 48000 },
-    { month: 'Jul', deposits: Math.max(96000, totalDepositsSum), interest: Math.max(6800, totalInterestPiledUp), loans: 55000 },
+    { month: 'May', deposits: 0, interest: 0, loans: 0 },
+    { month: 'Jun', deposits: 0, interest: 0, loans: 0 },
+    { month: 'Jul', deposits: 0, interest: 0, loans: 0 },
+    { 
+      month: currentMonthName, 
+      deposits: totalDepositsSum, 
+      interest: totalInterestPiledUp, 
+      loans: loans.reduce((sum, l) => sum + Number(l.amountApproved || l.amountRequested || 0), 0) 
+    },
   ];
 
   const packagesDistribution = SAVINGS_PACKAGES.map((pkg) => ({
@@ -157,7 +160,7 @@ export const DashboardPage: React.FC = () => {
             </div>
             <div>
               <div className="font-extrabold text-sm text-rose-300">
-                {pendingApprovalsCount} Pending Request(s) Awaiting Super Admin Clearance
+                {pendingApprovalsCount} Pending Request(s) Awaiting Clearance
               </div>
               <p className="text-xs text-slate-400">
                 Staff role signups, corporate interest withdrawals, and loan credit approvals in queue.
@@ -181,8 +184,6 @@ export const DashboardPage: React.FC = () => {
           title="Total Customers"
           value={customers.length.toString()}
           subtitle="Verified Ghana Card Clients"
-          change="+12.5%"
-          changeType="positive"
           icon={Users}
           colorScheme="amber"
         />
@@ -190,8 +191,6 @@ export const DashboardPage: React.FC = () => {
           title="Savings Balance"
           value={`GHS ${accounts.reduce((sum, a) => sum + a.availableBalance, 0).toFixed(2)}`}
           subtitle="31-Day Policy Scheme"
-          change="+18.2%"
-          changeType="positive"
           icon={Wallet}
           colorScheme="blue"
         />
@@ -199,8 +198,6 @@ export const DashboardPage: React.FC = () => {
           title="Company Interest Piled Up"
           value={`GHS ${totalInterestPiledUp.toFixed(2)}`}
           subtitle="30-Day Member Retention"
-          change="+24.0%"
-          changeType="positive"
           icon={PiggyBank}
           colorScheme="emerald"
         />
@@ -208,8 +205,6 @@ export const DashboardPage: React.FC = () => {
           title="ER-Fast Loan Portfolio"
           value={`GHS ${loans.reduce((sum, l) => sum + l.amountApproved, 0).toFixed(2)}`}
           subtitle="Tenor Interest Schedule"
-          change="+15.0%"
-          changeType="positive"
           icon={Calculator}
           colorScheme="purple"
         />
