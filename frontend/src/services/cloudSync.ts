@@ -19,6 +19,8 @@ import {
   saveStoredAuditLogs,
   getStoredBranches,
   saveStoredBranches,
+  getDeletedCustomerIds,
+  addDeletedCustomerId,
   RegisteredUserRecord
 } from './api';
 import { ApprovalRequest } from '../types';
@@ -35,6 +37,7 @@ export interface CloudVaultPayload {
   approvals?: any[];
   auditLogs?: any[];
   branches?: any[];
+  deletedCustomerIds?: string[];
   updatedAt?: string;
 }
 
@@ -96,6 +99,7 @@ export const pushLocalToCloud = async (): Promise<boolean> => {
     approvals: getStoredApprovals(),
     auditLogs: getStoredAuditLogs(),
     branches: getStoredBranches(),
+    deletedCustomerIds: getDeletedCustomerIds(),
     updatedAt: new Date().toISOString(),
   };
 
@@ -174,6 +178,12 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
 
   let hasUpdates = false;
 
+  // Process incoming deleted customer tombstones
+  if (Array.isArray(cloudData.deletedCustomerIds)) {
+    cloudData.deletedCustomerIds.forEach((id) => addDeletedCustomerId(id));
+  }
+  const deletedCustIds = getDeletedCustomerIds();
+
   // 1. Merge & Sync Registered Users
   if (Array.isArray(cloudData.registeredUsers) && cloudData.registeredUsers.length > 0) {
     const localUsers = getRegisteredUsers();
@@ -239,17 +249,18 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
         (a) => a.targetId === user.id || a.details?.email?.toLowerCase() === user.email.toLowerCase()
       );
       if (!matchingAppr) {
-        const newAppId = `appr-${user.id}`;
-        apprMap.set(newAppId, {
-          id: newAppId,
+        const fallbackTicketId = `appr-sync-${user.id}`;
+        apprMap.set(fallbackTicketId, {
+          id: fallbackTicketId,
           type: 'STAFF_ROLE_SIGNUP',
-          title: `New ${user.role.replace(/_/g, ' ')} Registration: ${user.firstName} ${user.lastName}`,
-          description: `Application received for ${user.role.replace(/_/g, ' ')} position. Contact: ${user.phone || 'N/A'} | Ghana Card: ${user.ghanaCard || 'N/A'}`,
-          targetId: user.id,
+          title: `Staff Clearance Request: ${user.firstName} ${user.lastName} (${user.role.replace(/_/g, ' ')})`,
+          description: `Newly onboarded ${user.role.replace(/_/g, ' ')} (${user.email}) submitted registration and is awaiting executive clearance from Super Admin to unlock workstation.`,
           requestedById: user.id,
           requestedByName: `${user.firstName} ${user.lastName}`,
           requestedRole: user.role,
+          targetId: user.id,
           details: {
+            employeeId: user.employeeId,
             email: user.email,
             phone: user.phone,
             ghanaCard: user.ghanaCard,
@@ -270,29 +281,37 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
   }
 
   // 3. Merge & Sync Customers
-  if (Array.isArray(cloudData.customers) && cloudData.customers.length > 0) {
-    const localCust = getStoredCustomers();
-    const custMap = new Map<string, any>();
-    localCust.forEach((c) => custMap.set(c.id, c));
-    cloudData.customers.forEach((c) => custMap.set(c.id, c));
-    const mergedCust = Array.from(custMap.values());
-    if (mergedCust.length !== localCust.length || JSON.stringify(mergedCust) !== JSON.stringify(localCust)) {
-      saveStoredCustomers(mergedCust);
-      hasUpdates = true;
-    }
+  const localCust = getStoredCustomers();
+  const custMap = new Map<string, any>();
+  localCust.forEach((c) => {
+    if (!deletedCustIds.includes(c.id)) custMap.set(c.id, c);
+  });
+  if (Array.isArray(cloudData.customers)) {
+    cloudData.customers.forEach((c) => {
+      if (!deletedCustIds.includes(c.id)) custMap.set(c.id, c);
+    });
+  }
+  const mergedCust = Array.from(custMap.values());
+  if (mergedCust.length !== localCust.length || JSON.stringify(mergedCust) !== JSON.stringify(localCust)) {
+    saveStoredCustomers(mergedCust);
+    hasUpdates = true;
   }
 
   // 4. Merge & Sync Accounts
-  if (Array.isArray(cloudData.accounts) && cloudData.accounts.length > 0) {
-    const localAcc = getStoredAccounts();
-    const accMap = new Map<string, any>();
-    localAcc.forEach((a) => accMap.set(a.id, a));
-    cloudData.accounts.forEach((a) => accMap.set(a.id, a));
-    const mergedAcc = Array.from(accMap.values());
-    if (mergedAcc.length !== localAcc.length || JSON.stringify(mergedAcc) !== JSON.stringify(localAcc)) {
-      saveStoredAccounts(mergedAcc);
-      hasUpdates = true;
-    }
+  const localAcc = getStoredAccounts();
+  const accMap = new Map<string, any>();
+  localAcc.forEach((a) => {
+    if (!deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)) accMap.set(a.id, a);
+  });
+  if (Array.isArray(cloudData.accounts)) {
+    cloudData.accounts.forEach((a) => {
+      if (!deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)) accMap.set(a.id, a);
+    });
+  }
+  const mergedAcc = Array.from(accMap.values());
+  if (mergedAcc.length !== localAcc.length || JSON.stringify(mergedAcc) !== JSON.stringify(localAcc)) {
+    saveStoredAccounts(mergedAcc);
+    hasUpdates = true;
   }
 
   // 5. Merge & Sync Transactions
@@ -309,16 +328,20 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
   }
 
   // 6. Merge & Sync Loans
-  if (Array.isArray(cloudData.loans) && cloudData.loans.length > 0) {
-    const localLoans = getStoredLoans();
-    const loanMap = new Map<string, any>();
-    localLoans.forEach((l) => loanMap.set(l.id, l));
-    cloudData.loans.forEach((l) => loanMap.set(l.id, l));
-    const mergedLoans = Array.from(loanMap.values());
-    if (mergedLoans.length !== localLoans.length || JSON.stringify(mergedLoans) !== JSON.stringify(localLoans)) {
-      saveStoredLoans(mergedLoans);
-      hasUpdates = true;
-    }
+  const localLoans = getStoredLoans();
+  const loanMap = new Map<string, any>();
+  localLoans.forEach((l) => {
+    if (!deletedCustIds.includes(l.customerId)) loanMap.set(l.id, l);
+  });
+  if (Array.isArray(cloudData.loans)) {
+    cloudData.loans.forEach((l) => {
+      if (!deletedCustIds.includes(l.customerId)) loanMap.set(l.id, l);
+    });
+  }
+  const mergedLoans = Array.from(loanMap.values());
+  if (mergedLoans.length !== localLoans.length || JSON.stringify(mergedLoans) !== JSON.stringify(localLoans)) {
+    saveStoredLoans(mergedLoans);
+    hasUpdates = true;
   }
 
   // 7. Merge & Sync Company Interest

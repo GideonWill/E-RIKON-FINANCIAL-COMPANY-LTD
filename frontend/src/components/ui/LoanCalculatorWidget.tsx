@@ -51,24 +51,50 @@ export const LoanCalculatorWidget: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {/* Principal Amount */}
         <div className="space-y-2">
-          <label className="text-xs font-bold text-slate-300 flex justify-between">
-            <span>Requested Principal</span>
-            <span className="text-amber-400 font-mono font-extrabold">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-300">Requested Principal</label>
+            <span className="text-amber-400 font-mono font-extrabold text-sm">
               GHS {amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
-          </label>
+          </div>
+          
           <input
             type="range"
             min="0"
             max="50000"
-            step="500"
+            step="100"
             value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              if (val > 0 && val < 100) {
+                setAmount(100);
+              } else {
+                setAmount(val);
+              }
+            }}
             className="w-full accent-amber-500 bg-slate-800 rounded-lg cursor-pointer h-2"
           />
           <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-            <span>GHS 0.00</span>
+            <span>GHS 100.00</span>
             <span>GHS 50,000.00</span>
+          </div>
+
+          {/* Quick Amount Selector Chips Starting from 100 */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            {[100, 500, 1000, 2500, 5000, 10000].map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => setAmount(preset)}
+                className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                  amount === preset
+                    ? 'bg-amber-500 text-slate-950 font-black ring-1 ring-amber-400'
+                    : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                }`}
+              >
+                +GH₵ {preset >= 1000 ? `${preset / 1000}k` : preset}
+              </button>
+            ))}
           </div>
         </div>
 

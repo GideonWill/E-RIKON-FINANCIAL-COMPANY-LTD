@@ -111,20 +111,33 @@ export default async function handler(req, res) {
         globalCloudVault.approvals = Array.from(apprMap.values());
       }
 
-      // 3. Merge customers by id
+      // 3. Merge customers & apply deletions
+      const deletedCustIds = Array.isArray(incoming.deletedCustomerIds) ? incoming.deletedCustomerIds : [];
       if (Array.isArray(incoming.customers)) {
         const custMap = new Map();
-        (globalCloudVault.customers || []).forEach(c => custMap.set(c.id, c));
-        incoming.customers.forEach(c => custMap.set(c.id, c));
+        (globalCloudVault.customers || []).forEach(c => {
+          if (!deletedCustIds.includes(c.id)) custMap.set(c.id, c);
+        });
+        incoming.customers.forEach(c => {
+          if (!deletedCustIds.includes(c.id)) custMap.set(c.id, c);
+        });
         globalCloudVault.customers = Array.from(custMap.values());
+      } else if (deletedCustIds.length > 0) {
+        globalCloudVault.customers = (globalCloudVault.customers || []).filter(c => !deletedCustIds.includes(c.id));
       }
 
-      // 4. Merge accounts by id
+      // 4. Merge accounts & apply deletions
       if (Array.isArray(incoming.accounts)) {
         const accMap = new Map();
-        (globalCloudVault.accounts || []).forEach(a => accMap.set(a.id, a));
-        incoming.accounts.forEach(a => accMap.set(a.id, a));
+        (globalCloudVault.accounts || []).forEach(a => {
+          if (!deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)) accMap.set(a.id, a);
+        });
+        incoming.accounts.forEach(a => {
+          if (!deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)) accMap.set(a.id, a);
+        });
         globalCloudVault.accounts = Array.from(accMap.values());
+      } else if (deletedCustIds.length > 0) {
+        globalCloudVault.accounts = (globalCloudVault.accounts || []).filter(a => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id));
       }
 
       // 5. Merge transactions by id
@@ -137,8 +150,12 @@ export default async function handler(req, res) {
 
       if (Array.isArray(incoming.loans)) {
         const loanMap = new Map();
-        (globalCloudVault.loans || []).forEach(l => loanMap.set(l.id, l));
-        incoming.loans.forEach(l => loanMap.set(l.id, l));
+        (globalCloudVault.loans || []).forEach(l => {
+          if (!deletedCustIds.includes(l.customerId)) loanMap.set(l.id, l);
+        });
+        incoming.loans.forEach(l => {
+          if (!deletedCustIds.includes(l.customerId)) loanMap.set(l.id, l);
+        });
         globalCloudVault.loans = Array.from(loanMap.values());
       }
 

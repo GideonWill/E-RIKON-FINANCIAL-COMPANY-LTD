@@ -100,21 +100,46 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [];
 
 // --- PERSISTENCE & REAL-TIME REPOSITORY ---
 
+export const getDeletedCustomerIds = (): string[] => {
+  const data = localStorage.getItem('erikon_deleted_customer_ids');
+  if (!data) return [];
+  try {
+    const parsed = JSON.parse(data);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+export const addDeletedCustomerId = (id: string) => {
+  const ids = getDeletedCustomerIds();
+  if (!ids.includes(id)) {
+    const updated = [...ids, id];
+    localStorage.setItem('erikon_deleted_customer_ids', JSON.stringify(updated));
+  }
+};
+
 export const getStoredCustomers = (): Customer[] => {
   const data = localStorage.getItem('erikon_customers');
   if (!data) return [];
   try {
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    if (!Array.isArray(parsed)) return [];
+    const deletedIds = getDeletedCustomerIds();
+    return parsed.filter((c) => !deletedIds.includes(c.id));
   } catch {
     return [];
   }
 };
 
 export const saveStoredCustomers = (customers: Customer[]) => {
-  const sanitized = customers.map((c) => {
-    const { accounts: _, ...rest } = c;
-    return rest as Customer;
-  });
+  const deletedIds = getDeletedCustomerIds();
+  const sanitized = customers
+    .filter((c) => !deletedIds.includes(c.id))
+    .map((c) => {
+      const { accounts: _, ...rest } = c;
+      return rest as Customer;
+    });
   localStorage.setItem('erikon_customers', JSON.stringify(sanitized));
   broadcastRealtimeEvent('CUSTOMER_REGISTERED', sanitized);
 };
@@ -123,20 +148,26 @@ export const getStoredAccounts = (): Account[] => {
   const data = localStorage.getItem('erikon_accounts');
   if (!data) return [];
   try {
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    if (!Array.isArray(parsed)) return [];
+    const deletedIds = getDeletedCustomerIds();
+    return parsed.filter((a) => !deletedIds.includes(a.customerId) && !deletedIds.includes(a.id));
   } catch {
     return [];
   }
 };
 
 export const saveStoredAccounts = (accounts: Account[]) => {
-  const sanitized = accounts.map((a) => {
-    if (a.customer) {
-      const { accounts: _, ...cleanCust } = a.customer;
-      return { ...a, customer: cleanCust as Customer };
-    }
-    return a;
-  });
+  const deletedIds = getDeletedCustomerIds();
+  const sanitized = accounts
+    .filter((a) => !deletedIds.includes(a.customerId) && !deletedIds.includes(a.id))
+    .map((a) => {
+      if (a.customer) {
+        const { accounts: _, ...cleanCust } = a.customer;
+        return { ...a, customer: cleanCust as Customer };
+      }
+      return a;
+    });
   localStorage.setItem('erikon_accounts', JSON.stringify(sanitized));
   broadcastRealtimeEvent('ACCOUNT_OPENED', sanitized);
 };
@@ -145,7 +176,10 @@ export const getStoredLoans = (): LoanApplication[] => {
   const data = localStorage.getItem('erikon_loans');
   if (!data) return [];
   try {
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    if (!Array.isArray(parsed)) return [];
+    const deletedIds = getDeletedCustomerIds();
+    return parsed.filter((l) => !deletedIds.includes(l.customerId));
   } catch {
     return [];
   }
@@ -525,23 +559,26 @@ export const createNewCustomer = (customerData: Omit<Customer, 'id' | 'customerN
  * Delete / Close Customer Record (When client does not want to save anymore)
  */
 export const deleteCustomerRecord = (customerId: string): boolean => {
-  // 1. Remove from stored customers
+  // 1. Add to permanent deleted tombstones
+  addDeletedCustomerId(customerId);
+
+  // 2. Remove from stored customers
   const customers = getStoredCustomers();
   const targetCust = customers.find((c) => c.id === customerId);
   const updatedCusts = customers.filter((c) => c.id !== customerId);
   saveStoredCustomers(updatedCusts);
 
-  // 2. Remove associated accounts
+  // 3. Remove associated accounts
   const accounts = getStoredAccounts();
   const updatedAccs = accounts.filter((a) => a.customerId !== customerId);
   saveStoredAccounts(updatedAccs);
 
-  // 3. Remove associated loans
+  // 4. Remove associated loans
   const loans = getStoredLoans();
   const updatedLoans = loans.filter((l) => l.customerId !== customerId);
   saveStoredLoans(updatedLoans);
 
-  // 4. Record audit log
+  // 5. Record audit log
   const logs = getStoredAuditLogs();
   const newLog: AuditLog = {
     id: `log-del-${Date.now()}`,
@@ -557,11 +594,20 @@ export const deleteCustomerRecord = (customerId: string): boolean => {
   };
   saveStoredAuditLogs([newLog, ...logs]);
 
-  // 5. Broadcast real-time deletion event across all open windows & mobile devices
+  // 6. Broadcast real-time deletion event across all open windows & mobile devices
   broadcastRealtimeEvent('CUSTOMER_DELETED', { customerId });
 
-  // 6. Delete from backend Neon database if connected
+  // 7. Delete from backend Neon database if connected
   apiClient.delete(`/customers/${customerId}`).catch(() => {});
+
+  // 8. Immediately push updated state to cloud relay
+  setTimeout(() => {
+    try {
+      import('./cloudSync').then(({ pushLocalToCloud }) => {
+        pushLocalToCloud().catch(() => {});
+      });
+    } catch {}
+  }, 50);
 
   return true;
 };

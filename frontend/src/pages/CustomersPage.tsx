@@ -419,6 +419,11 @@ export const CustomersPage: React.FC = () => {
     if (confirmed) {
       deleteCustomerRecord(cust.id);
       setCustomers(getStoredCustomers());
+      setAccounts(getStoredAccounts());
+      if (selectedDetailCustomer?.id === cust.id) {
+        setSelectedDetailCustomer(null);
+        setSelectedDetailCycleNumber(null);
+      }
     }
   };
 
@@ -820,15 +825,28 @@ export const CustomersPage: React.FC = () => {
                   </div>
                 </div>
 
-                <button 
-                  onClick={() => {
-                    setSelectedDetailCustomer(null);
-                    setSelectedDetailCycleNumber(null);
-                  }}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCustomer(selectedDetailCustomer)}
+                    className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                    title="Close & Delete Client Account"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span className="hidden sm:inline">Delete Record</span>
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      setSelectedDetailCustomer(null);
+                      setSelectedDetailCycleNumber(null);
+                    }}
+                    className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                    title="Close Modal"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Cycle History Tab Switcher */}

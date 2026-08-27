@@ -689,9 +689,12 @@ export const LoansPage: React.FC = () => {
                   <input
                     required
                     type="number"
+                    min="100"
+                    step="100"
                     value={amountReq}
                     onChange={(e) => setAmountReq(Number(e.target.value))}
                     className="w-full mt-1 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono font-bold text-slate-900 dark:text-white"
+                    placeholder="Min GHS 100.00"
                   />
                 </div>
                 <div>
