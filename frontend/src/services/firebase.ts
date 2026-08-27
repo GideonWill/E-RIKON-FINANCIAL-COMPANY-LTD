@@ -9,22 +9,23 @@ import {
   enableIndexedDbPersistence 
 } from 'firebase/firestore';
 
-// Firebase configuration using Environment Variables with fallbacks
+// Firebase configuration for E-RIKON Financial Company PLC
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSy_REPLACE_WITH_YOUR_FIREBASE_KEY",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "erikon-ecfms.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "erikon-ecfms",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "erikon-ecfms.appspot.com",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "1234567890",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1234567890:web:abcdef"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBexTaAkNwo39yg-Us8ckp8oFf_wJmRO1Y",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "erikon-company-plc.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "erikon-company-plc",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "erikon-company-plc.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "771545783989",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:771545783989:web:db166570a2ccaf713368fc",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-MSDFK20MX6"
 };
 
 // Check if valid Firebase configuration is present
 export const isFirebaseConfigured = (): boolean => {
   return Boolean(
-    import.meta.env.VITE_FIREBASE_API_KEY && 
-    import.meta.env.VITE_FIREBASE_PROJECT_ID &&
-    !import.meta.env.VITE_FIREBASE_API_KEY.includes('REPLACE_WITH')
+    firebaseConfig.apiKey &&
+    firebaseConfig.projectId &&
+    !firebaseConfig.apiKey.includes('REPLACE_WITH')
   );
 };
 
