@@ -199,28 +199,50 @@ export const getStoredTransactions = (): Transaction[] => {
   const data = localStorage.getItem('erikon_transactions');
   if (!data) return [];
   try {
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    if (!Array.isArray(parsed)) return [];
+    const deletedIds = getDeletedCustomerIds();
+    return parsed.filter((t) => {
+      const custId = t.account?.customerId || t.account?.customer?.id;
+      if (custId && deletedIds.includes(custId)) return false;
+      if (deletedIds.includes(t.id) || deletedIds.includes(t.receiptNo)) return false;
+      return true;
+    });
   } catch {
     return [];
   }
 };
 
 export const saveStoredTransactions = (txs: Transaction[]) => {
-  const sanitized = txs.map((t) => {
-    if (t.account && t.account.customer) {
-      const { accounts: _, ...cleanCust } = t.account.customer;
-      return {
-        ...t,
-        account: {
-          ...t.account,
-          customer: cleanCust as Customer,
-        },
-      };
-    }
-    return t;
-  });
+  const deletedIds = getDeletedCustomerIds();
+  const sanitized = txs
+    .filter((t) => {
+      const custId = t.account?.customerId || t.account?.customer?.id;
+      if (custId && deletedIds.includes(custId)) return false;
+      if (deletedIds.includes(t.id) || (t.receiptNo && deletedIds.includes(t.receiptNo))) return false;
+      return true;
+    })
+    .map((t) => {
+      if (t.account && t.account.customer) {
+        const { accounts: _, ...cleanCust } = t.account.customer;
+        return {
+          ...t,
+          account: {
+            ...t.account,
+            customer: cleanCust as Customer,
+          },
+        };
+      }
+      return t;
+    });
   localStorage.setItem('erikon_transactions', JSON.stringify(sanitized));
   broadcastRealtimeEvent('PACKAGE_DEPOSIT_RECORDED', sanitized);
+};
+
+export const clearStoredTransactions = () => {
+  localStorage.setItem('erikon_transactions', JSON.stringify([]));
+  broadcastRealtimeEvent('PACKAGE_DEPOSIT_RECORDED', []);
+  broadcastRealtimeEvent('DEPOSIT_RECORDED', []);
 };
 
 export const getStoredBranches = (): Branch[] => {

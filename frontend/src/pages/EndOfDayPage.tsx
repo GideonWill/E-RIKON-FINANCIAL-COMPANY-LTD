@@ -6,8 +6,10 @@ import {
   getStoredApprovals,
   getStoredCompanyInterest,
   getStoredAuditLogs,
-  getRegisteredUsers
+  getRegisteredUsers,
+  clearStoredTransactions
 } from '../services/api';
+import { pushLocalToCloud } from '../services/cloudSync';
 import { useRealtimeSync } from '../services/realtimeSync';
 import { useAuth } from '../contexts/AuthContext';
 import { Transaction, LoanApplication, Account, ApprovalRequest, AuditLog } from '../types';
@@ -34,7 +36,8 @@ import {
   FileSpreadsheet,
   BadgeCheck,
   Search,
-  DollarSign
+  DollarSign,
+  Trash2
 } from 'lucide-react';
 
 export const EndOfDayPage: React.FC = () => {
@@ -303,6 +306,24 @@ export const EndOfDayPage: React.FC = () => {
             <Download className="w-4 h-4" />
             <span>Export CSV</span>
           </button>
+
+          {currentUser?.role === 'SUPER_ADMIN' && transactions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm('Are you sure you want to clear all recorded transactions from the ledger?')) {
+                  clearStoredTransactions();
+                  setTransactions([]);
+                  pushLocalToCloud().catch(() => {});
+                }
+              }}
+              className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/30 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all"
+              title="Clear all transactions from the system"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Clear Ledger</span>
+            </button>
+          )}
         </div>
       </div>
 
