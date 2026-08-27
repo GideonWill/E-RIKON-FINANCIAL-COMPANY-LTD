@@ -24,12 +24,12 @@ export const toDecimal = (val: number | string): number => {
   return Math.round(num * 100) / 100;
 };
 
-// API Base URL (Defaults to same-origin / Vercel in production and localhost in dev)
+// API Base URL (Live PostgreSQL Backend in production, localhost in dev)
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
   (typeof window !== 'undefined' && window.location.hostname === 'localhost'
     ? 'http://localhost:4000/api'
-    : '/api');
+    : 'https://e-rikon-ecfms-backend.onrender.com/api');
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

@@ -15,6 +15,8 @@ let globalCloudVault = {
   updatedAt: new Date().toISOString(),
 };
 
+const LIVE_BACKEND_URL = 'https://e-rikon-ecfms-backend.onrender.com/api/sync';
+
 export default async function handler(req, res) {
   // CORS Headers for multi-device access
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -30,6 +32,28 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const rRes = await fetch(LIVE_BACKEND_URL, {
+        headers: { 'Accept': 'application/json' },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (rRes.ok) {
+        const rData = await rRes.json();
+        const vault = rData?.vault || rData;
+        if (vault && Array.isArray(vault.registeredUsers)) {
+          globalCloudVault = { ...globalCloudVault, ...vault };
+          return res.status(200).json({
+            success: true,
+            vault: globalCloudVault,
+            updatedAt: globalCloudVault.updatedAt || new Date().toISOString(),
+          });
+        }
+      }
+    } catch {}
+
     return res.status(200).json({
       success: true,
       vault: globalCloudVault,
@@ -183,6 +207,13 @@ export default async function handler(req, res) {
       }
 
       globalCloudVault.updatedAt = new Date().toISOString();
+
+      // Asynchronously forward to live database backend
+      fetch(LIVE_BACKEND_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(globalCloudVault),
+      }).catch(() => {});
 
       return res.status(200).json({
         success: true,

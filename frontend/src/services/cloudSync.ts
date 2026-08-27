@@ -54,20 +54,23 @@ export const getLastSyncTime = () => lastSyncTimestamp;
 const getSyncEndpoints = (): string[] => {
   const endpoints: string[] = [];
 
-  // 1. Same-Origin / Vercel Serverless Function Endpoint (Primary)
+  // 1. Authoritative Production Backend Endpoint
+  endpoints.push('https://e-rikon-ecfms-backend.onrender.com/api/sync');
+
+  // 2. Same-Origin / Vercel Serverless Function Endpoint (Primary)
   if (typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes('localhost')) {
     endpoints.push(`${window.location.origin}/api/sync`);
   }
 
-  // 2. Relative Endpoint
+  // 3. Relative Endpoint
   endpoints.push('/api/sync');
 
-  // 3. Localhost Dev Backend (if running locally)
+  // 4. Localhost Dev Backend (if running locally)
   if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
     endpoints.push('http://localhost:4000/api/sync');
   }
 
-  // 4. Custom Environment API URL
+  // 5. Custom Environment API URL
   if (import.meta.env.VITE_API_URL) {
     const customUrl = `${import.meta.env.VITE_API_URL}/sync`.replace(/([^:]\/)\/+/g, '$1');
     if (!endpoints.includes(customUrl)) {
