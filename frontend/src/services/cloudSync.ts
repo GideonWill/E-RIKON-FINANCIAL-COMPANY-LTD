@@ -27,6 +27,7 @@ import {
 } from './api';
 import { ApprovalRequest } from '../types';
 import { broadcastRealtimeEvent, subscribeRealtimeEvents } from './realtimeSync';
+import { saveFirestoreVault, subscribeFirestoreVault, isFirebaseConfigured } from './firebase';
 
 export interface CloudVaultPayload {
   registeredUsers?: RegisteredUserRecord[];
@@ -110,6 +111,13 @@ export const pushLocalToCloud = async (): Promise<boolean> => {
   const payloadStr = JSON.stringify(payload);
   const endpoints = getSyncEndpoints();
   let anySuccess = false;
+
+  // Write to Firebase Firestore in parallel if configured
+  if (isFirebaseConfigured()) {
+    saveFirestoreVault(payload).then((ok) => {
+      if (ok) anySuccess = true;
+    }).catch(() => {});
+  }
 
   try {
     const pushPromises = endpoints.map(async (url) => {
@@ -351,8 +359,16 @@ export const initCloudSync = () => {
     window.addEventListener('online', handleOnline);
   }
 
+  // Attach live sub-second Firestore onSnapshot listener if configured
+  const unsubscribeFirestore = subscribeFirestoreVault((vaultData) => {
+    if (vaultData) {
+      pullCloudToLocal().catch(() => {});
+    }
+  });
+
   return () => {
     unsubscribeEvents();
+    unsubscribeFirestore();
     clearInterval(pollTimer);
     if (typeof window !== 'undefined') {
       window.removeEventListener('visibilitychange', handleVisibilityChange);
