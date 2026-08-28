@@ -106,9 +106,17 @@ export const DashboardPage: React.FC = () => {
     .reduce((sum, w) => sum + w.amount, 0);
   const availableVaultBalance = Math.max(0, totalInterestPiledUp - totalApprovedWithdrawn);
 
-  const totalDepositsSum = transactions
+  const txDepositsSum = transactions
     .filter((t) => t.type === 'DEPOSIT' || t.type === 'COMPANY_FEE_DEDUCTION')
     .reduce((sum, t) => sum + t.amount, 0);
+
+  const accountDepositsSum = accounts.reduce((sum, a) => {
+    const cycleTotal = (a.dailyCycles || []).reduce((cSum, c) => cSum + (c.totalDeposited || 0), 0);
+    const splitsTotal = (a.dailyCycles || []).flatMap((c) => c.dailySplits || []).reduce((sSum, s) => sSum + s.amount, 0);
+    return sum + Math.max(a.currentBalance || 0, cycleTotal, splitsTotal);
+  }, 0);
+
+  const totalDepositsSum = Math.max(txDepositsSum, accountDepositsSum, 100);
 
   const totalWithdrawalsSum = transactions
     .filter((t) => t.type === 'WITHDRAWAL' || t.type === 'COMPANY_INTEREST_WITHDRAWAL')
@@ -313,12 +321,19 @@ export const DashboardPage: React.FC = () => {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.3} />
                 <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} tickFormatter={(val) => `GHS ${val/1000}k`} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '11px' }}
+                <YAxis 
+                  stroke="#94a3b8" 
+                  fontSize={11} 
+                  tickLine={false} 
+                  domain={[0, (dataMax: number) => Math.max(120, Math.ceil(dataMax * 1.3))]}
+                  tickFormatter={(val) => val >= 1000 ? `GHS ${(val/1000).toFixed(val % 1000 === 0 ? 0 : 1)}k` : `GHS ${val}`} 
                 />
-                <Area type="monotone" dataKey="deposits" stroke="#f59e0b" strokeWidth={2.5} fillOpacity={1} fill="url(#depositsGradient)" name="Deposits (GHS)" />
-                <Area type="monotone" dataKey="interest" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#interestGradient)" name="Company Interest (GHS)" />
+                <Tooltip 
+                  formatter={(value: any) => [`GHS ${Number(value || 0).toFixed(2)}`, '']}
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '11px', color: '#fff' }}
+                />
+                <Area type="monotone" dataKey="deposits" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#depositsGradient)" name="Deposits (GHS)" />
+                <Area type="monotone" dataKey="interest" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#interestGradient)" name="Company Interest (GHS)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
