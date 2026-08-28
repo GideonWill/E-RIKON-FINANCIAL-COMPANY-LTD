@@ -31,11 +31,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     setProgress(15);
     setStatusMessage('Synchronizing core financial ledgers...');
 
-    // Trigger background data updates
-    broadcastRealtimeEvent('MANUAL_SYNC', null);
-    window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
-    window.dispatchEvent(new Event('storage'));
-
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 90) {
@@ -45,7 +40,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         }
         return prev + Math.floor(Math.random() * 25) + 15;
       });
-    }, 180);
+    }, 120);
 
     const timer = setTimeout(() => {
       setIsFading(true);
@@ -53,10 +48,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         setIsVisible(false);
         if (onFinish) onFinish();
         window.dispatchEvent(new CustomEvent('erikon_splash_completed'));
-      }, 400);
+      }, 300);
 
       return () => clearTimeout(finishTimer);
-    }, customDuration);
+    }, Math.min(customDuration, 1400));
 
     return () => {
       clearInterval(progressInterval);

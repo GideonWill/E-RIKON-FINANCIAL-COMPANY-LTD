@@ -250,7 +250,6 @@ export const getStoredAccounts = (): Account[] => {
   }
 
   // Ensure each account has customer details attached and splits have immutable recordedBy
-  const existingTxs = getStoredTransactions();
   let splitsUpdated = false;
 
   parsed.forEach((acc) => {
@@ -384,9 +383,15 @@ export const getStoredAccounts = (): Account[] => {
         splitsUpdated = true;
       }
 
+      let rawTxs: Transaction[] = [];
+      try {
+        const rawTxsStr = localStorage.getItem('erikon_transactions');
+        if (rawTxsStr) rawTxs = JSON.parse(rawTxsStr);
+      } catch {}
+
       (c.dailySplits || []).forEach((s) => {
         if (!s.recordedBy || s.recordedBy.trim() === '' || s.recordedBy === 'Authorized Officer') {
-          const matchingTx = existingTxs.find((t) => t.referenceNo === s.batchTxRef || t.accountId === acc.id);
+          const matchingTx = rawTxs.find((t: Transaction) => t.referenceNo === s.batchTxRef || t.accountId === acc.id);
           if (matchingTx?.recordedBy?.firstName && matchingTx.recordedBy.firstName !== 'Authorized') {
             const role = (matchingTx.recordedBy.role || 'SUPER_ADMIN').replace(/_/g, ' ');
             s.recordedBy = `${matchingTx.recordedBy.firstName} ${matchingTx.recordedBy.lastName} (${role})`;
@@ -477,13 +482,19 @@ export const getStoredTransactions = (): Transaction[] => {
     return true;
   });
 
+  // Helper to read raw accounts without triggering recursion
+  let rawAccounts: Account[] = [];
+  try {
+    const rawAccsStr = localStorage.getItem('erikon_accounts');
+    if (rawAccsStr) rawAccounts = JSON.parse(rawAccsStr);
+  } catch {}
+
   // Ensure Gladys deposit of 800 GHS exists
   const hasGladysTx = parsed.some(
     (t) => t.referenceNo === 'TX-DEP-GLADYS-800' || (t.amount === 800 && t.account?.customer?.firstName?.toLowerCase().includes('gladys'))
   );
   if (!hasGladysTx) {
-    const allAccs = getStoredAccounts();
-    const gladysAcc = allAccs.find((a) => a.customer?.firstName?.toLowerCase().includes('gladys') || a.customerId === 'cust-gladys-001');
+    const gladysAcc = rawAccounts.find((a) => a.customer?.firstName?.toLowerCase().includes('gladys') || a.customerId === 'cust-gladys-001');
     if (gladysAcc) {
       const gladysTx: Transaction = {
         id: 'tx-dep-gladys-800',
@@ -519,8 +530,7 @@ export const getStoredTransactions = (): Transaction[] => {
     (t) => t.referenceNo === 'TX-DEP-KWAME-620' || (t.amount === 620 && t.account?.customer?.firstName?.toLowerCase().includes('kwame'))
   );
   if (!hasKwameTx) {
-    const allAccs = getStoredAccounts();
-    const kwameAcc = allAccs.find((a) => a.customer?.firstName?.toLowerCase().includes('kwame') || a.customerId.includes('kwame'));
+    const kwameAcc = rawAccounts.find((a) => a.customer?.firstName?.toLowerCase().includes('kwame') || a.customerId?.includes('kwame'));
     if (kwameAcc) {
       const kwameDepTx: Transaction = {
         id: 'tx-dep-kwame-620',
