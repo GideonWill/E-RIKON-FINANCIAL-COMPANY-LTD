@@ -212,6 +212,17 @@ export const getStoredAccounts = (): Account[] => {
     }
 
     (acc.dailyCycles || []).forEach((c) => {
+      const splitsCount = c.dailySplits?.length || 0;
+      if (splitsCount > 0 && c.currentDayCount < splitsCount) {
+        c.currentDayCount = splitsCount;
+        splitsUpdated = true;
+      }
+      const splitDepositSum = (c.dailySplits || []).reduce((sum, s) => sum + s.amount, 0);
+      if (splitDepositSum > 0 && c.totalDeposited < splitDepositSum) {
+        c.totalDeposited = splitDepositSum;
+        splitsUpdated = true;
+      }
+
       (c.dailySplits || []).forEach((s) => {
         if (!s.recordedBy || s.recordedBy.trim() === '' || s.recordedBy === 'Authorized Officer') {
           const matchingTx = existingTxs.find((t) => t.referenceNo === s.batchTxRef || t.accountId === acc.id);

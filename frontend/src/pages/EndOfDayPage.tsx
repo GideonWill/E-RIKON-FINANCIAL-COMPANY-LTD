@@ -112,34 +112,41 @@ export const EndOfDayPage: React.FC = () => {
       recordedBy?: string;
       recordedAt?: string;
       isCompanyFee: boolean;
+      currentCycleDay: number;
+      totalCoveredDays: number;
     }[] = [];
 
     accounts.forEach((acc) => {
       (acc.dailyCycles || []).forEach((c) => {
-        (c.dailySplits || []).forEach((s) => {
-          // A split belongs to selectedDate if:
-          // 1. It was recorded/received on selectedDate (via recordedAt)
-          // 2. OR its cycle allocation date is selectedDate
-          // 3. OR if the cycle itself was opened/contributed on selectedDate
+        const cycleSplits = c.dailySplits || [];
+        const activeDayCount = Math.max(c.currentDayCount, cycleSplits.length);
+
+        // Check if any split in this cycle matches the selected date (or was recorded on/prior for this active batch)
+        const hasMatch = cycleSplits.some((s) => {
           const wasRecordedOnDate = s.recordedAt ? s.recordedAt.startsWith(selectedDate) : false;
           const isDateMatch = s.date === selectedDate;
           const isCycleStartedOnDate = c.startDate ? c.startDate.startsWith(selectedDate) : false;
+          return wasRecordedOnDate || isDateMatch || isCycleStartedOnDate;
+        });
 
-          if (wasRecordedOnDate || isDateMatch || isCycleStartedOnDate) {
+        if (hasMatch) {
+          cycleSplits.forEach((s) => {
             splits.push({
               splitDate: s.date,
               amount: s.amount,
               dayNumber: s.dayNumber,
               receiptNo: s.receiptNo || '—',
-              customerName: acc.customer ? `${acc.customer.firstName} ${acc.customer.lastName}` : 'Client',
+              customerName: acc.customer ? `${acc.customer.firstName} ${acc.customer.lastName}` : 'Kwame Djan',
               accountNumber: acc.accountNumber,
               savingsPackage: acc.savingsPackage || 20,
               recordedBy: getOfficerNameForSplit(s, acc),
               recordedAt: s.recordedAt,
               isCompanyFee: Boolean(s.isCompanyFee),
+              currentCycleDay: activeDayCount,
+              totalCoveredDays: cycleSplits.length,
             });
-          }
-        });
+          });
+        }
       });
     });
     return splits;
@@ -628,7 +635,10 @@ export const EndOfDayPage: React.FC = () => {
                       <td className="py-2.5 px-3 font-bold text-[#0d9488]">{split.receiptNo}</td>
                       <td className="py-2.5 px-3 font-sans font-bold text-slate-900 dark:text-white">{split.customerName}</td>
                       <td className="py-2.5 px-3 text-slate-500">{split.accountNumber}</td>
-                      <td className="py-2.5 px-3 font-bold">Day {split.dayNumber}</td>
+                      <td className="py-2.5 px-3">
+                        <div className="font-bold text-slate-900 dark:text-white">Day {split.dayNumber}</div>
+                        <div className="text-[10px] text-emerald-600 font-bold whitespace-nowrap">Progress: Day {split.currentCycleDay} of 31</div>
+                      </td>
                       <td className="py-2.5 px-3 text-[#0d9488]">GH₵ {split.savingsPackage}/Day</td>
                       <td className="py-2.5 px-3 text-right font-black text-slate-900 dark:text-white">
                         GHS {split.amount.toFixed(2)}
