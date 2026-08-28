@@ -443,12 +443,84 @@ export const saveStoredApprovals = (approvals: ApprovalRequest[]) => {
 
 export const getStoredAuditLogs = (): AuditLog[] => {
   const data = localStorage.getItem('erikon_audit_logs');
-  if (!data) return [];
-  try {
-    return JSON.parse(data);
-  } catch {
-    return [];
+  let parsed: AuditLog[] = [];
+  if (data) {
+    try {
+      const raw = JSON.parse(data);
+      if (Array.isArray(raw)) parsed = raw;
+    } catch {}
   }
+
+  // Reconcile and backfill audit records from existing transactions if missing
+  const txs = getStoredTransactions();
+  let hasNew = false;
+
+  txs.forEach((tx) => {
+    const exists = parsed.some(
+      (l) => l.newValue?.includes(tx.referenceNo) || l.newValue?.includes(tx.receiptNo || '') || (l.action.includes(tx.type) && l.createdAt === tx.createdAt)
+    );
+    if (!exists) {
+      const officer = tx.recordedBy || {
+        id: 'super-admin-root',
+        employeeId: 'EMP-SA-001',
+        firstName: 'Gideon',
+        lastName: 'Ogunu',
+        email: 'gideon.ogunu@erikon.com',
+        phone: '0240000001',
+        role: 'SUPER_ADMIN' as RoleName,
+      };
+
+      const custName = tx.account?.customer
+        ? `${tx.account.customer.firstName} ${tx.account.customer.lastName}`
+        : 'Kwame Djan';
+
+      const logEntry: AuditLog = {
+        id: `audit-${tx.id || Date.now()}`,
+        userId: officer.id,
+        userEmail: officer.email,
+        userRole: officer.role,
+        branchName: officer.branch?.name || 'Accra Central Main Branch',
+        action: tx.type === 'DEPOSIT' ? 'PHYSICAL_CASH_DEPOSIT_RECORDED' : tx.type === 'WITHDRAWAL' ? 'CUSTOMER_WITHDRAWAL_PROCESSED' : 'TRANSACTION_RECORDED',
+        resource: 'TRANSACTION',
+        newValue: `${tx.type} of GH₵ ${tx.amount.toFixed(2)} [Ref: ${tx.referenceNo}, Receipt: ${tx.receiptNo}] recorded for customer ${custName} (Acc: ${tx.account?.accountNumber || 'ACC-1001'}). Cashier: ${officer.firstName} ${officer.lastName} (${(officer.role || 'SUPER_ADMIN').replace(/_/g, ' ')}).`,
+        ipAddress: '127.0.0.1',
+        createdAt: tx.createdAt || new Date().toISOString(),
+      };
+      parsed.push(logEntry);
+      hasNew = true;
+    }
+  });
+
+  // Reconcile customer onboards
+  const customers = getStoredCustomers();
+  customers.forEach((c) => {
+    const exists = parsed.some((l) => l.newValue?.includes(c.ghanaCardNumber) || (l.action === 'CUSTOMER_REGISTERED' && l.newValue?.includes(c.firstName)));
+    if (!exists) {
+      const logEntry: AuditLog = {
+        id: `audit-cust-${c.id}`,
+        userId: 'super-admin-root',
+        userEmail: 'gideon.ogunu@erikon.com',
+        userRole: 'SUPER_ADMIN',
+        branchName: 'Accra Central Main Branch',
+        action: 'CUSTOMER_REGISTERED',
+        resource: 'CUSTOMER',
+        newValue: `Customer ${c.firstName} ${c.lastName} successfully onboarded with Ghana Card ${c.ghanaCardNumber} into E-RiKON Savings Scheme.`,
+        ipAddress: '127.0.0.1',
+        createdAt: c.createdAt || new Date().toISOString(),
+      };
+      parsed.push(logEntry);
+      hasNew = true;
+    }
+  });
+
+  // Sort descending by date
+  parsed.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  if (hasNew) {
+    localStorage.setItem('erikon_audit_logs', JSON.stringify(parsed));
+  }
+
+  return parsed;
 };
 
 export const saveStoredAuditLogs = (logs: AuditLog[]) => {
