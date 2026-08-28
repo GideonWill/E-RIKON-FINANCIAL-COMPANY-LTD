@@ -439,10 +439,15 @@ export const TellerPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-3 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setOperationType('DEPOSIT')}
+                  onClick={() => {
+                    setOperationType('DEPOSIT');
+                    if (!amount || Number(amount) <= 0) {
+                      setAmount(String(chosenPackage * 5));
+                    }
+                  }}
                   className={`py-3 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
                     operationType === 'DEPOSIT'
-                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-500/30'
                       : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >
@@ -452,10 +457,15 @@ export const TellerPage: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => setOperationType('WITHDRAWAL')}
+                  onClick={() => {
+                    setOperationType('WITHDRAWAL');
+                    if (loanInfo.maxLoanAmount > 0 && (Number(amount) > loanInfo.maxLoanAmount || Number(amount) <= 0)) {
+                      setAmount(String(Math.min(100, loanInfo.maxLoanAmount)));
+                    }
+                  }}
                   className={`py-3 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
                     operationType === 'WITHDRAWAL'
-                      ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
+                      ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20 ring-2 ring-rose-500/30'
                       : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >
