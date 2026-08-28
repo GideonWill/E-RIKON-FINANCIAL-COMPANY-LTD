@@ -335,16 +335,18 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
     }
   }
 
-  // 7. Merged Authoritative Company Interest Sync
+  // 7. Merged Authoritative Company Interest Sync (Keyed by client cycle)
   if (Array.isArray(cloudData.companyInterest)) {
     const localInt = getStoredCompanyInterest();
     const intMap = new Map<string, any>();
     localInt.forEach((i) => {
-      if (i.id) intMap.set(i.id, i);
+      const key = `${i.accountNumber || i.accountId || i.customerId}-cyc-${i.cycleNumber}`;
+      intMap.set(key, i);
     });
     cloudData.companyInterest.forEach((i) => {
-      const existing = intMap.get(i.id);
-      intMap.set(i.id, { ...existing, ...i });
+      const key = `${i.accountNumber || i.accountId || i.customerId}-cyc-${i.cycleNumber}`;
+      const existing = intMap.get(key);
+      intMap.set(key, { ...existing, ...i });
     });
 
     const mergedInt = Array.from(intMap.values());

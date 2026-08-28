@@ -730,8 +730,20 @@ export const getStoredCompanyInterest = (): CompanyInterestRecord[] => {
     return true;
   });
 
+  // Deduplicate records so each client cycle has exactly one interest entry
+  const seenCycleKeys = new Set<string>();
+  const uniqueRecords: CompanyInterestRecord[] = [];
+  parsed.forEach((r) => {
+    const key = `${r.accountNumber || r.accountId || r.customerId}-cyc-${r.cycleNumber}`;
+    if (!seenCycleKeys.has(key)) {
+      seenCycleKeys.add(key);
+      uniqueRecords.push(r);
+    }
+  });
+  parsed = uniqueRecords;
+
   // Ensure Kwame Djan Cycle 1 interest record exists (Day 31 fee retention)
-  const hasKwameInterest = parsed.some((r) => r.customerName?.toLowerCase().includes('kwame') || (r.packageAmount === 20 && r.cycleNumber === 1));
+  const hasKwameInterest = parsed.some((r) => (r.customerName?.toLowerCase().includes('kwame') || r.customerId?.includes('kwame')) && r.cycleNumber === 1);
   if (!hasKwameInterest) {
     const kwameAcc = rawAccounts.find((a) => a.customer?.firstName?.toLowerCase().includes('kwame') || a.customerId?.includes('kwame'));
     if (kwameAcc) {
@@ -749,10 +761,10 @@ export const getStoredCompanyInterest = (): CompanyInterestRecord[] => {
         createdAt: '2026-08-01T10:00:00.000Z',
       };
       parsed.unshift(kwameIntRecord);
-      localStorage.setItem('erikon_company_interest', JSON.stringify(parsed));
     }
   }
 
+  localStorage.setItem('erikon_company_interest', JSON.stringify(parsed));
   return parsed;
 };
 
@@ -1807,8 +1819,12 @@ export const accumulateCompanyInterest = (
   packageAmount: number
 ) => {
   const currentInterest = getStoredCompanyInterest();
+  const existingIdx = currentInterest.findIndex(
+    (r) => (r.accountNumber === account.accountNumber || r.accountId === account.id || r.customerId === account.customerId) && r.cycleNumber === cycleNumber
+  );
+
   const newRecord: CompanyInterestRecord = {
-    id: `int-${Date.now()}`,
+    id: existingIdx !== -1 ? currentInterest[existingIdx].id : `int-${Date.now()}`,
     customerId: account.customerId,
     customerName: account.customer ? `${account.customer.firstName} ${account.customer.lastName}` : 'Client',
     accountId: account.id,
@@ -1818,10 +1834,15 @@ export const accumulateCompanyInterest = (
     accumulatedAmount: packageAmount,
     period: `${new Date().toISOString().slice(0, 7)} (Cycle #${cycleNumber} - 30 Days)`,
     status: 'ACCUMULATED',
-    createdAt: new Date().toISOString(),
+    createdAt: existingIdx !== -1 ? currentInterest[existingIdx].createdAt : new Date().toISOString(),
   };
 
-  saveStoredCompanyInterest([newRecord, ...currentInterest]);
+  if (existingIdx !== -1) {
+    currentInterest[existingIdx] = newRecord;
+    saveStoredCompanyInterest([...currentInterest]);
+  } else {
+    saveStoredCompanyInterest([newRecord, ...currentInterest]);
+  }
 };
 
 /**
