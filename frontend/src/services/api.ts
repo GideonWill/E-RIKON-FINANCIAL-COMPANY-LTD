@@ -267,19 +267,19 @@ export const getStoredAccounts = (): Account[] => {
                     acc.customerId.includes('kwame');
 
     if (isKwame) {
-      acc.savingsPackage = 20;
-      // Kwame completed Cycle 1 (600 GH net savings) + deposited 20 GH into Cycle 2 Day 1 = 620 GH available
-      if (acc.availableBalance < 620) {
-        acc.availableBalance = 620.00;
-        acc.currentBalance = 640.00;
+      acc.savingsPackage = 50;
+      // Kwame completed Cycle 1 (600 GH net savings) + deposited 600 GH into Cycle 2 (12 days on 50 GH package) = 1,200 GH available running balance
+      if (acc.availableBalance < 1200) {
+        acc.availableBalance = 1200.00;
+        acc.currentBalance = 1220.00;
         splitsUpdated = true;
       }
 
-      // Check if Cycle 1 (completed 31 days) and Cycle 2 (active with Day 1) are present
+      // Check if Cycle 1 (completed 31 days) and Cycle 2 (active with 12 days on 50 GH package) are present
       const cycle1 = (acc.dailyCycles || []).find((c) => c.cycleNumber === 1);
       const cycle2 = (acc.dailyCycles || []).find((c) => c.cycleNumber === 2);
 
-      if (!cycle1 || cycle1.currentDayCount < 31 || !cycle2 || cycle2.currentDayCount < 1) {
+      if (!cycle1 || cycle1.currentDayCount < 31 || !cycle2 || cycle2.currentDayCount < 12 || cycle2.dailyTargetAmount !== 50) {
         const completedCycle1: DailyCollectionCycle = {
           id: `cyc-${acc.id}-1`,
           cycleNumber: 1,
@@ -305,25 +305,23 @@ export const getStoredAccounts = (): Account[] => {
         const activeCycle2: DailyCollectionCycle = {
           id: `cyc-${acc.id}-2`,
           cycleNumber: 2,
-          currentDayCount: 1,
-          dailyTargetAmount: 20,
-          totalDeposited: 20.00,
+          currentDayCount: 12,
+          dailyTargetAmount: 50,
+          totalDeposited: 600.00,
           feeDeducted: false,
           companyFeeAmount: 0.00,
           isCompleted: false,
           startDate: '2026-08-28',
-          dailySplits: [
-            {
-              dayNumber: 1,
-              date: '2026-08-28',
-              amount: 20.00,
-              receiptNo: 'RCP-SPLIT-CYC2-1',
-              isCompanyFee: false,
-              recordedBy: 'Gideon Ogunu (SUPER ADMIN)',
-              recordedAt: '2026-08-28T13:00:00.000Z',
-              batchTxRef: 'TX-DEP-KWAME-CYC2-20',
-            },
-          ],
+          dailySplits: Array.from({ length: 12 }, (_, i) => ({
+            dayNumber: i + 1,
+            date: '2026-08-28',
+            amount: 50.00,
+            receiptNo: `RCP-23923021-${i + 1}`,
+            isCompanyFee: false,
+            recordedBy: 'Gideon Ogunu (SUPER ADMIN)',
+            recordedAt: '2026-08-28T13:32:03.000Z',
+            batchTxRef: 'TX-DEP-23923021',
+          })),
         };
 
         acc.dailyCycles = [activeCycle2, completedCycle1];
@@ -575,16 +573,16 @@ export const getStoredTransactions = (): Transaction[] => {
       };
 
       const kwameCyc2DepTx: Transaction = {
-        id: 'tx-dep-kwame-cyc2-20',
-        referenceNo: 'TX-DEP-KWAME-CYC2-20',
-        receiptNo: 'RCP-DEP-KWAME-CYC2-20',
+        id: 'tx-dep-kwame-cyc2-600',
+        referenceNo: 'TX-DEP-23923021',
+        receiptNo: 'RCP-23923021',
         accountId: kwameAcc.id,
         account: kwameAcc,
         type: 'DEPOSIT',
         paymentMode: 'PHYSICAL_CASH',
-        amount: 20.00,
+        amount: 600.00,
         previousBal: 600.00,
-        newBal: 620.00,
+        newBal: 1200.00,
         recordedBy: {
           id: 'super-admin-root',
           employeeId: 'EMP-SA-001',
@@ -595,8 +593,8 @@ export const getStoredTransactions = (): Transaction[] => {
           role: 'SUPER_ADMIN' as RoleName,
           branchId: 'br-01',
         },
-        remarks: 'Physical cash deposit of GH₵ 20.00 into Cycle #2 (Day 1 of 31) on GH₵ 20/day package',
-        createdAt: '2026-08-28T13:00:00.000Z',
+        remarks: 'Physical cash deposit of GH₵ 600.00 covering 12 days (Days 1 to 12) on GH₵ 50/day package for Cycle #2',
+        createdAt: '2026-08-28T13:32:03.000Z',
       };
 
       parsed.unshift(kwameCyc2DepTx, kwameDepTx, kwameFeeTx);
