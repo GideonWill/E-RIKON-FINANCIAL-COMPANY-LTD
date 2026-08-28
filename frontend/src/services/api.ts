@@ -252,6 +252,12 @@ export const getStoredAccounts = (): Account[] => {
   // Ensure each account has customer details attached and splits have immutable recordedBy
   let splitsUpdated = false;
 
+  let rawTxs: Transaction[] = [];
+  try {
+    const rawTxsStr = localStorage.getItem('erikon_transactions');
+    if (rawTxsStr) rawTxs = JSON.parse(rawTxsStr);
+  } catch {}
+
   parsed.forEach((acc) => {
     if (!acc.customer && acc.customerId) {
       const c = customers.find((cust) => cust.id === acc.customerId);
@@ -267,12 +273,6 @@ export const getStoredAccounts = (): Account[] => {
 
     if (isKwame) {
       acc.savingsPackage = 50;
-      // Kwame completed Cycle 1 (600 GH net savings) + deposited 600 GH into Cycle 2 (12 days on 50 GH package) = 1,200 GH available running balance
-      if (acc.availableBalance < 1200) {
-        acc.availableBalance = 1200.00;
-        acc.currentBalance = 1220.00;
-        splitsUpdated = true;
-      }
 
       // Check if Cycle 1 (completed 31 days) and Cycle 2 (active with 12 days on 50 GH package) are present
       const cycle1 = (acc.dailyCycles || []).find((c) => c.cycleNumber === 1);
@@ -330,11 +330,6 @@ export const getStoredAccounts = (): Account[] => {
 
     if (isGladys) {
       acc.savingsPackage = 50;
-      if (acc.availableBalance < 800 || acc.currentBalance < 800) {
-        acc.availableBalance = 800.00;
-        acc.currentBalance = 800.00;
-        splitsUpdated = true;
-      }
       if (!acc.dailyCycles || acc.dailyCycles.length === 0) {
         acc.dailyCycles = [
           {
@@ -367,6 +362,28 @@ export const getStoredAccounts = (): Account[] => {
           recordedAt: '2026-08-28T08:00:00.000Z',
           batchTxRef: 'TX-DEP-GLADYS-800',
         }));
+        splitsUpdated = true;
+      }
+    }
+
+    // Compute live accurate running balance subtracting all recorded withdrawals dynamically
+    const totalWithdrawn = rawTxs
+      .filter((t: Transaction) => (t.accountId === acc.id || t.account?.customerId === acc.customerId) && t.type === 'WITHDRAWAL')
+      .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
+
+    const cycleDeposits = (acc.dailyCycles || []).reduce((sum, c) => sum + (c.totalDeposited || 0), 0);
+    const feeDeductions = (acc.dailyCycles || []).reduce(
+      (sum, c) => sum + (c.feeDeducted ? (c.companyFeeAmount || c.dailyTargetAmount || 0) : 0),
+      0
+    );
+
+    if (cycleDeposits > 0) {
+      const calculatedCurrent = Math.max(0, toDecimal(cycleDeposits - totalWithdrawn));
+      const calculatedAvailable = Math.max(0, toDecimal(cycleDeposits - feeDeductions - totalWithdrawn));
+      
+      if (acc.currentBalance !== calculatedCurrent || acc.availableBalance !== calculatedAvailable) {
+        acc.currentBalance = calculatedCurrent;
+        acc.availableBalance = calculatedAvailable;
         splitsUpdated = true;
       }
     }
