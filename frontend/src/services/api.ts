@@ -690,7 +690,14 @@ export const getStoredCompanyInterest = (): CompanyInterestRecord[] => {
   const currentCustomers = getStoredCustomers();
   if (currentCustomers.length === 0) return [];
   const currentCustomerIds = new Set(currentCustomers.map((c) => c.id));
-  const currentAccNos = new Set(getStoredAccounts().map((a) => a.accountNumber));
+  
+  let rawAccounts: Account[] = [];
+  try {
+    const rawAccsStr = localStorage.getItem('erikon_accounts');
+    if (rawAccsStr) rawAccounts = JSON.parse(rawAccsStr);
+  } catch {}
+
+  const currentAccNos = new Set(rawAccounts.map((a) => a.accountNumber));
   const data = localStorage.getItem('erikon_company_interest');
   let parsed: CompanyInterestRecord[] = [];
   if (data) {
@@ -706,11 +713,10 @@ export const getStoredCompanyInterest = (): CompanyInterestRecord[] => {
     return true;
   });
 
-  // Ensure Kwame Djan Cycle 1 interest record exists
+  // Ensure Kwame Djan Cycle 1 interest record exists (Day 31 fee retention)
   const hasKwameInterest = parsed.some((r) => r.customerName?.toLowerCase().includes('kwame') || (r.packageAmount === 20 && r.cycleNumber === 1));
   if (!hasKwameInterest) {
-    const allAccs = getStoredAccounts();
-    const kwameAcc = allAccs.find((a) => a.customer?.firstName?.toLowerCase().includes('kwame') || a.customerId.includes('kwame'));
+    const kwameAcc = rawAccounts.find((a) => a.customer?.firstName?.toLowerCase().includes('kwame') || a.customerId?.includes('kwame'));
     if (kwameAcc) {
       const kwameIntRecord: CompanyInterestRecord = {
         id: 'int-kwame-cyc-1',
