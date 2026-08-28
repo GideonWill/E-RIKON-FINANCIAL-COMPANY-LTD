@@ -111,12 +111,25 @@ export const CompanyInterestPage: React.FC = () => {
   };
 
   const filteredRecords = interestRecords.filter((r) => {
-    const term = searchQuery.toLowerCase();
-    return (
-      r.customerName.toLowerCase().includes(term) ||
-      r.accountNumber.toLowerCase().includes(term) ||
-      r.period.toLowerCase().includes(term)
+    const rawSearch = searchQuery.trim().toLowerCase();
+    if (!rawSearch) return true;
+
+    const custName = (r.customerName || '').toLowerCase();
+    const accNo = (r.accountNumber || '').toLowerCase();
+    const period = (r.period || '').toLowerCase();
+    const cleanSearch = rawSearch.replace(/\s+/g, ' ');
+
+    const directMatch =
+      custName.includes(cleanSearch) ||
+      accNo.includes(cleanSearch) ||
+      period.includes(cleanSearch);
+
+    const searchTokens = cleanSearch.split(' ').filter(Boolean);
+    const tokensMatch = searchTokens.every(
+      (tok) => custName.includes(tok) || accNo.includes(tok) || period.includes(tok)
     );
+
+    return directMatch || tokensMatch;
   });
 
   return (

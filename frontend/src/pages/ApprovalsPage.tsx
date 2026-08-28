@@ -363,25 +363,67 @@ export const ApprovalsPage: React.FC = () => {
 
   const filteredApprovals = approvals.filter((item) => {
     const matchesFilter = selectedFilter === 'ALL' || item.type === selectedFilter || item.status === selectedFilter;
-    const term = searchQuery.toLowerCase();
-    const matchesSearch = 
-      item.title.toLowerCase().includes(term) ||
-      item.requestedByName.toLowerCase().includes(term) ||
-      item.description.toLowerCase().includes(term);
-    return matchesFilter && matchesSearch;
+    const rawSearch = searchQuery.trim().toLowerCase();
+    if (!rawSearch) return matchesFilter;
+
+    const title = (item.title || '').toLowerCase();
+    const reqName = (item.requestedByName || '').toLowerCase();
+    const desc = (item.description || '').toLowerCase();
+    const cleanSearch = rawSearch.replace(/\s+/g, ' ');
+
+    const directMatch =
+      title.includes(cleanSearch) ||
+      reqName.includes(cleanSearch) ||
+      desc.includes(cleanSearch);
+
+    const searchTokens = cleanSearch.split(' ').filter(Boolean);
+    const tokensMatch = searchTokens.every(
+      (tok) => title.includes(tok) || reqName.includes(tok) || desc.includes(tok)
+    );
+
+    return matchesFilter && (directMatch || tokensMatch);
   });
 
   const filteredRegisteredStaff = registeredUsers.filter((user) => {
-    const term = searchQuery.toLowerCase();
-    const matchesSearch = 
-      user.firstName.toLowerCase().includes(term) ||
-      user.lastName.toLowerCase().includes(term) ||
-      user.email.toLowerCase().includes(term) ||
-      user.role.toLowerCase().includes(term) ||
-      (user.phone && user.phone.includes(term)) ||
-      (user.ghanaCard && user.ghanaCard.toLowerCase().includes(term));
+    const rawSearch = searchQuery.trim().toLowerCase();
     const matchesFilter = selectedFilter === 'ALL' || user.role === selectedFilter || user.status === selectedFilter;
-    return matchesSearch && matchesFilter;
+    if (!rawSearch) return matchesFilter;
+
+    const firstName = (user.firstName || '').toLowerCase();
+    const lastName = (user.lastName || '').toLowerCase();
+    const fullName = `${firstName} ${lastName}`.trim();
+    const revFullName = `${lastName} ${firstName}`.trim();
+    const email = (user.email || '').toLowerCase();
+    const role = (user.role || '').toLowerCase();
+    const phone = (user.phone || '').replace(/\s+/g, '');
+    const ghanaCard = (user.ghanaCard || '').toLowerCase();
+    const ghanaCardNoHyphen = ghanaCard.replace(/-/g, '');
+    const cleanSearch = rawSearch.replace(/\s+/g, ' ');
+    const cleanSearchNoHyphen = cleanSearch.replace(/-/g, '');
+
+    const directMatch =
+      fullName.includes(cleanSearch) ||
+      revFullName.includes(cleanSearch) ||
+      firstName.includes(cleanSearch) ||
+      lastName.includes(cleanSearch) ||
+      email.includes(cleanSearch) ||
+      role.includes(cleanSearch) ||
+      ghanaCard.includes(cleanSearch) ||
+      ghanaCardNoHyphen.includes(cleanSearchNoHyphen) ||
+      phone.includes(cleanSearch.replace(/\s+/g, ''));
+
+    const searchTokens = cleanSearch.split(' ').filter(Boolean);
+    const tokensMatch = searchTokens.every(
+      (tok) =>
+        fullName.includes(tok) ||
+        email.includes(tok) ||
+        role.includes(tok) ||
+        ghanaCard.includes(tok) ||
+        ghanaCardNoHyphen.includes(tok.replace(/-/g, '')) ||
+        phone.includes(tok)
+    );
+
+    return matchesFilter && (directMatch || tokensMatch);
   });
 
   const getTypeBadge = (type: ApprovalType) => {

@@ -79,11 +79,41 @@ export const FieldOfficerPage: React.FC = () => {
 
   // Filter accounts
   const filteredAccounts = accounts.filter((acc) => {
-    const term = searchQuery.toLowerCase();
-    const name = `${acc.customer?.firstName} ${acc.customer?.lastName}`.toLowerCase();
-    const phone = acc.customer?.phone || '';
-    const accNo = acc.accountNumber.toLowerCase();
-    return name.includes(term) || phone.includes(term) || accNo.includes(term);
+    const rawSearch = searchQuery.trim().toLowerCase();
+    if (!rawSearch) return true;
+
+    const firstName = (acc.customer?.firstName || '').toLowerCase();
+    const lastName = (acc.customer?.lastName || '').toLowerCase();
+    const fullName = `${firstName} ${lastName}`.trim();
+    const revFullName = `${lastName} ${firstName}`.trim();
+    const accNumber = (acc.accountNumber || '').toLowerCase();
+    const ghanaCard = (acc.customer?.ghanaCardNumber || '').toLowerCase();
+    const ghanaCardNoHyphen = ghanaCard.replace(/-/g, '');
+    const phone = (acc.customer?.phone || '').replace(/\s+/g, '');
+    const cleanSearch = rawSearch.replace(/\s+/g, ' ');
+    const cleanSearchNoHyphen = cleanSearch.replace(/-/g, '');
+
+    const directMatch =
+      fullName.includes(cleanSearch) ||
+      revFullName.includes(cleanSearch) ||
+      firstName.includes(cleanSearch) ||
+      lastName.includes(cleanSearch) ||
+      accNumber.includes(cleanSearch) ||
+      ghanaCard.includes(cleanSearch) ||
+      ghanaCardNoHyphen.includes(cleanSearchNoHyphen) ||
+      phone.includes(cleanSearch.replace(/\s+/g, ''));
+
+    const searchTokens = cleanSearch.split(' ').filter(Boolean);
+    const tokensMatch = searchTokens.every(
+      (tok) =>
+        fullName.includes(tok) ||
+        accNumber.includes(tok) ||
+        ghanaCard.includes(tok) ||
+        ghanaCardNoHyphen.includes(tok.replace(/-/g, '')) ||
+        phone.includes(tok)
+    );
+
+    return directMatch || tokensMatch;
   });
 
   const handlePackageChange = (pkg: SavingsPackage) => {

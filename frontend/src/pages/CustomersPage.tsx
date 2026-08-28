@@ -212,13 +212,45 @@ export const CustomersPage: React.FC = () => {
   const splitPreview = depositNum > 0 ? splitPaymentIntoDays(chosenPackage, depositNum, 0) : null;
 
   const filteredCustomers = customers.filter((c) => {
-    const matchesSearch =
-      c.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.customerNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.ghanaCardNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.phone.includes(searchTerm);
+    const rawSearch = searchTerm.trim().toLowerCase();
+    if (!rawSearch) {
+      return selectedPackageFilter !== null ? getCustomerPackage(c) === selectedPackageFilter : true;
+    }
 
+    const firstName = (c.firstName || '').toLowerCase();
+    const lastName = (c.lastName || '').toLowerCase();
+    const fullName = `${firstName} ${lastName}`.trim();
+    const revFullName = `${lastName} ${firstName}`.trim();
+    const custNumber = (c.customerNumber || '').toLowerCase();
+    const ghanaCard = (c.ghanaCardNumber || '').toLowerCase();
+    const ghanaCardNoHyphen = ghanaCard.replace(/-/g, '');
+    const phone = (c.phone || '').replace(/\s+/g, '');
+    const cleanSearch = rawSearch.replace(/\s+/g, ' ');
+    const cleanSearchNoHyphen = cleanSearch.replace(/-/g, '');
+
+    // Check direct matching across whole queries
+    const directMatch =
+      fullName.includes(cleanSearch) ||
+      revFullName.includes(cleanSearch) ||
+      firstName.includes(cleanSearch) ||
+      lastName.includes(cleanSearch) ||
+      custNumber.includes(cleanSearch) ||
+      ghanaCard.includes(cleanSearch) ||
+      ghanaCardNoHyphen.includes(cleanSearchNoHyphen) ||
+      phone.includes(cleanSearch.replace(/\s+/g, ''));
+
+    // Check multi-word tokens (e.g. "kwame djan")
+    const searchTokens = cleanSearch.split(' ').filter(Boolean);
+    const tokensMatch = searchTokens.every(
+      (tok) =>
+        fullName.includes(tok) ||
+        custNumber.includes(tok) ||
+        ghanaCard.includes(tok) ||
+        ghanaCardNoHyphen.includes(tok.replace(/-/g, '')) ||
+        phone.includes(tok)
+    );
+
+    const matchesSearch = directMatch || tokensMatch;
     if (!matchesSearch) return false;
 
     if (selectedPackageFilter !== null) {

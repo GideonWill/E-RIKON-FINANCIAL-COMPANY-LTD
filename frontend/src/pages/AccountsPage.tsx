@@ -20,7 +20,8 @@ import {
   ArrowDownLeft,
   Coins,
   Trash2,
-  Sparkles
+  Sparkles,
+  Search
 } from 'lucide-react';
 
 export const AccountsPage: React.FC = () => {
@@ -29,6 +30,7 @@ export const AccountsPage: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>(getStoredAccounts());
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(accounts[0] || null);
   const [selectedCycleNumber, setSelectedCycleNumber] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Real-time multi-device subscription
   useRealtimeSync(() => {
@@ -40,6 +42,44 @@ export const AccountsPage: React.FC = () => {
       const updated = fresh.find((a) => a.id === selectedAccount.id);
       if (updated) setSelectedAccount(updated);
     }
+  });
+
+  const filteredAccounts = accounts.filter((acc) => {
+    const rawSearch = searchTerm.trim().toLowerCase();
+    if (!rawSearch) return true;
+
+    const firstName = (acc.customer?.firstName || '').toLowerCase();
+    const lastName = (acc.customer?.lastName || '').toLowerCase();
+    const fullName = `${firstName} ${lastName}`.trim();
+    const revFullName = `${lastName} ${firstName}`.trim();
+    const accNumber = (acc.accountNumber || '').toLowerCase();
+    const ghanaCard = (acc.customer?.ghanaCardNumber || '').toLowerCase();
+    const ghanaCardNoHyphen = ghanaCard.replace(/-/g, '');
+    const phone = (acc.customer?.phone || '').replace(/\s+/g, '');
+    const cleanSearch = rawSearch.replace(/\s+/g, ' ');
+    const cleanSearchNoHyphen = cleanSearch.replace(/-/g, '');
+
+    const directMatch =
+      fullName.includes(cleanSearch) ||
+      revFullName.includes(cleanSearch) ||
+      firstName.includes(cleanSearch) ||
+      lastName.includes(cleanSearch) ||
+      accNumber.includes(cleanSearch) ||
+      ghanaCard.includes(cleanSearch) ||
+      ghanaCardNoHyphen.includes(cleanSearchNoHyphen) ||
+      phone.includes(cleanSearch.replace(/\s+/g, ''));
+
+    const searchTokens = cleanSearch.split(' ').filter(Boolean);
+    const tokensMatch = searchTokens.every(
+      (tok) =>
+        fullName.includes(tok) ||
+        accNumber.includes(tok) ||
+        ghanaCard.includes(tok) ||
+        ghanaCardNoHyphen.includes(tok.replace(/-/g, '')) ||
+        phone.includes(tok)
+    );
+
+    return directMatch || tokensMatch;
   });
 
   return (
@@ -83,11 +123,32 @@ export const AccountsPage: React.FC = () => {
           
           {/* Left Column: Account Selection Cards */}
           <div className="space-y-3.5">
-            <div className="text-xs font-black uppercase tracking-wider text-slate-400 px-1">
-              Active Client Accounts ({accounts.length})
+            <div className="flex items-center justify-between px-1">
+              <div className="text-xs font-black uppercase tracking-wider text-slate-400">
+                Active Client Accounts ({filteredAccounts.length})
+              </div>
             </div>
 
-            {accounts.map((acc) => {
+            {/* Quick Client Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by full name, account, card..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-amber-500 shadow-2xs"
+              />
+            </div>
+
+            {filteredAccounts.length === 0 ? (
+              <div className="p-6 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                  No accounts match "{searchTerm}"
+                </p>
+              </div>
+            ) : (
+              filteredAccounts.map((acc) => {
               const isSelected = selectedAccount?.id === acc.id;
               const cycles = acc.dailyCycles || [];
               const activeCycle = cycles[0];
@@ -141,7 +202,7 @@ export const AccountsPage: React.FC = () => {
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
 
           {/* Right Column: 31-Day Interactive Visual Matrix */}
