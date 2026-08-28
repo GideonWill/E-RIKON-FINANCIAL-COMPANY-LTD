@@ -453,6 +453,7 @@ export const getStoredAuditLogs = (): AuditLog[] => {
 
   // Reconcile and backfill audit records from existing transactions if missing
   const txs = getStoredTransactions();
+  const customers = getStoredCustomers();
   let hasNew = false;
 
   txs.forEach((tx) => {
@@ -491,8 +492,49 @@ export const getStoredAuditLogs = (): AuditLog[] => {
     }
   });
 
+  // Reconcile and backfill from accounts with deposits / splits
+  const allAccounts = getStoredAccounts();
+  allAccounts.forEach((acc) => {
+    const cust = acc.customer || customers.find((c) => c.id === acc.customerId);
+    const custName = cust ? `${cust.firstName} ${cust.lastName}` : 'Kwame Djan';
+    
+    // Check daily splits or total deposited funds
+    const splits = acc.dailyCycles?.flatMap((c) => c.dailySplits || []) || [];
+    const hasDeposit = splits.length > 0 || acc.currentBalance > 0 || (acc.dailyCycles?.[0]?.totalDeposited || 0) > 0;
+
+    if (hasDeposit) {
+      const depositTotal = (acc.dailyCycles?.[0]?.totalDeposited) || splits.reduce((sum, s) => sum + s.amount, 0) || acc.currentBalance || 100;
+      const daysCount = splits.length || Math.floor(depositTotal / (acc.savingsPackage || 20)) || 5;
+      
+      const exists = parsed.some(
+        (l) => (l.newValue?.includes(acc.accountNumber) && l.action === 'PHYSICAL_CASH_DEPOSIT_RECORDED') ||
+               (l.newValue?.includes(custName) && l.newValue?.includes('Deposit'))
+      );
+      
+      if (!exists) {
+        const firstSplit = splits[0];
+        const officerStr = firstSplit?.recordedBy || 'Gideon Ogunu (SUPER ADMIN)';
+        const splitDate = firstSplit?.recordedAt || firstSplit?.date || acc.openingDate || new Date().toISOString();
+
+        const logEntry: AuditLog = {
+          id: `audit-dep-${acc.id}`,
+          userId: 'super-admin-root',
+          userEmail: 'gideon.ogunu@erikon.com',
+          userRole: 'SUPER_ADMIN',
+          branchName: 'Accra Central Main Branch',
+          action: 'PHYSICAL_CASH_DEPOSIT_RECORDED',
+          resource: 'TRANSACTION',
+          newValue: `Physical Cash Deposit of GH₵ ${depositTotal.toFixed(2)} recorded for customer ${custName} (Acc: ${acc.accountNumber}) covering ${daysCount} day(s) on GH₵ ${acc.savingsPackage || 20}/Day package (Days 1 to ${daysCount}). Available Balance: GH₵ ${acc.availableBalance.toFixed(2)}. Cashier: ${officerStr}.`,
+          ipAddress: '127.0.0.1',
+          createdAt: splitDate,
+        };
+        parsed.push(logEntry);
+        hasNew = true;
+      }
+    }
+  });
+
   // Reconcile customer onboards
-  const customers = getStoredCustomers();
   customers.forEach((c) => {
     const exists = parsed.some((l) => l.newValue?.includes(c.ghanaCardNumber) || (l.action === 'CUSTOMER_REGISTERED' && l.newValue?.includes(c.firstName)));
     if (!exists) {
@@ -1287,6 +1329,25 @@ export const recordPackageDeposit = (
   }
 
   saveStoredTransactions([...txListToAdd, ...existingTxs]);
+
+  // Log directly into Immutable Audit Trail
+  const auditLogs = getStoredAuditLogs();
+  const officerTag = officerUser ? `${officerUser.firstName} ${officerUser.lastName} (${officerUser.role.replace(/_/g, ' ')})` : 'Gideon Ogunu (SUPER ADMIN)';
+  const custName = acc.customer ? `${acc.customer.firstName} ${acc.customer.lastName}` : 'Kwame Djan';
+  
+  const depositAuditLog: AuditLog = {
+    id: `audit-dep-${Date.now()}`,
+    userId: officerUser?.id || 'super-admin-root',
+    userEmail: officerUser?.email || 'gideon.ogunu@erikon.com',
+    userRole: officerUser?.role || 'SUPER_ADMIN',
+    branchName: officerUser?.branch?.name || 'Accra Central Main Branch',
+    action: 'PHYSICAL_CASH_DEPOSIT_RECORDED',
+    resource: 'TRANSACTION',
+    newValue: `Physical Cash Deposit of GH₵ ${amountPaid.toFixed(2)} [Ref: ${newTx.referenceNo}, Receipt: ${newTx.receiptNo}] recorded for customer ${custName} (Acc: ${acc.accountNumber}) covering ${splitResult.daysCovered} day(s) on GH₵ ${packageRate}/Day package (Days ${splitResult.startDay} to ${splitResult.endDay}). Available Balance: GH₵ ${acc.availableBalance.toFixed(2)}. Cashier: ${officerTag}.`,
+    ipAddress: '127.0.0.1',
+    createdAt: newTx.createdAt,
+  };
+  saveStoredAuditLogs([depositAuditLog, ...auditLogs]);
 
   return { updatedAccount: acc, transaction: newTx, splitResult };
 };
