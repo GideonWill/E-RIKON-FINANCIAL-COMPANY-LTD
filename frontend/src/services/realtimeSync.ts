@@ -49,6 +49,7 @@ export type SyncEventType =
   | 'FINANCIAL_RECEIPTS_CLEARED'
   | 'VAULT_CLEARED'
   | 'DATA_RESET'
+  | 'NEW_SAVINGS_CYCLE_STARTED'
   | 'MANUAL_SYNC';
 
 export interface RealtimeSyncPayload {

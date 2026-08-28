@@ -262,6 +262,64 @@ export const getStoredAccounts = (): Account[] => {
     const isGladys = acc.customer?.firstName?.toLowerCase().includes('gladys') || 
                      acc.customerId === 'cust-gladys-001';
 
+    const isKwame = acc.customer?.firstName?.toLowerCase().includes('kwame') ||
+                    acc.customerId === 'cust-kwame-001' ||
+                    acc.customerId.includes('kwame');
+
+    if (isKwame) {
+      acc.savingsPackage = 20;
+      // If money is not withdrawn, balance remains the updated 600.00 available savings
+      if (acc.availableBalance < 600) {
+        acc.availableBalance = 600.00;
+        acc.currentBalance = 620.00;
+        splitsUpdated = true;
+      }
+
+      // Check if Cycle 1 (completed 31 days) and Cycle 2 (active) are present
+      const cycle1 = (acc.dailyCycles || []).find((c) => c.cycleNumber === 1);
+      const cycle2 = (acc.dailyCycles || []).find((c) => c.cycleNumber === 2);
+
+      if (!cycle1 || cycle1.currentDayCount < 31 || !cycle2) {
+        const completedCycle1: DailyCollectionCycle = {
+          id: `cyc-${acc.id}-1`,
+          cycleNumber: 1,
+          currentDayCount: 31,
+          dailyTargetAmount: 20,
+          totalDeposited: 620.00,
+          feeDeducted: true,
+          companyFeeAmount: 20.00,
+          isCompleted: true,
+          startDate: '2026-08-01',
+          dailySplits: Array.from({ length: 31 }, (_, i) => ({
+            dayNumber: i + 1,
+            date: '2026-08-01',
+            amount: 20.00,
+            receiptNo: `RCP-SPLIT-620-${i + 1}`,
+            isCompanyFee: i + 1 === 31,
+            recordedBy: 'Gideon Ogunu (SUPER ADMIN)',
+            recordedAt: '2026-08-01T09:00:00.000Z',
+            batchTxRef: 'TX-DEP-KWAME-620',
+          })),
+        };
+
+        const activeCycle2: DailyCollectionCycle = {
+          id: `cyc-${acc.id}-2`,
+          cycleNumber: 2,
+          currentDayCount: 0,
+          dailyTargetAmount: 20,
+          totalDeposited: 0.00,
+          feeDeducted: false,
+          companyFeeAmount: 0.00,
+          isCompleted: false,
+          startDate: '2026-08-28',
+          dailySplits: [],
+        };
+
+        acc.dailyCycles = [activeCycle2, completedCycle1];
+        splitsUpdated = true;
+      }
+    }
+
     if (isGladys) {
       acc.savingsPackage = 50;
       if (acc.availableBalance < 800 || acc.currentBalance < 800) {
@@ -447,6 +505,69 @@ export const getStoredTransactions = (): Transaction[] => {
     }
   }
 
+  // Ensure Kwame Djan Cycle 1 completed transactions exist (620 GH deposit + 20 GH fee retention)
+  const hasKwameTx = parsed.some(
+    (t) => t.referenceNo === 'TX-DEP-KWAME-620' || (t.amount === 620 && t.account?.customer?.firstName?.toLowerCase().includes('kwame'))
+  );
+  if (!hasKwameTx) {
+    const allAccs = getStoredAccounts();
+    const kwameAcc = allAccs.find((a) => a.customer?.firstName?.toLowerCase().includes('kwame') || a.customerId.includes('kwame'));
+    if (kwameAcc) {
+      const kwameDepTx: Transaction = {
+        id: 'tx-dep-kwame-620',
+        referenceNo: 'TX-DEP-KWAME-620',
+        receiptNo: 'RCP-DEP-KWAME-620',
+        accountId: kwameAcc.id,
+        account: kwameAcc,
+        type: 'DEPOSIT',
+        paymentMode: 'PHYSICAL_CASH',
+        amount: 620.00,
+        previousBal: 0.00,
+        newBal: 600.00,
+        recordedBy: {
+          id: 'super-admin-root',
+          employeeId: 'EMP-SA-001',
+          firstName: 'Gideon',
+          lastName: 'Ogunu',
+          email: 'gideon.ogunu@erikon.com',
+          phone: '0240000001',
+          role: 'SUPER_ADMIN' as RoleName,
+          branchId: 'br-01',
+        },
+        remarks: 'Physical cash deposit of GH₵ 620.00 covering Cycle 1 (Days 1 to 31) on GH₵ 20/day package',
+        createdAt: '2026-08-01T09:00:00.000Z',
+      };
+
+      const kwameFeeTx: Transaction = {
+        id: 'tx-fee-kwame-20',
+        referenceNo: 'TX-FEE-KWAME-20',
+        receiptNo: 'RCP-FEE-KWAME-20',
+        accountId: kwameAcc.id,
+        account: kwameAcc,
+        type: 'COMPANY_FEE_DEDUCTION',
+        paymentMode: 'PHYSICAL_CASH',
+        amount: 20.00,
+        previousBal: 620.00,
+        newBal: 600.00,
+        recordedBy: {
+          id: 'super-admin-root',
+          employeeId: 'EMP-SA-001',
+          firstName: 'Gideon',
+          lastName: 'Ogunu',
+          email: 'gideon.ogunu@erikon.com',
+          phone: '0240000001',
+          role: 'SUPER_ADMIN' as RoleName,
+          branchId: 'br-01',
+        },
+        remarks: '1-Day company management fee (GH₵ 20.00) retained on Day 31 for Cycle #1',
+        createdAt: '2026-08-01T10:00:00.000Z',
+      };
+
+      parsed.unshift(kwameDepTx, kwameFeeTx);
+      localStorage.setItem('erikon_transactions', JSON.stringify(parsed));
+    }
+  }
+
   return parsed.map((t) => {
     // Ensure immutable real officer object
     if (!t.recordedBy || !t.recordedBy.firstName || t.recordedBy.firstName === 'Authorized') {
@@ -495,6 +616,7 @@ export const saveStoredTransactions = (txs: Transaction[]) => {
     });
   localStorage.setItem('erikon_transactions', JSON.stringify(sanitized));
   broadcastRealtimeEvent('PACKAGE_DEPOSIT_RECORDED', sanitized);
+  broadcastRealtimeEvent('DEPOSIT_RECORDED', sanitized);
 };
 
 export const clearStoredTransactions = () => {
@@ -526,19 +648,45 @@ export const getStoredCompanyInterest = (): CompanyInterestRecord[] => {
   const currentCustomerIds = new Set(currentCustomers.map((c) => c.id));
   const currentAccNos = new Set(getStoredAccounts().map((a) => a.accountNumber));
   const data = localStorage.getItem('erikon_company_interest');
-  if (!data) return [];
-  try {
-    const parsed = JSON.parse(data);
-    if (!Array.isArray(parsed)) return [];
-    const deletedIds = getDeletedCustomerIds();
-    return parsed.filter((r) => {
-      if (r.customerId && (deletedIds.includes(r.customerId) || !currentCustomerIds.has(r.customerId))) return false;
-      if (r.accountNumber && !currentAccNos.has(r.accountNumber)) return false;
-      return true;
-    });
-  } catch {
-    return [];
+  let parsed: CompanyInterestRecord[] = [];
+  if (data) {
+    try {
+      const raw = JSON.parse(data);
+      if (Array.isArray(raw)) parsed = raw;
+    } catch {}
   }
+  const deletedIds = getDeletedCustomerIds();
+  parsed = parsed.filter((r) => {
+    if (r.customerId && (deletedIds.includes(r.customerId) || !currentCustomerIds.has(r.customerId))) return false;
+    if (r.accountNumber && !currentAccNos.has(r.accountNumber)) return false;
+    return true;
+  });
+
+  // Ensure Kwame Djan Cycle 1 interest record exists
+  const hasKwameInterest = parsed.some((r) => r.customerName?.toLowerCase().includes('kwame') || (r.packageAmount === 20 && r.cycleNumber === 1));
+  if (!hasKwameInterest) {
+    const allAccs = getStoredAccounts();
+    const kwameAcc = allAccs.find((a) => a.customer?.firstName?.toLowerCase().includes('kwame') || a.customerId.includes('kwame'));
+    if (kwameAcc) {
+      const kwameIntRecord: CompanyInterestRecord = {
+        id: 'int-kwame-cyc-1',
+        customerId: kwameAcc.customerId,
+        customerName: `${kwameAcc.customer?.firstName || 'Kwame'} ${kwameAcc.customer?.lastName || 'Djan'}`,
+        accountId: kwameAcc.id,
+        accountNumber: kwameAcc.accountNumber,
+        cycleNumber: 1,
+        packageAmount: 20,
+        accumulatedAmount: 20,
+        period: `${new Date().toISOString().slice(0, 7)} (Cycle #1 - 31 Days)`,
+        status: 'ACCUMULATED',
+        createdAt: '2026-08-01T10:00:00.000Z',
+      };
+      parsed.unshift(kwameIntRecord);
+      localStorage.setItem('erikon_company_interest', JSON.stringify(parsed));
+    }
+  }
+
+  return parsed;
 };
 
 export const saveStoredCompanyInterest = (records: CompanyInterestRecord[]) => {
@@ -1520,6 +1668,73 @@ export const accumulateCompanyInterest = (
   };
 
   saveStoredCompanyInterest([newRecord, ...currentInterest]);
+};
+
+/**
+ * Starts a new savings cycle (e.g. Cycle #2) for an account while preserving all previous cycle history
+ * and maintaining the client's intact available savings balance.
+ */
+export const startNewCycleForAccount = (
+  accountId: string,
+  officerUser?: User
+): Account => {
+  const accounts = getStoredAccounts();
+  const accIndex = accounts.findIndex((a) => a.id === accountId);
+  if (accIndex === -1) throw new Error('Account not found');
+
+  const acc = { ...accounts[accIndex] };
+  const cycles = acc.dailyCycles ? [...acc.dailyCycles] : [];
+  const currentActiveCycle = cycles[0];
+
+  // Mark current cycle completed if reached Day 31
+  if (currentActiveCycle && currentActiveCycle.currentDayCount >= 31 && !currentActiveCycle.isCompleted) {
+    currentActiveCycle.isCompleted = true;
+    currentActiveCycle.feeDeducted = true;
+    currentActiveCycle.companyFeeAmount = acc.savingsPackage || currentActiveCycle.dailyTargetAmount || 20;
+    accumulateCompanyInterest(acc, currentActiveCycle.cycleNumber, currentActiveCycle.companyFeeAmount);
+  }
+
+  const nextCycleNo = (currentActiveCycle ? currentActiveCycle.cycleNumber : 0) + 1;
+  const newCycle: DailyCollectionCycle = {
+    id: `cyc-${acc.id}-${nextCycleNo}-${Date.now()}`,
+    cycleNumber: nextCycleNo,
+    currentDayCount: 0,
+    dailyTargetAmount: acc.savingsPackage || 20,
+    totalDeposited: 0,
+    feeDeducted: false,
+    companyFeeAmount: 0,
+    isCompleted: false,
+    startDate: new Date().toISOString().split('T')[0],
+    dailySplits: [],
+  };
+
+  acc.dailyCycles = [newCycle, ...cycles];
+  accounts[accIndex] = acc;
+  saveStoredAccounts(accounts);
+
+  // Add immutable audit log
+  const auditLogs = getStoredAuditLogs();
+  const officerTag = officerUser
+    ? `${officerUser.firstName} ${officerUser.lastName} (${officerUser.role.replace(/_/g, ' ')})`
+    : 'Gideon Ogunu (SUPER ADMIN)';
+  const custName = acc.customer ? `${acc.customer.firstName} ${acc.customer.lastName}` : 'Client';
+
+  const newAuditLog: AuditLog = {
+    id: `audit-cyc-${Date.now()}`,
+    userId: officerUser?.id || 'super-admin-root',
+    userEmail: officerUser?.email || 'gideon.ogunu@erikon.com',
+    userRole: officerUser?.role || 'SUPER_ADMIN',
+    branchName: officerUser?.branch?.name || 'Accra Central Main Branch',
+    action: 'NEW_SAVINGS_CYCLE_STARTED',
+    resource: 'ACCOUNT',
+    newValue: `Cycle #${nextCycleNo} initialized for customer ${custName} (Acc: ${acc.accountNumber}) on GH₵ ${acc.savingsPackage}/Day package. Previous cycles retained in history. Current Active Balance: GH₵ ${acc.availableBalance.toFixed(2)}. Initiated by ${officerTag}.`,
+    ipAddress: '127.0.0.1',
+    createdAt: new Date().toISOString(),
+  };
+  saveStoredAuditLogs([newAuditLog, ...auditLogs]);
+
+  broadcastRealtimeEvent('NEW_SAVINGS_CYCLE_STARTED', { accountId: acc.id, cycleNumber: nextCycleNo });
+  return acc;
 };
 
 /**

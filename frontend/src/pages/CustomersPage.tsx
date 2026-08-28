@@ -9,7 +9,8 @@ import {
   splitPaymentIntoDays,
   getStoredTransactions,
   saveStoredTransactions,
-  accumulateCompanyInterest
+  accumulateCompanyInterest,
+  startNewCycleForAccount
 } from '../services/api';
 import { subscribeRealtimeEvents, broadcastRealtimeEvent, useRealtimeSync } from '../services/realtimeSync';
 import { pushLocalToCloud } from '../services/cloudSync';
@@ -55,6 +56,7 @@ export const CustomersPage: React.FC = () => {
   const { currentUser } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>(getStoredCustomers());
   const [accounts, setAccounts] = useState<Account[]>(getStoredAccounts());
+  const [transactions, setTransactions] = useState<Transaction[]>(getStoredTransactions());
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGhanaCardCustomer, setSelectedGhanaCardCustomer] = useState<Customer | null>(null);
   const [selectedDetailCustomer, setSelectedDetailCustomer] = useState<Customer | null>(null);
@@ -87,6 +89,7 @@ export const CustomersPage: React.FC = () => {
   useRealtimeSync(() => {
     setCustomers(getStoredCustomers());
     setAccounts(getStoredAccounts());
+    setTransactions(getStoredTransactions());
   });
 
   // Helper to calculate comprehensive financial summary for any customer (and specific cycle)
@@ -99,14 +102,29 @@ export const CustomersPage: React.FC = () => {
 
     const packageRate = acc?.savingsPackage || activeCycle?.dailyTargetAmount || 20;
     const daysPaid = activeCycle?.currentDayCount || 0;
-    const totalDeposited = activeCycle?.totalDeposited !== undefined
+    
+    // Total deposited across all cycles
+    const totalDepositedAcrossCycles = cycles.reduce((sum, c) => sum + (c.totalDeposited || 0), 0) || (acc?.currentBalance || (daysPaid * packageRate));
+    
+    // Cycle-specific deposit
+    const cycleDeposited = activeCycle?.totalDeposited !== undefined
       ? activeCycle.totalDeposited
-      : (acc?.currentBalance !== undefined ? acc.currentBalance : (daysPaid * packageRate));
+      : (daysPaid * packageRate);
+
+    // Customer transactions & withdrawals
+    const customerTransactions = transactions.filter(
+      (t) => t.accountId === acc?.id || t.account?.customerId === cust.id || t.account?.customer?.id === cust.id
+    );
+    const customerWithdrawals = customerTransactions.filter((t) => t.type === 'WITHDRAWAL');
+    const totalWithdrawn = customerWithdrawals.reduce((sum, t) => sum + t.amount, 0);
+
     const isDay31FeeRetained = daysPaid >= 31 || (activeCycle?.feeDeducted === true);
     const companyFeeAmount = isDay31FeeRetained ? (activeCycle?.companyFeeAmount || packageRate) : 0;
+    
+    // Available Net Savings Balance (always cumulative current balance, preserved across cycles if not withdrawn)
     const availableSavings = acc?.availableBalance !== undefined
       ? acc.availableBalance
-      : Math.max(0, (acc?.currentBalance || totalDeposited) - companyFeeAmount);
+      : Math.max(0, totalDepositedAcrossCycles - (isDay31FeeRetained ? companyFeeAmount : 0) - totalWithdrawn);
 
     return {
       acc,
@@ -115,7 +133,11 @@ export const CustomersPage: React.FC = () => {
       cycleNumber: activeCycle?.cycleNumber || 1,
       packageRate,
       daysPaid,
-      totalDeposited,
+      totalDeposited: cycleDeposited,
+      totalDepositedAcrossCycles,
+      totalWithdrawn,
+      customerWithdrawals,
+      customerTransactions,
       isDay31FeeRetained,
       companyFeeAmount,
       availableSavings,
@@ -858,31 +880,58 @@ export const CustomersPage: React.FC = () => {
 
               {/* Cycle History Tab Switcher */}
               {fin.allCycles.length > 0 && (
-                <div className="p-2 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center gap-2 overflow-x-auto">
-                  <span className="text-[10px] font-black text-slate-400 uppercase px-2 shrink-0">
-                    Cycle Records:
-                  </span>
-                  {fin.allCycles.map((c) => {
-                    const isSelected = fin.cycleNumber === c.cycleNumber;
-                    return (
+                <div className="space-y-2">
+                  <div className="p-2 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 overflow-x-auto">
+                    <div className="flex items-center gap-2 overflow-x-auto">
+                      <span className="text-[10px] font-black text-slate-400 uppercase px-2 shrink-0">
+                        Cycle Records:
+                      </span>
+                      {fin.allCycles.map((c) => {
+                        const isSelected = fin.cycleNumber === c.cycleNumber;
+                        const isCompleted = c.isCompleted || c.currentDayCount >= 31;
+                        return (
+                          <button
+                            key={c.cycleNumber}
+                            type="button"
+                            onClick={() => setSelectedDetailCycleNumber(c.cycleNumber)}
+                            className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${isSelected
+                                ? 'bg-amber-500 text-slate-950 shadow-md font-black ring-2 ring-amber-500/40'
+                                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-amber-500 border border-slate-200 dark:border-slate-800'
+                              }`}
+                            title={`Switch to view detailed records of Cycle #${c.cycleNumber}`}
+                          >
+                            <Coins className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                            <span>Cycle #{c.cycleNumber}</span>
+                            <span className="text-[10px] opacity-80">
+                              {isCompleted ? '• (Completed 31/31)' : `• (${c.currentDayCount}/31 Days)`}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {(fin.allCycles[0]?.isCompleted || fin.allCycles[0]?.currentDayCount >= 31) && (
                       <button
-                        key={c.cycleNumber}
                         type="button"
-                        onClick={() => setSelectedDetailCycleNumber(c.cycleNumber)}
-                        className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${isSelected
-                            ? 'bg-amber-500 text-slate-950 shadow-md font-black ring-2 ring-amber-500/40'
-                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-amber-500 border border-slate-200 dark:border-slate-800'
-                          }`}
-                        title={`Switch to view detailed records of Cycle #${c.cycleNumber}`}
+                        onClick={() => {
+                          if (fin.acc?.id) {
+                            startNewCycleForAccount(fin.acc.id, currentUser || undefined);
+                            const fresh = getStoredAccounts();
+                            setAccounts(fresh);
+                            const updatedAcc = fresh.find((a) => a.id === fin.acc?.id);
+                            if (updatedAcc?.dailyCycles?.[0]) {
+                              setSelectedDetailCycleNumber(updatedAcc.dailyCycles[0].cycleNumber);
+                            }
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-white text-[11px] font-black shrink-0 flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer transition-all"
+                        title="Start Next 31-Day Cycle for this client"
                       >
-                        <Coins className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                        <span>Cycle #{c.cycleNumber}</span>
-                        <span className="text-[10px] opacity-80">
-                          {c.isCompleted || c.currentDayCount >= 31 ? '• (Completed 31/31)' : `• (${c.currentDayCount}/31 Days)`}
-                        </span>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Start Next Cycle (Cycle #{(fin.allCycles[0]?.cycleNumber || 1) + 1})</span>
                       </button>
-                    );
-                  })}
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -900,37 +949,29 @@ export const CustomersPage: React.FC = () => {
                   <p className="text-[10px] text-slate-500">Daily Target Tier</p>
                 </div>
 
-                {/* 2. Amount Started With / Total Deposited Card */}
+                {/* 2. Total Contributed Across Cycles */}
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent border-2 border-blue-500/40 space-y-1 shadow-sm">
                   <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <TrendingUp className="w-3.5 h-3.5" /> Amount Started With
+                    <TrendingUp className="w-3.5 h-3.5" /> Total Deposited
                   </span>
                   <div className="text-xl font-black font-mono text-blue-500">
-                    GH₵ {fin.totalDeposited.toFixed(2)}
+                    GH₵ {fin.totalDepositedAcrossCycles.toFixed(2)}
                   </div>
-                  <p className="text-[10px] text-slate-500">Initial Opening Deposit</p>
+                  <p className="text-[10px] text-slate-500">Across All Cycles</p>
                 </div>
 
-                {/* 3. Days Paid Progress Card */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
-                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <CalendarCheck className="w-3.5 h-3.5" /> Days Paid Progress
+                {/* 3. Total Withdrawals / Loans Taken */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-500/15 via-rose-500/5 to-transparent border-2 border-rose-500/40 space-y-1 shadow-sm">
+                  <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <ArrowDownLeft className="w-3.5 h-3.5" /> Total Withdrawals
                   </span>
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-xl font-black font-mono text-slate-800 dark:text-slate-200">
-                      {fin.daysPaid} <span className="text-xs text-slate-400 font-sans">/ 31</span>
-                    </span>
-                    <span className="text-xs font-mono font-bold text-blue-500">{percentCompleted}%</span>
+                  <div className="text-xl font-black font-mono text-rose-500">
+                    GH₵ {fin.totalWithdrawn.toFixed(2)}
                   </div>
-                  <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                    <div
-                      className="bg-blue-500 h-1.5 rounded-full transition-all duration-500"
-                      style={{ width: `${percentCompleted}%` }}
-                    />
-                  </div>
+                  <p className="text-[10px] text-slate-500">{fin.customerWithdrawals.length} Withdrawal Record(s)</p>
                 </div>
 
-                {/* 4. Available Net Savings Card */}
+                {/* 4. Current Available Savings Balance */}
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent border-2 border-emerald-500/40 space-y-1 shadow-sm">
                   <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
                     <Wallet className="w-3.5 h-3.5" /> Current Balance
@@ -948,7 +989,7 @@ export const CustomersPage: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-purple-500" />
-                    Company 31-Day Management Fee
+                    Company 31-Day Management Fee (Cycle #{fin.cycleNumber})
                   </span>
                   <span className="font-mono text-xs font-black text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2.5 py-0.5 rounded-lg border border-purple-500/30">
                     GH₵ {fin.packageRate}.00 (1 Day Package Value)
@@ -958,11 +999,11 @@ export const CustomersPage: React.FC = () => {
                 <p className="text-[11px] text-slate-600 dark:text-slate-300">
                   {fin.isDay31FeeRetained ? (
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                      <Check className="w-4 h-4" /> Day 31 reached! GH₵ {fin.packageRate}.00 management fee has been retained by E-RiKON Financial Company PLC and recorded to corporate interest revenue.
+                      <Check className="w-4 h-4" /> Day 31 reached for Cycle #{fin.cycleNumber}! GH₵ {fin.packageRate}.00 management fee has been retained by E-RiKON Financial Company PLC and recorded to corporate interest revenue.
                     </span>
                   ) : (
                     <span>
-                      Client has completed <b>{fin.daysPaid} of 31 days</b> (Total Deposited: <b>GH₵ {fin.totalDeposited.toFixed(2)}</b>). Upon reaching <b>Day 31</b>, 1 day's package value (<b>GH₵ {fin.packageRate}.00</b>) will be retained as management fee.
+                      Client has completed <b>{fin.daysPaid} of 31 days</b> in Cycle #{fin.cycleNumber} (Cycle Deposited: <b>GH₵ {fin.totalDeposited.toFixed(2)}</b>). Upon reaching <b>Day 31</b>, 1 day's package value (<b>GH₵ {fin.packageRate}.00</b>) will be retained as management fee.
                     </span>
                   )}
                 </p>
@@ -973,10 +1014,10 @@ export const CustomersPage: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5 text-amber-500" />
-                    31-Day Collection Cycle Split Days
+                    31-Day Collection Cycle Split Days (Cycle #{fin.cycleNumber})
                   </h4>
                   <span className="text-[10px] font-mono text-slate-400">
-                    Cycle 1 • {fin.daysPaid} / 31 Recorded
+                    {fin.daysPaid} / 31 Recorded ({percentCompleted}%)
                   </span>
                 </div>
 
@@ -1010,6 +1051,74 @@ export const CustomersPage: React.FC = () => {
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Account Transactions & Withdrawals Ledger */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                    <FileText className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Client Activity & Withdrawals Ledger</span>
+                  </h4>
+                  <span className="text-[10px] font-mono text-slate-400">
+                    {fin.customerTransactions.length} Record(s) • Total Withdrawn: GH₵ {fin.totalWithdrawn.toFixed(2)}
+                  </span>
+                </div>
+
+                {fin.customerTransactions.length === 0 ? (
+                  <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400">
+                    No transactions recorded for this client yet.
+                  </div>
+                ) : (
+                  <div className="max-h-44 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 divide-y divide-slate-100 dark:divide-slate-800/80">
+                    {fin.customerTransactions.map((tx) => {
+                      const isWithdrawal = tx.type === 'WITHDRAWAL';
+                      const isFee = tx.type === 'COMPANY_FEE_DEDUCTION';
+
+                      return (
+                        <div key={tx.id} className="p-2.5 sm:p-3 flex items-center justify-between gap-3 text-xs">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold shrink-0 ${
+                              isWithdrawal
+                                ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                                : isFee
+                                ? 'bg-purple-500/10 text-purple-500 border border-purple-500/20'
+                                : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                            }`}>
+                              {isWithdrawal ? <ArrowDownLeft className="w-4 h-4" /> : isFee ? <Building2 className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`font-black text-[11px] ${
+                                  isWithdrawal ? 'text-rose-600 dark:text-rose-400' : isFee ? 'text-purple-600 dark:text-purple-400' : 'text-emerald-600 dark:text-emerald-400'
+                                }`}>
+                                  {isWithdrawal ? 'WITHDRAWAL (LOAN)' : isFee ? 'COMPANY FEE' : 'DEPOSIT'}
+                                </span>
+                                <span className="font-mono text-[10px] text-slate-400">
+                                  {tx.receiptNo || tx.referenceNo}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 truncate mt-0.5">
+                                {tx.remarks || `Recorded by ${tx.recordedBy?.firstName || 'Staff'}`} • {new Date(tx.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            <div className={`font-mono font-black text-xs ${
+                              isWithdrawal ? 'text-rose-500' : isFee ? 'text-purple-500' : 'text-emerald-500'
+                            }`}>
+                              {isWithdrawal ? '-' : '+'}GH₵ {tx.amount.toFixed(2)}
+                            </div>
+                            <div className="text-[9px] font-mono text-slate-400">
+                              Bal: GH₵ {tx.newBal.toFixed(2)}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Personal & Next of Kin Profile */}

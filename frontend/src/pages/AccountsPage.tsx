@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getStoredAccounts, deleteCustomerRecord } from '../services/api';
+import { getStoredAccounts, deleteCustomerRecord, startNewCycleForAccount } from '../services/api';
 import { useRealtimeSync } from '../services/realtimeSync';
+import { useAuth } from '../contexts/AuthContext';
 import { Account } from '../types';
 import { 
   Wallet, 
@@ -18,13 +19,16 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Coins,
-  Trash2
+  Trash2,
+  Sparkles
 } from 'lucide-react';
 
 export const AccountsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [accounts, setAccounts] = useState<Account[]>(getStoredAccounts());
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(accounts[0] || null);
+  const [selectedCycleNumber, setSelectedCycleNumber] = useState<number | null>(null);
 
   // Real-time multi-device subscription
   useRealtimeSync(() => {
@@ -48,7 +52,7 @@ export const AccountsPage: React.FC = () => {
           Savings Accounts & 31-Day Policy Tracker
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Monitor customer savings schemes, available balances, upfront package fees, and early withdrawal protections
+          Monitor customer savings schemes, available balances, multi-cycle histories, and 1-day retention fee protections
         </p>
       </div>
 
@@ -78,22 +82,29 @@ export const AccountsPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Left Column: Account Selection Cards */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Active Customer Accounts</h3>
+          <div className="space-y-3.5">
+            <div className="text-xs font-black uppercase tracking-wider text-slate-400 px-1">
+              Active Client Accounts ({accounts.length})
+            </div>
+
             {accounts.map((acc) => {
               const isSelected = selectedAccount?.id === acc.id;
-              const cycle = acc.dailyCycles?.[0];
-              const currentDay = cycle ? cycle.currentDayCount : 0;
+              const cycles = acc.dailyCycles || [];
+              const activeCycle = cycles[0];
+              const currentDay = activeCycle ? activeCycle.currentDayCount : 0;
               const progress = Math.min(100, Math.round((currentDay / 31) * 100));
 
               return (
                 <div
                   key={acc.id}
-                  onClick={() => setSelectedAccount(acc)}
-                  className={`p-5 rounded-3xl border cursor-pointer transition-all ${
+                  onClick={() => {
+                    setSelectedAccount(acc);
+                    setSelectedCycleNumber(null);
+                  }}
+                  className={`p-4 rounded-3xl border transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-gradient-to-br from-slate-900 to-slate-950 text-white border-amber-500 shadow-xl ring-2 ring-amber-500/30'
-                      : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                      ? 'bg-slate-900 text-white border-amber-500 shadow-xl shadow-amber-500/10 ring-2 ring-amber-500/30'
+                      : 'bg-white dark:bg-slate-900/60 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-amber-500/50'
                   }`}
                 >
                   <div className="flex items-start justify-between">
@@ -102,7 +113,7 @@ export const AccountsPage: React.FC = () => {
                       <h4 className={`font-extrabold text-sm mt-0.5 ${isSelected ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
                         {acc.customer?.firstName} {acc.customer?.lastName}
                       </h4>
-                      <div className={`text-[11px] ${isSelected ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>{acc.type.replace(/_/g, ' ')}</div>
+                      <div className={`text-[11px] ${isSelected ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>{acc.type.replace(/_/g, ' ')} • GH₵ {acc.savingsPackage || 20}/Day</div>
                     </div>
 
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
@@ -116,7 +127,7 @@ export const AccountsPage: React.FC = () => {
                       <span className="font-extrabold text-emerald-400">GHS {acc.availableBalance.toFixed(2)}</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] text-slate-400 block">31-Day Progress</span>
+                      <span className="text-[10px] text-slate-400 block">Cycle #{activeCycle?.cycleNumber || 1}</span>
                       <span className="font-extrabold text-amber-400">{currentDay} / 31 Days</span>
                     </div>
                   </div>
@@ -135,136 +146,198 @@ export const AccountsPage: React.FC = () => {
 
           {/* Right Column: 31-Day Interactive Visual Matrix */}
           <div className="lg:col-span-2 space-y-6">
-            {selectedAccount ? (
-              <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
-                
-                {/* Account Details Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
-                      ACTIVE SAVINGS SCHEME (CYCLE #{selectedAccount.dailyCycles?.[0]?.cycleNumber || 1})
-                    </span>
-                    <h3 className="text-lg font-black text-slate-900 dark:text-white mt-2">
-                      {selectedAccount.customer?.firstName} {selectedAccount.customer?.lastName}
-                    </h3>
-                    <div className="text-xs text-slate-400 font-mono mt-0.5">
-                      Account #{selectedAccount.accountNumber} • Ghana Card: {selectedAccount.customer?.ghanaCardNumber}
-                    </div>
-                  </div>
+            {selectedAccount ? (() => {
+              const cycles = selectedAccount.dailyCycles || [];
+              const activeCycle = selectedCycleNumber
+                ? (cycles.find((c) => c.cycleNumber === selectedCycleNumber) || cycles[0])
+                : cycles[0];
+              const displayedCycleNo = activeCycle?.cycleNumber || 1;
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => navigate('/teller', { state: { accountId: selectedAccount.id, mode: 'DEPOSIT' } })}
-                      className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer transition-all"
-                      title="Record physical cash deposit for this client"
-                    >
-                      <ArrowUpRight className="w-4 h-4" />
-                      <span>Record Deposit</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => navigate('/teller', { state: { accountId: selectedAccount.id, mode: 'WITHDRAWAL' } })}
-                      className="px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-500/20 cursor-pointer transition-all"
-                      title="Process physical cash withdrawal / loan for this client"
-                    >
-                      <ArrowDownLeft className="w-4 h-4" />
-                      <span>Record Withdrawal</span>
-                    </button>
-
-                    <div className="text-right bg-slate-50 dark:bg-slate-950 p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800">
-                      <div className="text-[9px] text-slate-400 uppercase font-semibold">Total Deposited</div>
-                      <div className="text-base font-extrabold text-amber-500 font-mono">
-                        GHS {selectedAccount.currentBalance.toFixed(2)}
-                      </div>
-                      <div className="text-[10px] text-emerald-500 font-mono font-bold">
-                        Available: GHS {selectedAccount.availableBalance.toFixed(2)}
+              return (
+                <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+                  
+                  {/* Account Details Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
+                        SAVINGS SCHEME (CYCLE #{displayedCycleNo})
+                      </span>
+                      <h3 className="text-lg font-black text-slate-900 dark:text-white mt-2">
+                        {selectedAccount.customer?.firstName} {selectedAccount.customer?.lastName}
+                      </h3>
+                      <div className="text-xs text-slate-400 font-mono mt-0.5">
+                        Account #{selectedAccount.accountNumber} • Ghana Card: {selectedAccount.customer?.ghanaCardNumber}
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        const confirmed = window.confirm(
-                          `⚠️ Close Account & Delete Client Record?\n\nClient: ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}\nAccount: ${selectedAccount.accountNumber}\n\nAre you sure this client does not want to save anymore? This will permanently close the account and remove client records.`
-                        );
-                        if (confirmed && selectedAccount.customerId) {
-                          deleteCustomerRecord(selectedAccount.customerId);
-                          const fresh = getStoredAccounts();
-                          setAccounts(fresh);
-                          setSelectedAccount(fresh[0] || null);
-                        }
-                      }}
-                      className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-all flex items-center justify-center cursor-pointer"
-                      title="Close Account / Delete Record"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => navigate('/teller', { state: { accountId: selectedAccount.id, mode: 'DEPOSIT' } })}
+                        className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer transition-all"
+                        title="Record physical cash deposit for this client"
+                      >
+                        <ArrowUpRight className="w-4 h-4" />
+                        <span>Record Deposit</span>
+                      </button>
 
-                {/* 31-Day Policy Visual Matrix */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4 text-amber-500" />
-                      31-Day Contribution Calendar
-                    </h4>
-                    <span className="text-[11px] text-slate-400">
-                      Daily Target: <span className="font-bold text-amber-500">GHS {selectedAccount.savingsPackage || selectedAccount.dailyCycles?.[0]?.dailyTargetAmount || 20}.00</span>
-                    </span>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/teller', { state: { accountId: selectedAccount.id, mode: 'WITHDRAWAL' } })}
+                        className="px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-500/20 cursor-pointer transition-all"
+                        title="Process physical cash withdrawal / loan for this client"
+                      >
+                        <ArrowDownLeft className="w-4 h-4" />
+                        <span>Record Withdrawal</span>
+                      </button>
 
-                  <div className="grid grid-cols-7 sm:grid-cols-11 gap-2">
-                    {Array.from({ length: 31 }, (_, i) => {
-                      const dayNum = i + 1;
-                      const activeCycle = selectedAccount.dailyCycles?.[0];
-                      const isPaid = (activeCycle?.currentDayCount || 0) >= dayNum;
-                      const isDay31 = dayNum === 31;
-
-                      return (
-                        <div
-                          key={dayNum}
-                          className={`p-2.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-between ${
-                            isDay31
-                              ? isPaid
-                                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 ring-2 ring-rose-500/20'
-                                : 'bg-slate-100 dark:bg-slate-950 text-slate-400 border-dashed border-rose-500/30'
-                              : isPaid
-                              ? 'bg-amber-500 text-slate-950 font-bold border-amber-500 shadow-md shadow-amber-500/20'
-                              : 'bg-slate-50 dark:bg-slate-950 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800'
-                          }`}
-                        >
-                          <span className="text-[9px] font-mono uppercase block opacity-80">
-                            {isDay31 ? 'Fee' : `D${dayNum}`}
-                          </span>
-                          <span className="text-xs font-black font-mono my-0.5">
-                            {isPaid ? (isDay31 ? '🏦' : '✓') : dayNum}
-                          </span>
-                          <span className="text-[8px] font-mono block truncate">
-                            {isPaid ? (isDay31 ? 'Retained' : 'Paid') : 'Due'}
-                          </span>
+                      <div className="text-right bg-slate-50 dark:bg-slate-950 p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <div className="text-[9px] text-slate-400 uppercase font-semibold">Total Deposited</div>
+                        <div className="text-base font-extrabold text-amber-500 font-mono">
+                          GHS {selectedAccount.currentBalance.toFixed(2)}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                        <div className="text-[10px] text-emerald-500 font-mono font-bold">
+                          Available: GHS {selectedAccount.availableBalance.toFixed(2)}
+                        </div>
+                      </div>
 
-                {/* Policy Guidance Alert */}
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 text-xs space-y-1.5">
-                  <div className="font-extrabold flex items-center gap-1.5 text-sm">
-                    <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
-                    30-Day Client Savings & Company Fee Retention Policy
+                      <button
+                        onClick={() => {
+                          const confirmed = window.confirm(
+                            `⚠️ Close Account & Delete Client Record?\n\nClient: ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}\nAccount: ${selectedAccount.accountNumber}\n\nAre you sure this client does not want to save anymore? This will permanently close the account and remove client records.`
+                          );
+                          if (confirmed && selectedAccount.customerId) {
+                            deleteCustomerRecord(selectedAccount.customerId);
+                            const fresh = getStoredAccounts();
+                            setAccounts(fresh);
+                            setSelectedAccount(fresh[0] || null);
+                          }
+                        }}
+                        className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-all flex items-center justify-center cursor-pointer"
+                        title="Close Account / Delete Record"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="text-[11px] opacity-90 leading-relaxed space-y-1">
-                    <p>• <b>Daily Contributions:</b> Clients contribute daily according to their chosen package rate (GH₵ 5 – GH₵ 200/Day).</p>
-                    <p>• <b>Fee Retention:</b> The company retains 1 day’s contribution as its management fee, which is deducted directly from the deposited money upon reaching the 31st contribution day, leaving 30 full contribution days credited to the client's available savings.</p>
-                    <p>• <b>Savings-Backed Loan Withdrawals:</b> If a client requests a withdrawal during an active cycle, the amount is disbursed as a <b>loan against their accumulated savings</b>, ensuring the company’s 1-day retention fee remains fully safeguarded and cannot be eaten into.</p>
-                  </div>
-                </div>
 
-              </div>
-            ) : null}
+                  {/* Multi-Cycle Selector */}
+                  {cycles.length > 0 && (
+                    <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 overflow-x-auto">
+                      <div className="flex items-center gap-2 overflow-x-auto">
+                        <span className="text-[10px] font-black text-slate-400 uppercase px-2 shrink-0">
+                          Cycle History:
+                        </span>
+                        {cycles.map((c) => {
+                          const isSelected = displayedCycleNo === c.cycleNumber;
+                          const completed = c.isCompleted || c.currentDayCount >= 31;
+
+                          return (
+                            <button
+                              key={c.cycleNumber}
+                              type="button"
+                              onClick={() => setSelectedCycleNumber(c.cycleNumber)}
+                              className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                                isSelected
+                                  ? 'bg-amber-500 text-slate-950 shadow-md font-black ring-2 ring-amber-500/40'
+                                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-amber-500 border border-slate-200 dark:border-slate-800'
+                              }`}
+                            >
+                              <Coins className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                              <span>Cycle #{c.cycleNumber}</span>
+                              <span className="text-[10px] opacity-80">
+                                {completed ? '• (Completed 31/31)' : `• (${c.currentDayCount}/31 Days)`}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {(cycles[0]?.isCompleted || cycles[0]?.currentDayCount >= 31) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            startNewCycleForAccount(selectedAccount.id, currentUser || undefined);
+                            const fresh = getStoredAccounts();
+                            setAccounts(fresh);
+                            const updated = fresh.find((a) => a.id === selectedAccount.id);
+                            if (updated) {
+                              setSelectedAccount(updated);
+                              setSelectedCycleNumber(updated.dailyCycles?.[0]?.cycleNumber || null);
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-white text-[11px] font-black shrink-0 flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer transition-all"
+                          title="Start Next 31-Day Cycle"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Start Next Cycle (Cycle #{(cycles[0]?.cycleNumber || 1) + 1})</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 31-Day Policy Visual Matrix */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                        <Calendar className="w-4 h-4 text-amber-500" />
+                        31-Day Contribution Calendar (Cycle #{displayedCycleNo})
+                      </h4>
+                      <span className="text-[11px] text-slate-400">
+                        Daily Target: <span className="font-bold text-amber-500">GHS {selectedAccount.savingsPackage || activeCycle?.dailyTargetAmount || 20}.00</span>
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-7 sm:grid-cols-11 gap-2">
+                      {Array.from({ length: 31 }, (_, i) => {
+                        const dayNum = i + 1;
+                        const isPaid = (activeCycle?.currentDayCount || 0) >= dayNum;
+                        const isDay31 = dayNum === 31;
+
+                        return (
+                          <div
+                            key={dayNum}
+                            className={`p-2.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-between ${
+                              isDay31
+                                ? isPaid
+                                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 ring-2 ring-rose-500/20'
+                                  : 'bg-slate-100 dark:bg-slate-950 text-slate-400 border-dashed border-rose-500/30'
+                                : isPaid
+                                ? 'bg-amber-500 text-slate-950 font-bold border-amber-500 shadow-md shadow-amber-500/20'
+                                : 'bg-slate-50 dark:bg-slate-950 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800'
+                            }`}
+                          >
+                            <span className="text-[9px] font-mono uppercase block opacity-80">
+                              {isDay31 ? 'Fee' : `D${dayNum}`}
+                            </span>
+                            <span className="text-xs font-black font-mono my-0.5">
+                              {isPaid ? (isDay31 ? '🏦' : '✓') : dayNum}
+                            </span>
+                            <span className="text-[8px] font-mono block truncate">
+                              {isPaid ? (isDay31 ? 'Retained' : 'Paid') : 'Due'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Policy Guidance Alert */}
+                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 text-xs space-y-1.5">
+                    <div className="font-extrabold flex items-center gap-1.5 text-sm">
+                      <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
+                      30-Day Client Savings & Company Fee Retention Policy
+                    </div>
+                    <div className="text-[11px] opacity-90 leading-relaxed space-y-1">
+                      <p>• <b>Daily Contributions:</b> Clients contribute daily according to their chosen package rate (GH₵ 5 – GH₵ 200/Day).</p>
+                      <p>• <b>Fee Retention:</b> The company retains 1 day’s contribution as its management fee, which is deducted directly from the deposited money upon reaching the 31st contribution day, leaving 30 full contribution days credited to the client's available savings.</p>
+                      <p>• <b>Savings-Backed Loan Withdrawals:</b> If a client requests a withdrawal during an active cycle, the amount is disbursed as a <b>loan against their accumulated savings</b>, ensuring the company’s 1-day retention fee remains fully safeguarded and cannot be eaten into.</p>
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })() : null}
           </div>
 
         </div>
