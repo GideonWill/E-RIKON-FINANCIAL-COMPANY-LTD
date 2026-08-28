@@ -1376,11 +1376,11 @@ export const CustomersPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* 30-Day Cycle & Day-31 Policy Note */}
+                  {/* 30-Day Cycle & Retention Policy Note */}
                   <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] leading-relaxed flex items-start gap-2">
                     <Sparkles className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
                     <div>
-                      <b>30-Day Savings & Day-31 Retention Rule:</b> Days 1 to 30 contributions are 100% credited to the client's savings balance. On <b>Day 31</b>, 1 day's contribution (<b>GH₵ {chosenPackage}.00</b>) is retained as the E-RIKON management fee. Withdrawals during the cycle are processed as <b>loans against savings</b>, with the 1-day retention fee strictly protected from being eaten into.
+                      <b>30-Day Savings & Company Retention Policy:</b> Clients contribute daily according to package (GH₵ {chosenPackage}/Day). The company retains 1 day's contribution (<b>GH₵ {chosenPackage}.00</b>) directly from the deposited money upon reaching the 31st contribution day. Mid-cycle withdrawals are issued as <b>loans against accumulated savings</b>, with the 1-day retention fee strictly safeguarded and never eaten into.
                     </div>
                   </div>
                 </div>

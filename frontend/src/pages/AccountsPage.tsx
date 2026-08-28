@@ -251,14 +251,16 @@ export const AccountsPage: React.FC = () => {
                 </div>
 
                 {/* Policy Guidance Alert */}
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 text-xs space-y-1">
-                  <div className="font-extrabold flex items-center gap-1.5">
-                    <ShieldAlert className="w-4 h-4 text-amber-500" />
-                    30-Day Savings, Day-31 Retention & Savings Loan Policy
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 text-xs space-y-1.5">
+                  <div className="font-extrabold flex items-center gap-1.5 text-sm">
+                    <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
+                    30-Day Client Savings & Company Fee Retention Policy
                   </div>
-                  <p className="text-[11px] opacity-90 leading-relaxed">
-                    Days 1 through 30 contributions are 100% credited to the client's savings balance. On <b>Day 31</b>, the 31st contribution is retained as the E-RIKON management fee. If a client needs to withdraw early during the cycle, it is disbursed as a <b>loan against their savings</b>, with the 1-day retention fee strictly safeguarded and never eaten into.
-                  </p>
+                  <div className="text-[11px] opacity-90 leading-relaxed space-y-1">
+                    <p>• <b>Daily Contributions:</b> Clients contribute daily according to their chosen package rate (GH₵ 5 – GH₵ 200/Day).</p>
+                    <p>• <b>Fee Retention:</b> The company retains 1 day’s contribution as its management fee, which is deducted directly from the deposited money upon reaching the 31st contribution day, leaving 30 full contribution days credited to the client's available savings.</p>
+                    <p>• <b>Savings-Backed Loan Withdrawals:</b> If a client requests a withdrawal during an active cycle, the amount is disbursed as a <b>loan against their accumulated savings</b>, ensuring the company’s 1-day retention fee remains fully safeguarded and cannot be eaten into.</p>
+                  </div>
                 </div>
 
               </div>
