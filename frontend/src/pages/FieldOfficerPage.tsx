@@ -126,7 +126,8 @@ export const FieldOfficerPage: React.FC = () => {
         numAmount,
         officer,
         fieldRemarks || (isBulkSplitMode ? 'Backlog / Old records multi-day entry' : undefined),
-        backlogStartDate
+        backlogStartDate,
+        currentPackage
       );
 
       const refreshedAccounts = getStoredAccounts();
