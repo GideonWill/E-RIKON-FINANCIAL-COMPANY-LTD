@@ -210,11 +210,13 @@ export const EndOfDayPage: React.FC = () => {
     .filter((t) => t.type === 'LOAN_REPAYMENT')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // 4. Company 31-Day Retained Fees
-  const companyRetainedFeesToday = dayTransactions
-    .filter((t) => t.type === 'COMPANY_FEE_DEDUCTION')
-    .reduce((sum, t) => sum + t.amount, 0) ||
-    dayFieldSplits.filter((s) => s.isCompanyFee).reduce((sum, s) => sum + s.amount, 0);
+  // 4. Company 31-Day Retained Fees (Unified with getStoredCompanyInterest)
+  const totalCompanyInterestAccumulated = companyInterest
+    .reduce((sum, ci) => sum + (ci.accumulatedAmount || 0), 0);
+
+  const companyRetainedFeesToday = companyInterest
+    .filter((ci) => ci.createdAt && ci.createdAt.startsWith(selectedDate))
+    .reduce((sum, ci) => sum + (ci.accumulatedAmount || 0), 0);
 
   // 5. Total Daily Inflow & Outflow Across Whole Institution
   const totalDailyInflow = Math.max(tellerDeposits + tellerElectronicInflow, fieldCollectionsTotal) + loanRepaymentsTotal;
@@ -466,19 +468,19 @@ export const EndOfDayPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Company Day-31 Fee Retained */}
+        {/* Company Day-31 Fee Retained / Company Interest Piled Up */}
         <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2">
           <div className="flex items-center justify-between text-xs text-slate-500">
-            <span className="font-bold uppercase tracking-wider text-[10px]">Company Day-31 Fee</span>
-            <div className="p-1.5 rounded-xl bg-amber-50 text-amber-600">
+            <span className="font-bold uppercase tracking-wider text-[10px]">Company Interest Piled Up</span>
+            <div className="p-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600">
               <PiggyBank className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-xl font-black text-amber-600 font-mono">
-            GHS {companyRetainedFeesToday.toFixed(2)}
+          <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
+            GHS {totalCompanyInterestAccumulated.toFixed(2)}
           </div>
           <p className="text-[10px] text-slate-400 font-medium">
-            Accumulated Company Interest Revenue
+            30-Day Member Retention • Today: GHS {companyRetainedFeesToday.toFixed(2)}
           </p>
         </div>
 
