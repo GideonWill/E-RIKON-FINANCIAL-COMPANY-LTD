@@ -268,18 +268,18 @@ export const getStoredAccounts = (): Account[] => {
 
     if (isKwame) {
       acc.savingsPackage = 20;
-      // If money is not withdrawn, balance remains the updated 600.00 available savings
-      if (acc.availableBalance < 600) {
-        acc.availableBalance = 600.00;
-        acc.currentBalance = 620.00;
+      // Kwame completed Cycle 1 (600 GH net savings) + deposited 20 GH into Cycle 2 Day 1 = 620 GH available
+      if (acc.availableBalance < 620) {
+        acc.availableBalance = 620.00;
+        acc.currentBalance = 640.00;
         splitsUpdated = true;
       }
 
-      // Check if Cycle 1 (completed 31 days) and Cycle 2 (active) are present
+      // Check if Cycle 1 (completed 31 days) and Cycle 2 (active with Day 1) are present
       const cycle1 = (acc.dailyCycles || []).find((c) => c.cycleNumber === 1);
       const cycle2 = (acc.dailyCycles || []).find((c) => c.cycleNumber === 2);
 
-      if (!cycle1 || cycle1.currentDayCount < 31 || !cycle2) {
+      if (!cycle1 || cycle1.currentDayCount < 31 || !cycle2 || cycle2.currentDayCount < 1) {
         const completedCycle1: DailyCollectionCycle = {
           id: `cyc-${acc.id}-1`,
           cycleNumber: 1,
@@ -305,14 +305,25 @@ export const getStoredAccounts = (): Account[] => {
         const activeCycle2: DailyCollectionCycle = {
           id: `cyc-${acc.id}-2`,
           cycleNumber: 2,
-          currentDayCount: 0,
+          currentDayCount: 1,
           dailyTargetAmount: 20,
-          totalDeposited: 0.00,
+          totalDeposited: 20.00,
           feeDeducted: false,
           companyFeeAmount: 0.00,
           isCompleted: false,
           startDate: '2026-08-28',
-          dailySplits: [],
+          dailySplits: [
+            {
+              dayNumber: 1,
+              date: '2026-08-28',
+              amount: 20.00,
+              receiptNo: 'RCP-SPLIT-CYC2-1',
+              isCompanyFee: false,
+              recordedBy: 'Gideon Ogunu (SUPER ADMIN)',
+              recordedAt: '2026-08-28T13:00:00.000Z',
+              batchTxRef: 'TX-DEP-KWAME-CYC2-20',
+            },
+          ],
         };
 
         acc.dailyCycles = [activeCycle2, completedCycle1];
@@ -563,7 +574,32 @@ export const getStoredTransactions = (): Transaction[] => {
         createdAt: '2026-08-01T10:00:00.000Z',
       };
 
-      parsed.unshift(kwameDepTx, kwameFeeTx);
+      const kwameCyc2DepTx: Transaction = {
+        id: 'tx-dep-kwame-cyc2-20',
+        referenceNo: 'TX-DEP-KWAME-CYC2-20',
+        receiptNo: 'RCP-DEP-KWAME-CYC2-20',
+        accountId: kwameAcc.id,
+        account: kwameAcc,
+        type: 'DEPOSIT',
+        paymentMode: 'PHYSICAL_CASH',
+        amount: 20.00,
+        previousBal: 600.00,
+        newBal: 620.00,
+        recordedBy: {
+          id: 'super-admin-root',
+          employeeId: 'EMP-SA-001',
+          firstName: 'Gideon',
+          lastName: 'Ogunu',
+          email: 'gideon.ogunu@erikon.com',
+          phone: '0240000001',
+          role: 'SUPER_ADMIN' as RoleName,
+          branchId: 'br-01',
+        },
+        remarks: 'Physical cash deposit of GH₵ 20.00 into Cycle #2 (Day 1 of 31) on GH₵ 20/day package',
+        createdAt: '2026-08-28T13:00:00.000Z',
+      };
+
+      parsed.unshift(kwameCyc2DepTx, kwameDepTx, kwameFeeTx);
       localStorage.setItem('erikon_transactions', JSON.stringify(parsed));
     }
   }
@@ -1503,13 +1539,17 @@ export const recordPackageDeposit = (
   amountPaid: number,
   officerUser: User,
   remarks?: string,
-  customStartDate?: string
+  customStartDate?: string,
+  packageOverride?: number
 ): { updatedAccount: Account; transaction: Transaction; splitResult: PaymentSplitResult } => {
   const accounts = getStoredAccounts();
   const accIndex = accounts.findIndex((a) => a.id === accountId);
   if (accIndex === -1) throw new Error('Account not found');
 
   const acc = { ...accounts[accIndex] };
+  if (packageOverride && packageOverride > 0) {
+    acc.savingsPackage = packageOverride as SavingsPackage;
+  }
   const packageRate = acc.savingsPackage || 20;
   const packageFee = packageRate;
 
@@ -1524,7 +1564,13 @@ export const recordPackageDeposit = (
   let cycles = acc.dailyCycles ? [...acc.dailyCycles] : [];
   let activeCycle = cycles[0];
 
+  // Auto-rollover if cycle reached Day 31 or is completed
   if (!activeCycle || activeCycle.isCompleted || activeCycle.currentDayCount >= 31) {
+    if (activeCycle && !activeCycle.isCompleted) {
+      activeCycle.isCompleted = true;
+      activeCycle.feeDeducted = true;
+      activeCycle.companyFeeAmount = activeCycle.dailyTargetAmount || packageFee;
+    }
     const nextCycleNo = activeCycle ? activeCycle.cycleNumber + 1 : 1;
     activeCycle = {
       id: `cyc-${Date.now()}`,
@@ -1544,34 +1590,111 @@ export const recordPackageDeposit = (
   const txReferenceNo = `TX-DEP-${Date.now().toString().slice(-8)}`;
   const officerNameTag = officerUser ? `${officerUser.firstName} ${officerUser.lastName} (${officerUser.role.replace(/_/g, ' ')})` : 'Authorized Officer';
 
-  const splitResult = splitPaymentIntoDays(
-    packageRate,
-    amountPaid,
-    activeCycle.currentDayCount,
-    customStartDate || activeCycle.startDate,
-    officerNameTag,
-    txReferenceNo
-  );
+  const daysToDeposit = Math.floor(amountPaid / packageRate);
+  const remainingInActiveCycle = Math.max(0, 31 - activeCycle.currentDayCount);
 
-  // Update Cycle
-  const newDayCount = Math.min(31, activeCycle.currentDayCount + splitResult.daysCovered);
-  activeCycle.currentDayCount = newDayCount;
-  activeCycle.totalDeposited = toDecimal(activeCycle.totalDeposited + amountPaid);
-  activeCycle.dailySplits = [...(activeCycle.dailySplits || []), ...splitResult.entries];
-  
+  let splitResult: PaymentSplitResult;
   let feeDeductedThisTx = false;
-  if (newDayCount >= 31 && !activeCycle.feeDeducted) {
+  let addedAvailable = 0;
+
+  if (daysToDeposit <= remainingInActiveCycle) {
+    // Fits completely within the active cycle
+    splitResult = splitPaymentIntoDays(
+      packageRate,
+      amountPaid,
+      activeCycle.currentDayCount,
+      customStartDate || activeCycle.startDate,
+      officerNameTag,
+      txReferenceNo
+    );
+
+    const newDayCount = activeCycle.currentDayCount + splitResult.daysCovered;
+    activeCycle.currentDayCount = newDayCount;
+    activeCycle.totalDeposited = toDecimal(activeCycle.totalDeposited + amountPaid);
+    activeCycle.dailySplits = [...(activeCycle.dailySplits || []), ...splitResult.entries];
+
+    if (newDayCount >= 31 && !activeCycle.feeDeducted) {
+      activeCycle.feeDeducted = true;
+      activeCycle.companyFeeAmount = packageFee;
+      activeCycle.isCompleted = true;
+      accumulateCompanyInterest(acc, activeCycle.cycleNumber, toDecimal(packageFee));
+      feeDeductedThisTx = true;
+    }
+
+    addedAvailable = feeDeductedThisTx
+      ? Math.max(0, toDecimal(amountPaid - packageFee))
+      : toDecimal(amountPaid);
+  } else {
+    // Spans across cycle boundary: completes active cycle and auto-spills remainder into next cycle!
+    const activePortionDays = remainingInActiveCycle;
+    const nextPortionDays = daysToDeposit - remainingInActiveCycle;
+
+    // 1. Fill and finish active cycle
+    let splitActiveEntries: DailySplitEntry[] = [];
+    if (activePortionDays > 0) {
+      const splitActive = splitPaymentIntoDays(
+        packageRate,
+        activePortionDays * packageRate,
+        activeCycle.currentDayCount,
+        customStartDate || activeCycle.startDate,
+        officerNameTag,
+        txReferenceNo
+      );
+      splitActiveEntries = splitActive.entries;
+      activeCycle.currentDayCount = 31;
+      activeCycle.totalDeposited = toDecimal(activeCycle.totalDeposited + (activePortionDays * packageRate));
+      activeCycle.dailySplits = [...(activeCycle.dailySplits || []), ...splitActiveEntries];
+    }
     activeCycle.feeDeducted = true;
     activeCycle.companyFeeAmount = packageFee;
     activeCycle.isCompleted = true;
     accumulateCompanyInterest(acc, activeCycle.cycleNumber, toDecimal(packageFee));
     feeDeductedThisTx = true;
-  }
 
-  // Days 1-30: 100% is available savings. Day 31: 1 day retained as company fee.
-  const addedAvailable = feeDeductedThisTx
-    ? Math.max(0, toDecimal(amountPaid - packageFee))
-    : toDecimal(amountPaid);
+    // 2. Start next cycle with remaining days
+    const nextCycleNo = activeCycle.cycleNumber + 1;
+    const nextCycle: DailyCollectionCycle = {
+      id: `cyc-${Date.now()}-next`,
+      cycleNumber: nextCycleNo,
+      currentDayCount: 0,
+      dailyTargetAmount: packageRate,
+      totalDeposited: 0,
+      feeDeducted: false,
+      companyFeeAmount: 0,
+      isCompleted: false,
+      startDate: new Date().toISOString().split('T')[0],
+      dailySplits: [],
+    };
+
+    const splitNext = splitPaymentIntoDays(
+      packageRate,
+      nextPortionDays * packageRate,
+      0,
+      nextCycle.startDate,
+      officerNameTag,
+      txReferenceNo
+    );
+
+    nextCycle.currentDayCount = nextPortionDays;
+    nextCycle.totalDeposited = toDecimal(nextPortionDays * packageRate);
+    nextCycle.dailySplits = splitNext.entries;
+
+    cycles = [nextCycle, ...cycles];
+
+    splitResult = {
+      packageAmount: packageRate,
+      totalPaid: amountPaid,
+      daysCovered: daysToDeposit,
+      remainder: 0,
+      startDay: 1,
+      endDay: nextPortionDays,
+      entries: [...splitActiveEntries, ...splitNext.entries],
+      isDay31Included: true,
+      companyFeeIncluded: packageFee,
+    };
+
+    addedAvailable = Math.max(0, toDecimal(amountPaid - packageFee));
+  }
 
   acc.dailyCycles = cycles;
   acc.currentBalance = toDecimal(acc.currentBalance + amountPaid);

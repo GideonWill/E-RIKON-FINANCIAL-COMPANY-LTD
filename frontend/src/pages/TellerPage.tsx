@@ -155,7 +155,9 @@ export const TellerPage: React.FC = () => {
         selectedAccount.id,
         numAmount,
         tellerUser,
-        remarks || `Teller deposit on GH₵ ${chosenPackage}/day package`
+        remarks || `Teller deposit on GH₵ ${chosenPackage}/day package`,
+        undefined,
+        chosenPackage
       );
 
       setSelectedAccount(updatedAccount);
