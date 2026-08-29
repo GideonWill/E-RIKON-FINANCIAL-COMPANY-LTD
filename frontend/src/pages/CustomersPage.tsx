@@ -374,13 +374,16 @@ export const CustomersPage: React.FC = () => {
         dailyCycles: [initialCycle],
       };
 
+      // Link account to customer and vice versa
+      newCust.accounts = [newAcc];
+
       const currentCusts = getStoredCustomers();
-      const updatedCusts = [newCust, ...currentCusts];
+      const updatedCusts = [newCust, ...currentCusts.filter(c => c.id !== newCust.id)];
       setCustomers(updatedCusts);
       saveStoredCustomers(updatedCusts);
 
       const existingAccs = getStoredAccounts();
-      const updatedAccs = [newAcc, ...existingAccs];
+      const updatedAccs = [newAcc, ...existingAccs.filter(a => a.id !== newAcc.id)];
       setAccounts(updatedAccs);
       saveStoredAccounts(updatedAccs);
 
@@ -406,37 +409,23 @@ export const CustomersPage: React.FC = () => {
           previousBal: 0,
           newBal: availableBalance,
           recordedBy: currentUser || undefined,
-          remarks: `Opening savings deposit on GH₵ ${chosenPackage}/day package (Days covered: ${currentDayCount}). Upfront fee of GH₵ ${packageFee} settled.`,
+          remarks: `Opening savings deposit on GH₵ ${chosenPackage}/day package (Days covered: ${currentDayCount}).`,
           createdAt: new Date().toISOString(),
         };
         newTxs.push(depTx);
       }
 
-      const feeTx: Transaction = {
-        id: `tx-fee-${Date.now()}`,
-        referenceNo: `TX-FEE-${Date.now().toString().slice(-8)}`,
-        receiptNo: `RCP-FEE-${Date.now().toString().slice(-8)}`,
-        accountId: newAcc.id,
-        account: newAcc,
-        type: 'COMPANY_FEE_DEDUCTION',
-        paymentMode: 'PHYSICAL_CASH',
-        amount: packageFee,
-        previousBal: depositNum,
-        newBal: depositNum,
-        recordedBy: currentUser || undefined,
-        remarks: `Upfront package enrollment fee (GH₵ ${packageFee}) collected & retained for GH₵ ${chosenPackage}/day package cycle`,
-        createdAt: new Date().toISOString(),
-      };
-      newTxs.push(feeTx);
-
-      saveStoredTransactions([...newTxs, ...txs]);
+      const allUpdatedTxs = [...newTxs, ...txs];
+      setTransactions(allUpdatedTxs);
+      saveStoredTransactions(allUpdatedTxs);
 
       // Broadcast across all connected staff devices in real-time
       broadcastRealtimeEvent('CUSTOMER_CREATED', newCust);
       broadcastRealtimeEvent('ACCOUNT_OPENED', newAcc);
-      if (depositNum > 0) {
+      if (depositNum > 0 && newTxs.length > 0) {
         broadcastRealtimeEvent('DEPOSIT_RECORDED', newTxs[0]);
       }
+      broadcastRealtimeEvent('MANUAL_SYNC', {});
       pushLocalToCloud().catch(() => {});
 
       // Close modal, clear search filter, and show new customer immediately
