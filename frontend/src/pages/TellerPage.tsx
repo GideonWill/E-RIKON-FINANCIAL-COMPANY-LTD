@@ -74,12 +74,15 @@ export const TellerPage: React.FC = () => {
     }
   }, [accounts, selectedAccount]);
 
-  // Handle incoming routing state (e.g. when navigated from Customers, Accounts, or Dashboard)
+  // Handle incoming routing state (runs strictly once on incoming navigation, clearing history state after reading)
+  const processedLocationKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (location.state) {
+    if (location.state && processedLocationKeyRef.current !== location.key) {
+      processedLocationKeyRef.current = location.key;
       const stateObj = location.state as { accountId?: string; mode?: 'DEPOSIT' | 'WITHDRAWAL' };
       if (stateObj.accountId) {
-        const found = accounts.find((a) => a.id === stateObj.accountId);
+        const found = accounts.find((a) => a.id === stateObj.accountId) || getStoredAccounts().find((a) => a.id === stateObj.accountId);
         if (found) {
           setSelectedAccount(found);
           if (found.savingsPackage) setChosenPackage(found.savingsPackage);
@@ -91,8 +94,10 @@ export const TellerPage: React.FC = () => {
       if (stateObj.mode) {
         setOperationType(stateObj.mode);
       }
+      // Clear location state from history so subsequent state updates or syncs never revert the user's manual toggle
+      window.history.replaceState({}, document.title);
     }
-  }, [location.state, accounts]);
+  }, [location.key, location.state]);
 
   // Sync package when selected account changes
   useEffect(() => {
