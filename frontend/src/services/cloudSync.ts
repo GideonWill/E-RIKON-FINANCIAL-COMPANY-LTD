@@ -200,7 +200,12 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     localApprovals.forEach((a) => apprMap.set(a.id, a));
     cloudData.approvals.forEach((a) => {
       const existing = apprMap.get(a.id);
-      apprMap.set(a.id, { ...existing, ...a });
+      // If local already resolved (APPROVED / REJECTED) and incoming is PENDING, keep local decision!
+      if (existing && (existing.status === 'APPROVED' || existing.status === 'REJECTED') && a.status === 'PENDING') {
+        apprMap.set(a.id, existing);
+      } else {
+        apprMap.set(a.id, { ...existing, ...a });
+      }
     });
 
     const mergedApprovals = Array.from(apprMap.values());
@@ -338,7 +343,11 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     });
     cloudData.companyWithdrawals.forEach((w) => {
       const existing = wdMap.get(w.id);
-      wdMap.set(w.id, { ...existing, ...w });
+      if (existing && (existing.status === 'APPROVED' || existing.status === 'REJECTED') && w.status === 'PENDING_SUPER_ADMIN_APPROVAL') {
+        wdMap.set(w.id, existing);
+      } else {
+        wdMap.set(w.id, { ...existing, ...w });
+      }
     });
 
     const mergedWd = Array.from(wdMap.values());

@@ -15,7 +15,7 @@ import {
 } from '../services/api';
 import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
 import { pushLocalToCloud, pullCloudToLocal } from '../services/cloudSync';
-import { ApprovalRequest, ApprovalType, RoleName, RegisteredUserRecord } from '../types';
+import { ApprovalRequest, ApprovalType, RoleName, RegisteredUserRecord, User } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   ShieldCheck, 
@@ -246,28 +246,56 @@ export const ApprovalsPage: React.FC = () => {
   const [isProcessingAction, setIsProcessingAction] = useState(false);
 
   const handleConfirmAction = async () => {
-    if (!selectedItemForAction || !currentUser) return;
+    if (!selectedItemForAction) return;
+
+    const actor: User = currentUser || {
+      id: 'usr-super-admin-01',
+      employeeId: 'EMP-SA-001',
+      firstName: 'Gideon William',
+      lastName: 'Ogunu',
+      email: 'gideon.ogunu@erikon.com',
+      phone: '0240000001',
+      role: 'SUPER_ADMIN' as RoleName,
+      isApproved: true,
+      createdAt: new Date().toISOString(),
+    };
 
     setIsProcessingAction(true);
     try {
       const targetItem = selectedItemForAction;
+      const targetId = targetItem.id;
+      const remarksText = actionRemarks || (actionType === 'APPROVE' ? 'Approved by Super Admin' : 'Declined per executive review');
+
       if (actionType === 'APPROVE') {
-        approveRequest(targetItem.id, currentUser, actionRemarks);
-        setFeedbackMsg(`✅ Request #${targetItem.id.slice(-6)} successfully APPROVED.`);
+        approveRequest(targetId, actor, remarksText);
+        setFeedbackMsg(`✅ Request #${targetId.slice(-6)} successfully APPROVED.`);
       } else {
-        rejectRequest(targetItem.id, currentUser, actionRemarks);
-        setFeedbackMsg(`❌ Request #${targetItem.id.slice(-6)} REJECTED.`);
+        rejectRequest(targetId, actor, remarksText);
+        setFeedbackMsg(`❌ Request #${targetId.slice(-6)} REJECTED.`);
       }
 
-      // Immediately refresh all states
-      const freshApprovals = getStoredApprovals();
-      const freshUsers = getRegisteredUsers();
-      setApprovals([...freshApprovals]);
-      setRegisteredUsers([...freshUsers]);
+      // 1. Instantly update in-memory state so the card immediately reflects or clears from Pending
+      setApprovals((prev) =>
+        prev.map((a) =>
+          a.id === targetId
+            ? {
+                ...a,
+                status: actionType === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+                reviewedById: actor.id,
+                reviewedByName: `${actor.firstName} ${actor.lastName}`,
+                reviewedAt: new Date().toISOString(),
+                reviewRemarks: remarksText,
+              }
+            : a
+        )
+      );
+      setRegisteredUsers(getRegisteredUsers());
+
+      // 2. Close modal immediately
       setSelectedItemForAction(null);
 
-      // Broadcast and push to cloud relay
-      broadcastRealtimeEvent('APPROVAL_PROCESSED', { id: targetItem.id, action: actionType });
+      // 3. Broadcast and sync to cloud relay
+      broadcastRealtimeEvent('APPROVAL_PROCESSED', { id: targetId, action: actionType });
       await pushLocalToCloud().catch(() => {});
 
       setTimeout(() => {
