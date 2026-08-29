@@ -254,7 +254,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 6 Executive Financial KPI Cards (Clean, Spacious 3x2 Matrix) */}
+      {/* 6 Executive Financial KPI Cards (Clean, Spacious 3x2 Matrix - Clickable) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
         
         {/* 1. Total Registered Clients */}
@@ -264,6 +264,7 @@ export const DashboardPage: React.FC = () => {
           subtitle="Verified Ghana Card Clients"
           icon={Users}
           colorScheme="amber"
+          onClick={() => navigate('/customers')}
         />
 
         {/* 2. Total Gross Client Savings */}
@@ -273,6 +274,7 @@ export const DashboardPage: React.FC = () => {
           subtitle="Cumulative Member Deposits"
           icon={Wallet}
           colorScheme="blue"
+          onClick={() => navigate('/accounts')}
         />
 
         {/* 3. Total Client Withdrawals */}
@@ -282,6 +284,7 @@ export const DashboardPage: React.FC = () => {
           subtitle="Disbursed Loans & Liquidations"
           icon={ArrowDownLeft}
           colorScheme="rose"
+          onClick={() => navigate('/reports')}
         />
 
         {/* 4. Net Client Savings in Vault */}
@@ -291,6 +294,7 @@ export const DashboardPage: React.FC = () => {
           subtitle="Available in Member Vault"
           icon={TrendingUp}
           colorScheme="emerald"
+          onClick={() => navigate('/accounts')}
         />
 
         {/* 5. Company Retained Interest */}
@@ -300,6 +304,7 @@ export const DashboardPage: React.FC = () => {
           subtitle="30-Day Member Retention Fees"
           icon={PiggyBank}
           colorScheme="purple"
+          onClick={() => navigate('/company-interest')}
         />
 
         {/* 6. Company Net Balance / Liquidity */}
@@ -309,6 +314,7 @@ export const DashboardPage: React.FC = () => {
           subtitle="Total Physical Liquidity in Vault"
           icon={Landmark}
           colorScheme="emerald"
+          onClick={() => navigate('/company-interest')}
         />
 
       </div>

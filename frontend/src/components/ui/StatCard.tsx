@@ -9,6 +9,7 @@ interface StatCardProps {
   changeType?: 'positive' | 'negative' | 'neutral';
   icon: LucideIcon;
   colorScheme?: 'amber' | 'blue' | 'emerald' | 'rose' | 'purple';
+  onClick?: () => void;
 }
 
 export const StatCard: React.FC<StatCardProps> = ({
@@ -19,6 +20,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   changeType = 'positive',
   icon: Icon,
   colorScheme = 'amber',
+  onClick,
 }) => {
   const colorMap = {
     amber: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
@@ -29,13 +31,22 @@ export const StatCard: React.FC<StatCardProps> = ({
   };
 
   return (
-    <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+    <div 
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      className={`p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-all relative overflow-hidden group ${
+        onClick 
+          ? 'cursor-pointer hover:border-amber-500 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]' 
+          : 'hover:shadow-md'
+      }`}
+    >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider group-hover:text-amber-500 transition-colors">
             {title}
           </p>
-          <h3 className="text-2xl font-extrabold text-slate-900 dark:text-slate-50 mt-1 tracking-tight">
+          <h3 className="text-2xl font-black text-slate-900 dark:text-slate-50 mt-1 tracking-tight font-mono">
             {value}
           </h3>
           {subtitle && (
@@ -45,10 +56,17 @@ export const StatCard: React.FC<StatCardProps> = ({
           )}
         </div>
 
-        <div className={`p-3 rounded-xl border ${colorMap[colorScheme]} transition-transform group-hover:scale-105`}>
+        <div className={`p-3 rounded-2xl border ${colorMap[colorScheme]} transition-transform group-hover:scale-110 shadow-xs`}>
           <Icon className="w-5 h-5" />
         </div>
       </div>
+
+      {onClick && (
+        <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] font-bold text-amber-500 opacity-90 group-hover:opacity-100">
+          <span>View Full Detailed Breakdown</span>
+          <span className="group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      )}
 
       {change && (
         <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
