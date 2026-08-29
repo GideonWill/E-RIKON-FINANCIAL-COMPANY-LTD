@@ -31,6 +31,7 @@ import {
   Briefcase,
   Building2,
   FileText,
+  Calendar,
   X,
   CheckCircle2,
   Trash2,
@@ -821,11 +822,35 @@ export const CustomersPage: React.FC = () => {
                     <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" /> {cust.address}
                   </div>
 
-                  <div className="flex items-center space-x-3 shrink-0">
-                    <span className="text-[11px] font-bold text-amber-500 group-hover:text-amber-600 dark:group-hover:text-amber-400 flex items-center gap-1">
-                      <span>View 360 Financial Details</span>
-                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                    </span>
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (fin.acc?.id) {
+                          navigate('/accounts', { state: { accountId: fin.acc.id } });
+                        } else {
+                          setSelectedDetailCustomer(cust);
+                        }
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/30 transition-all flex items-center gap-1 text-[11px] cursor-pointer"
+                      title="View 31-day scheme visual calendar"
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>31-Day Scheme</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedDetailCustomer(cust);
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-amber-500 hover:text-slate-950 font-bold text-slate-800 dark:text-slate-200 transition-all flex items-center gap-1 text-[11px] cursor-pointer"
+                    >
+                      <span>360 Dossier</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
 
                     <button
                       type="button"
@@ -833,7 +858,7 @@ export const CustomersPage: React.FC = () => {
                         e.stopPropagation();
                         handleDeleteCustomer(cust);
                       }}
-                      className="px-2.5 py-1 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 font-bold border border-rose-500/30 transition-all flex items-center gap-1 text-xs cursor-pointer"
+                      className="p-1.5 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 font-bold border border-rose-500/30 transition-all flex items-center gap-1 text-xs cursor-pointer"
                       title="Close and delete client record"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

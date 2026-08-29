@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getStoredAccounts, getStoredTransactions, deleteCustomerRecord, startNewCycleForAccount } from '../services/api';
 import { useRealtimeSync } from '../services/realtimeSync';
@@ -31,6 +31,15 @@ export const AccountsPage: React.FC = () => {
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(accounts[0] || null);
   const [selectedCycleNumber, setSelectedCycleNumber] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const matrixRef = useRef<HTMLDivElement>(null);
+
+  const handleSelectAccount = (acc: Account) => {
+    setSelectedAccount(acc);
+    setSelectedCycleNumber(null);
+    setTimeout(() => {
+      matrixRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
 
   // Real-time multi-device subscription
   useRealtimeSync(() => {
@@ -158,10 +167,7 @@ export const AccountsPage: React.FC = () => {
               return (
                 <div
                   key={acc.id}
-                  onClick={() => {
-                    setSelectedAccount(acc);
-                    setSelectedCycleNumber(null);
-                  }}
+                  onClick={() => handleSelectAccount(acc)}
                   className={`p-4 rounded-3xl border transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-slate-900 text-white border-amber-500 shadow-xl shadow-amber-500/10 ring-2 ring-amber-500/30'
@@ -219,8 +225,8 @@ export const AccountsPage: React.FC = () => {
             }))}
           </div>
 
-          {/* Right Column: 31-Day Interactive Visual Matrix */}
-          <div className="lg:col-span-2 space-y-6">
+          {/* Right Column: 31-Day Interactive Visual Matrix & Client Detail Section */}
+          <div ref={matrixRef} className="lg:col-span-2 space-y-6 scroll-mt-24">
             {selectedAccount ? (() => {
               const cycles = selectedAccount.dailyCycles || [];
               const activeCycle = selectedCycleNumber
