@@ -28,7 +28,8 @@ import {
   Layers,
   Sparkles,
   ArrowDownRight,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-react';
 
 export const CompanyInterestPage: React.FC = () => {
@@ -393,43 +394,68 @@ export const CompanyInterestPage: React.FC = () => {
 
       {/* Withdrawal Modal */}
       {isWithdrawModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="max-w-md w-full p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl text-white space-y-4">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in"
+          onClick={() => setIsWithdrawModalOpen(false)}
+        >
+          <div 
+            className="max-w-md w-full p-6 rounded-3xl bg-slate-900 border border-slate-700/80 shadow-2xl text-white space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
             
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center space-x-2 text-amber-500">
-                <PiggyBank className="w-5 h-5" />
-                <h3 className="font-extrabold text-base text-white">Withdraw Company Interest</h3>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3.5">
+              <div className="flex items-center space-x-2.5 text-amber-500">
+                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                  <PiggyBank className="w-5 h-5 text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-white">Withdraw Company Interest</h3>
+                  <p className="text-[11px] text-slate-400 font-normal">Disburse corporate earnings to verified company account</p>
+                </div>
               </div>
               <button
+                type="button"
                 onClick={() => setIsWithdrawModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="p-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+                title="Close"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 font-mono">
-              Available Vault Balance: <span className="font-extrabold text-white">GHS {availableVaultBalance.toFixed(2)}</span>
+            {/* Available Balance Pill */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-emerald-500/10 to-slate-950 border border-amber-500/40 flex items-center justify-between shadow-inner">
+              <div className="flex items-center space-x-2">
+                <Vault className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Available Vault Balance</span>
+              </div>
+              <span className="text-base font-black font-mono text-emerald-400">
+                GH₵ {availableVaultBalance.toFixed(2)}
+              </span>
             </div>
 
             <form onSubmit={handleWithdrawalSubmit} className="space-y-4 text-xs">
               <div>
-                <label className="font-bold text-slate-300">Amount to Withdraw (GHS) *</label>
-                <input
-                  required
-                  type="number"
-                  step="0.01"
-                  max={availableVaultBalance}
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full mt-1 p-3 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono font-black text-lg focus:outline-none focus:border-amber-500"
-                />
+                <label className="font-bold text-slate-200 block mb-1">Amount to Withdraw (GHS) *</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 font-mono font-bold text-amber-500 text-base">GH₵</span>
+                  <input
+                    required
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    max={availableVaultBalance}
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full pl-12 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono font-black text-lg focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 shadow-inner"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="font-bold text-slate-300">Destination Type *</label>
+                <label className="font-bold text-slate-200 block mb-1">Destination Type *</label>
                 <select
                   value={destinationType}
                   onChange={(e) => {
@@ -439,51 +465,60 @@ export const CompanyInterestPage: React.FC = () => {
                     if (val === 'MTN_MOMO_MERCHANT') setDestinationDetails('MTN Mobile Money Merchant: 0244112233');
                     if (val === 'VAULT_CASH') setDestinationDetails('Accra Central Vault Physical Cash Allocation');
                   }}
-                  className="w-full mt-1 p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white"
+                  className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-medium focus:outline-none focus:border-amber-500 shadow-inner cursor-pointer"
                 >
-                  <option value="COMPANY_BANK_ACCOUNT">Company Bank Account</option>
-                  <option value="MTN_MOMO_MERCHANT">MTN Mobile Money Merchant</option>
-                  <option value="VAULT_CASH">Branch Vault Cash</option>
+                  <option value="COMPANY_BANK_ACCOUNT" className="bg-slate-900 text-white py-2">
+                    Company Bank Account
+                  </option>
+                  <option value="MTN_MOMO_MERCHANT" className="bg-slate-900 text-white py-2">
+                    MTN Mobile Money Merchant
+                  </option>
+                  <option value="VAULT_CASH" className="bg-slate-900 text-white py-2">
+                    Branch Vault Cash
+                  </option>
                 </select>
               </div>
 
               <div>
-                <label className="font-bold text-slate-300">Destination Account Details *</label>
+                <label className="font-bold text-slate-200 block mb-1">Destination Account Details *</label>
                 <input
                   required
                   type="text"
                   value={destinationDetails}
                   onChange={(e) => setDestinationDetails(e.target.value)}
-                  className="w-full mt-1 p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono"
+                  className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-mono text-xs focus:outline-none focus:border-amber-500 shadow-inner"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-slate-300">Purpose / Administrative Remarks</label>
+                <label className="font-bold text-slate-200 block mb-1">Purpose / Administrative Remarks</label>
                 <textarea
                   value={withdrawRemarks}
                   onChange={(e) => setWithdrawRemarks(e.target.value)}
                   placeholder="e.g. End-of-month management dividend / operational logistics"
                   rows={2}
-                  className="w-full mt-1 p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white"
+                  className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 placeholder:text-slate-500 text-xs focus:outline-none focus:border-amber-500 shadow-inner"
                 />
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 text-[11px] text-slate-400">
-                ⚠️ <span className="font-bold text-slate-300">Super Admin Clearance Notice:</span> This transaction request will be queued in the Super Admin Approvals Hub for authorization before funds are disbursed.
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200 flex items-start gap-2">
+                <span className="text-base leading-none">⚠️</span>
+                <div>
+                  <span className="font-bold text-amber-300">Super Admin Clearance Notice:</span> This transaction request will be queued in the Super Admin Approvals Hub for authorization before funds are disbursed.
+                </div>
               </div>
 
               <div className="flex items-center space-x-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsWithdrawModalOpen(false)}
-                  className="w-1/2 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+                  className="w-1/2 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs transition-colors cursor-pointer border border-slate-700"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="w-1/2 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs shadow-lg shadow-amber-500/20 cursor-pointer"
+                  className="w-1/2 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/25 transition-all cursor-pointer"
                 >
                   Submit Request
                 </button>
