@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getStoredAccounts, deleteCustomerRecord, startNewCycleForAccount } from '../services/api';
+import { getStoredAccounts, getStoredTransactions, deleteCustomerRecord, startNewCycleForAccount } from '../services/api';
 import { useRealtimeSync } from '../services/realtimeSync';
 import { useAuth } from '../contexts/AuthContext';
 import { Account } from '../types';
@@ -182,19 +182,33 @@ export const AccountsPage: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs font-mono">
+                  {/* Financial Breakdown: Savings, Withdrawals, Net Balance */}
+                  <div className="mt-3 pt-3 border-t border-slate-800/60 grid grid-cols-3 gap-1.5 text-xs font-mono">
                     <div>
-                      <span className="text-[10px] text-slate-400 block">Available Balance</span>
-                      <span className="font-extrabold text-emerald-400">GHS {acc.availableBalance.toFixed(2)}</span>
+                      <span className="text-[9px] text-slate-400 block">Total Savings</span>
+                      <span className="font-extrabold text-blue-400">
+                        GHS {((acc.dailyCycles || []).reduce((sum, c) => sum + (c.totalDeposited || 0), 0) || acc.currentBalance).toFixed(2)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-slate-400 block">Withdrawals</span>
+                      <span className="font-extrabold text-rose-400">
+                        GHS {getStoredTransactions().filter((t) => (t.accountId === acc.id || t.account?.id === acc.id) && t.type === 'WITHDRAWAL').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}
+                      </span>
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] text-slate-400 block">Cycle #{activeCycle?.cycleNumber || 1}</span>
-                      <span className="font-extrabold text-amber-400">{currentDay} / 31 Days</span>
+                      <span className="text-[9px] text-slate-400 block">Net Balance</span>
+                      <span className="font-extrabold text-emerald-400">GHS {acc.availableBalance.toFixed(2)}</span>
                     </div>
                   </div>
 
+                  <div className="mt-2 flex items-center justify-between text-[11px] font-mono text-slate-400">
+                    <span>Cycle #{activeCycle?.cycleNumber || 1}</span>
+                    <span className="font-extrabold text-amber-400">{currentDay} / 31 Days</span>
+                  </div>
+
                   {/* Progress Bar */}
-                  <div className="w-full bg-slate-800 rounded-full h-1.5 mt-3 overflow-hidden">
+                  <div className="w-full bg-slate-800 rounded-full h-1.5 mt-2 overflow-hidden">
                     <div
                       className="bg-gradient-to-r from-amber-500 to-emerald-500 h-1.5 rounded-full transition-all duration-500"
                       style={{ width: `${progress}%` }}
@@ -213,6 +227,11 @@ export const AccountsPage: React.FC = () => {
                 ? (cycles.find((c) => c.cycleNumber === selectedCycleNumber) || cycles[0])
                 : cycles[0];
               const displayedCycleNo = activeCycle?.cycleNumber || 1;
+              const allTxs = getStoredTransactions();
+              const selectedWithdrawn = allTxs
+                .filter((t) => (t.accountId === selectedAccount.id || t.account?.id === selectedAccount.id) && t.type === 'WITHDRAWAL')
+                .reduce((sum, t) => sum + t.amount, 0);
+              const selectedTotalSavings = cycles.reduce((sum, c) => sum + (c.totalDeposited || 0), 0) || selectedAccount.currentBalance;
 
               return (
                 <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
@@ -252,13 +271,24 @@ export const AccountsPage: React.FC = () => {
                         <span>Record Withdrawal</span>
                       </button>
 
-                      <div className="text-right bg-slate-50 dark:bg-slate-950 p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800">
-                        <div className="text-[9px] text-slate-400 uppercase font-semibold">Total Deposited</div>
-                        <div className="text-base font-extrabold text-amber-500 font-mono">
-                          GHS {selectedAccount.currentBalance.toFixed(2)}
+                      <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-950 p-2 rounded-2xl border border-slate-100 dark:border-slate-800 text-right">
+                        <div className="px-2 border-r border-slate-200 dark:border-slate-800">
+                          <div className="text-[9px] text-blue-500 uppercase font-bold">Total Savings</div>
+                          <div className="text-xs font-black text-blue-500 font-mono">
+                            GHS {selectedTotalSavings.toFixed(2)}
+                          </div>
                         </div>
-                        <div className="text-[10px] text-emerald-500 font-mono font-bold">
-                          Available: GHS {selectedAccount.availableBalance.toFixed(2)}
+                        <div className="px-2 border-r border-slate-200 dark:border-slate-800">
+                          <div className="text-[9px] text-rose-500 uppercase font-bold">Withdrawals</div>
+                          <div className="text-xs font-black text-rose-500 font-mono">
+                            GHS {selectedWithdrawn.toFixed(2)}
+                          </div>
+                        </div>
+                        <div className="px-2">
+                          <div className="text-[9px] text-emerald-500 uppercase font-bold">Net Balance</div>
+                          <div className="text-sm font-black text-emerald-500 font-mono">
+                            GHS {selectedAccount.availableBalance.toFixed(2)}
+                          </div>
                         </div>
                       </div>
 

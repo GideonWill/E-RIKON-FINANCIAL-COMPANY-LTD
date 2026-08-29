@@ -425,24 +425,50 @@ export const TellerPage: React.FC = () => {
             <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
               
               {/* Selected Account Summary Header */}
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Target Customer Account</span>
-                  <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
-                    {selectedAccount.customer?.firstName} {selectedAccount.customer?.lastName}
-                  </h3>
-                  <div className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">
-                    Acc: {selectedAccount.accountNumber} | Ghana Card: {selectedAccount.customer?.ghanaCardNumber}
-                  </div>
-                </div>
+              {(() => {
+                const targetCycles = selectedAccount.dailyCycles || [];
+                const targetTotalSavings = targetCycles.reduce((sum, c) => sum + (c.totalDeposited || 0), 0) || selectedAccount.currentBalance;
+                const targetWithdrawn = allTxs
+                  .filter((t) => (t.accountId === selectedAccount.id || t.account?.id === selectedAccount.id) && t.type === 'WITHDRAWAL')
+                  .reduce((sum, t) => sum + t.amount, 0);
 
-                <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Current Available Bal</span>
-                  <div className="text-xl font-extrabold text-emerald-500 font-mono">
-                    GHS {selectedAccount.availableBalance.toFixed(2)}
+                return (
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Target Customer Account</span>
+                      <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+                        {selectedAccount.customer?.firstName} {selectedAccount.customer?.lastName}
+                      </h3>
+                      <div className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">
+                        Acc: {selectedAccount.accountNumber} | Ghana Card: {selectedAccount.customer?.ghanaCardNumber}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 text-right">
+                      <div className="px-2 border-r border-slate-200 dark:border-slate-800">
+                        <span className="text-[9px] uppercase font-bold text-blue-500 block">Total Savings</span>
+                        <span className="text-xs font-black text-blue-500 font-mono">
+                          GHS {targetTotalSavings.toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="px-2 border-r border-slate-200 dark:border-slate-800">
+                        <span className="text-[9px] uppercase font-bold text-rose-500 block">Withdrawals</span>
+                        <span className="text-xs font-black text-rose-500 font-mono">
+                          GHS {targetWithdrawn.toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="px-2">
+                        <span className="text-[9px] uppercase font-bold text-emerald-500 block">Net Balance</span>
+                        <div className="text-base font-extrabold text-emerald-500 font-mono">
+                          GHS {selectedAccount.availableBalance.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* Operation Selector Toggle (Deposit vs Withdrawal) */}
               <div className="grid grid-cols-2 gap-3 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">

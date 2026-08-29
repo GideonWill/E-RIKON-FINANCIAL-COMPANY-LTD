@@ -743,8 +743,44 @@ export const CustomersPage: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Financial Performance Highlights: Package, Amount Started With, Days Paid, Balance, 31-Day Company Fee */}
+                {/* Financial Performance Highlights: Total Savings, Total Withdrawals, Net Balance, Daily Package */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 text-xs">
+                  <div className="space-y-0.5">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3 text-blue-500" /> Total Savings
+                    </span>
+                    <div className="font-mono font-black text-blue-600 dark:text-blue-400 text-xs">
+                      GH₵ {fin.totalDepositedAcrossCycles.toFixed(2)}
+                    </div>
+                    <div className="text-[9px] text-slate-400 font-mono">
+                      Cycle #{fin.cycleNumber} ({fin.daysPaid}/31 Days)
+                    </div>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                      <ArrowDownLeft className="w-3 h-3 text-rose-500" /> Total Withdrawals
+                    </span>
+                    <div className="font-mono font-black text-rose-600 dark:text-rose-400 text-xs">
+                      GH₵ {fin.totalWithdrawn.toFixed(2)}
+                    </div>
+                    <div className="text-[9px] text-slate-400 font-mono">
+                      {fin.customerWithdrawals.length} Withdrawal(s)
+                    </div>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                      <Wallet className="w-3 h-3 text-emerald-500" /> Net Balance
+                    </span>
+                    <div className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-xs">
+                      GH₵ {fin.availableSavings.toFixed(2)}
+                    </div>
+                    <div className="text-[9px] text-emerald-500 font-mono font-bold">
+                      Available in Vault
+                    </div>
+                  </div>
+
                   <div className="space-y-0.5">
                     <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
                       <Coins className="w-3 h-3 text-amber-500" /> Package Tier
@@ -752,43 +788,8 @@ export const CustomersPage: React.FC = () => {
                     <div className="font-mono font-black text-amber-600 dark:text-amber-400 text-xs">
                       GH₵ {fin.packageRate}/Day
                     </div>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3 text-blue-500" /> Amount Started
-                    </span>
-                    <div className="font-mono font-black text-blue-600 dark:text-blue-400 text-xs">
-                      GH₵ {fin.totalDeposited.toFixed(2)}
-                    </div>
-                    <div className="text-[9px] text-slate-400 font-mono">
-                      {fin.daysPaid} / 31 Days
-                    </div>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                      <Wallet className="w-3 h-3 text-emerald-500" /> Available Balance
-                    </span>
-                    <div className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-xs">
-                      GH₵ {fin.availableSavings.toFixed(2)}
-                    </div>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                      <Building2 className="w-3 h-3 text-purple-500" /> 1-Time Co. Fee
-                    </span>
-                    <div className="font-mono font-bold text-xs truncate">
-                      {fin.isDay31FeeRetained ? (
-                        <span className="text-purple-600 dark:text-purple-400 font-black">
-                          GH₵ {fin.packageRate}.00 (Settled)
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 text-[10px]">
-                          GH₵ {fin.packageRate}.00 (Pending)
-                        </span>
-                      )}
+                    <div className="text-[9px] text-purple-500 font-mono font-bold truncate">
+                      {fin.isDay31FeeRetained ? 'Fee Settled' : '31-Day Cycle'}
                     </div>
                   </div>
                 </div>
@@ -967,32 +968,32 @@ export const CustomersPage: React.FC = () => {
                 </div>
               )}
 
-              {/* 360 Financial Metrics Highlights Grid */}
+              {/* 360 Financial Metrics Highlights Grid: Total Savings, Total Withdrawals, Net Balance, Daily Package */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
 
                 {/* 1. Daily Package Card */}
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/30 space-y-1">
                   <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Coins className="w-3.5 h-3.5" /> Savings Package
+                    <Coins className="w-3.5 h-3.5" /> Daily Target
                   </span>
                   <div className="text-xl font-black font-mono text-amber-500">
                     GH₵ {fin.packageRate}.00
                   </div>
-                  <p className="text-[10px] text-slate-500">Daily Target Tier</p>
+                  <p className="text-[10px] text-slate-500">Package Rate / Day</p>
                 </div>
 
-                {/* 2. Total Contributed Across Cycles */}
+                {/* 2. Total Client Savings Deposited Across All Cycles */}
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent border-2 border-blue-500/40 space-y-1 shadow-sm">
                   <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <TrendingUp className="w-3.5 h-3.5" /> Total Deposited
+                    <TrendingUp className="w-3.5 h-3.5" /> Total Client Savings
                   </span>
                   <div className="text-xl font-black font-mono text-blue-500">
                     GH₵ {fin.totalDepositedAcrossCycles.toFixed(2)}
                   </div>
-                  <p className="text-[10px] text-slate-500">Across All Cycles</p>
+                  <p className="text-[10px] text-slate-500">Gross Deposited (All Cycles)</p>
                 </div>
 
-                {/* 3. Total Withdrawals / Loans Taken */}
+                {/* 3. Total Client Withdrawals */}
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-500/15 via-rose-500/5 to-transparent border-2 border-rose-500/40 space-y-1 shadow-sm">
                   <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
                     <ArrowDownLeft className="w-3.5 h-3.5" /> Total Withdrawals
@@ -1003,15 +1004,15 @@ export const CustomersPage: React.FC = () => {
                   <p className="text-[10px] text-slate-500">{fin.customerWithdrawals.length} Withdrawal Record(s)</p>
                 </div>
 
-                {/* 4. Current Available Savings Balance */}
+                {/* 4. Net Client Balance (Available in Vault) */}
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent border-2 border-emerald-500/40 space-y-1 shadow-sm">
                   <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Wallet className="w-3.5 h-3.5" /> Current Balance
+                    <Wallet className="w-3.5 h-3.5" /> Net Client Balance
                   </span>
                   <div className="text-xl font-black font-mono text-emerald-500">
                     GH₵ {fin.availableSavings.toFixed(2)}
                   </div>
-                  <p className="text-[10px] text-slate-500">Available in Client Vault</p>
+                  <p className="text-[10px] text-emerald-500 font-bold">Available in Vault</p>
                 </div>
 
               </div>
