@@ -59,11 +59,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   });
 
   const handleLogoutClick = () => {
-    setIsLoggingOut(true);
-    setTimeout(() => {
-      logout();
-      setIsLoggingOut(false);
-    }, 2000);
+    logout();
   };
 
   if (!currentUser) return null;

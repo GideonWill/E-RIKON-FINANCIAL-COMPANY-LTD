@@ -168,7 +168,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'Please enter both email and password.' };
     }
 
-    // 1. Authenticate against Live/Local API Backend
+    // 1. Fast Local Validation (Instant <50ms response time)
+    const localUsers = getRegisteredUsers();
+    const match = localUsers.find((u) => u.email.toLowerCase() === cleanEmail);
+
+    if (match) {
+      // Enforce role check: User must be in the selected role
+      if (role && match.role !== role) {
+        return {
+          success: false,
+          error: `Access Denied: This account is registered as "${formatRoleLabel(match.role)}", not "${formatRoleLabel(role)}". Please switch to the ${formatRoleLabel(match.role)} role tab to sign in.`,
+        };
+      }
+
+      if (match.password && match.password !== cleanPass) {
+        return { success: false, error: 'Incorrect password for this account. Please verify and try again.' };
+      }
+
+      setCurrentUser(match);
+      localStorage.setItem('erikon_current_user', JSON.stringify(match));
+
+      // Asynchronously trigger backend login in background without blocking UI
+      apiClient.post('/auth/login', {
+        email: cleanEmail,
+        password: cleanPass,
+        role,
+      }).then(({ data }) => {
+        if (data?.accessToken) {
+          localStorage.setItem('erikon_access_token', data.accessToken);
+          connectSSE(data.accessToken);
+        }
+      }).catch(() => {});
+
+      return { success: true };
+    }
+
+    // 2. Fallback: Authenticate against Live/Local API Backend with fast timeout
     try {
       const { data } = await apiClient.post('/auth/login', {
         email: cleanEmail,
@@ -177,7 +212,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (data && data.user) {
-        // Enforce role check: User must be in the selected role
         if (role && data.user.role !== role) {
           return {
             success: false,
@@ -212,33 +246,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: true };
       }
     } catch (apiErr: any) {
-      console.warn('Backend login notice:', apiErr?.response?.data?.message || apiErr?.message);
       const serverMsg = apiErr?.response?.data?.message;
       if (typeof serverMsg === 'string' && (serverMsg.toLowerCase().includes('password') || serverMsg.toLowerCase().includes('role') || serverMsg.toLowerCase().includes('denied'))) {
         return { success: false, error: serverMsg };
       }
-    }
-
-    // 2. Validate against Locally Registered Accounts (only actual created accounts)
-    const localUsers = getRegisteredUsers();
-    const match = localUsers.find((u) => u.email.toLowerCase() === cleanEmail);
-
-    if (match) {
-      // Enforce role check: User must be in the selected role
-      if (role && match.role !== role) {
-        return {
-          success: false,
-          error: `Access Denied: This account is registered as "${formatRoleLabel(match.role)}", not "${formatRoleLabel(role)}". Please switch to the ${formatRoleLabel(match.role)} role tab to sign in.`,
-        };
-      }
-
-      if (match.password && match.password !== cleanPass) {
-        return { success: false, error: 'Incorrect password for this account. Please verify and try again.' };
-      }
-
-      setCurrentUser(match);
-      localStorage.setItem('erikon_current_user', JSON.stringify(match));
-      return { success: true };
     }
 
     // 3. No account found in system: Reject login
