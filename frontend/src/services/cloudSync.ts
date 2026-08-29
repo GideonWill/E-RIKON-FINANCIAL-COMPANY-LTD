@@ -167,38 +167,51 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
 
   // Process incoming deleted customer and user tombstones
   if (Array.isArray(cloudData.deletedCustomerIds)) {
-    cloudData.deletedCustomerIds.forEach((id) => addDeletedCustomerId(id));
+    cloudData.deletedCustomerIds.forEach((id) => {
+      if (id) addDeletedCustomerId(id);
+    });
   }
   if (Array.isArray(cloudData.deletedUserEmails)) {
-    cloudData.deletedUserEmails.forEach((email) => addDeletedUserEmail(email));
+    cloudData.deletedUserEmails.forEach((email) => {
+      if (email) addDeletedUserEmail(email);
+    });
   }
   const deletedCustIds = getDeletedCustomerIds();
+  const deletedUserEmails = (getDeletedUserEmails() || []).map((e) => e.toLowerCase());
 
-  // 1. Authoritative Registered Users Sync (Merge all active registered accounts)
-  if (Array.isArray(cloudData.registeredUsers) && cloudData.registeredUsers.length > 0) {
-    const localUsers = getRegisteredUsers();
-    const userMap = new Map<string, RegisteredUserRecord>();
-    localUsers.forEach((u) => userMap.set(u.email.toLowerCase(), u));
-    cloudData.registeredUsers.forEach((u) => {
-      const key = u.email?.toLowerCase();
-      if (!key) return;
-      const existing = userMap.get(key);
-      userMap.set(key, { ...existing, ...u });
-    });
+  // 1. Authoritative Registered Users Sync (Strictly purge any deleted users)
+  if (Array.isArray(cloudData.registeredUsers)) {
+    const cleanUsers = cloudData.registeredUsers.filter(
+      (u) => !deletedUserEmails.includes((u.email || '').toLowerCase()) && 
+             !deletedUserEmails.includes((u.id || '').toLowerCase())
+    );
+    const localUsers = getRegisteredUsers().filter(
+      (u) => !deletedUserEmails.includes((u.email || '').toLowerCase()) && 
+             !deletedUserEmails.includes((u.id || '').toLowerCase())
+    );
 
-    const mergedUsers = Array.from(userMap.values());
-    if (mergedUsers.length !== localUsers.length || JSON.stringify(mergedUsers) !== JSON.stringify(localUsers)) {
-      saveRegisteredUsers(mergedUsers);
+    if (JSON.stringify(cleanUsers) !== JSON.stringify(localUsers)) {
+      saveRegisteredUsers(cleanUsers);
       hasUpdates = true;
     }
   }
 
   // 2. Authoritative Approvals Sync
   if (Array.isArray(cloudData.approvals)) {
-    const localApprovals = getStoredApprovals();
+    const cleanCloudApprovals = cloudData.approvals.filter(
+      (a) => !deletedCustIds.includes(a.targetId || '') && 
+             !deletedUserEmails.includes((a.targetId || '').toLowerCase()) &&
+             !deletedUserEmails.includes((a.details?.email || '').toLowerCase())
+    );
+    const localApprovals = getStoredApprovals().filter(
+      (a) => !deletedCustIds.includes(a.targetId || '') && 
+             !deletedUserEmails.includes((a.targetId || '').toLowerCase()) &&
+             !deletedUserEmails.includes((a.details?.email || '').toLowerCase())
+    );
+
     const apprMap = new Map<string, any>();
     localApprovals.forEach((a) => apprMap.set(a.id, a));
-    cloudData.approvals.forEach((a) => {
+    cleanCloudApprovals.forEach((a) => {
       const existing = apprMap.get(a.id);
       // If local already resolved (APPROVED / REJECTED) and incoming is PENDING, keep local decision!
       if (existing && (existing.status === 'APPROVED' || existing.status === 'REJECTED') && a.status === 'PENDING') {
@@ -208,64 +221,44 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       }
     });
 
-    const mergedApprovals = Array.from(apprMap.values());
-    if (mergedApprovals.length !== localApprovals.length || JSON.stringify(mergedApprovals) !== JSON.stringify(localApprovals)) {
+    const mergedApprovals = Array.from(apprMap.values()).filter(
+      (a) => !deletedCustIds.includes(a.targetId || '') && 
+             !deletedUserEmails.includes((a.targetId || '').toLowerCase()) &&
+             !deletedUserEmails.includes((a.details?.email || '').toLowerCase())
+    );
+
+    if (JSON.stringify(mergedApprovals) !== JSON.stringify(localApprovals)) {
       saveStoredApprovals(mergedApprovals);
       hasUpdates = true;
     }
   }
 
-  // 3. Merged Authoritative Customers Sync
+  // 3. Merged Authoritative Customers Sync (Strictly purge deleted customers across devices)
   if (Array.isArray(cloudData.customers)) {
-    const localCust = getStoredCustomers().filter((c) => !deletedCustIds.includes(c.id));
-    const cleanCust = cloudData.customers.filter((c) => !deletedCustIds.includes(c.id));
-    
-    const custMap = new Map<string, any>();
-    localCust.forEach((c) => {
-      if (c.id) custMap.set(c.id, c);
-      if (c.customerNumber) custMap.set(c.customerNumber, c);
-    });
-    cleanCust.forEach((c) => {
-      const existing = custMap.get(c.id) || (c.customerNumber ? custMap.get(c.customerNumber) : null);
-      custMap.set(c.id, { ...existing, ...c });
-    });
+    const cleanCloudCust = cloudData.customers.filter(
+      (c) => !deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)
+    );
+    const localCust = getStoredCustomers().filter(
+      (c) => !deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)
+    );
 
-    const mergedCust = Array.from(new Set(Array.from(custMap.values()).map((c) => c.id)))
-      .map((id) => custMap.get(id)!)
-      .filter((c) => !deletedCustIds.includes(c.id));
-
-    if (mergedCust.length !== localCust.length || JSON.stringify(mergedCust) !== JSON.stringify(localCust)) {
-      saveStoredCustomers(mergedCust);
+    if (JSON.stringify(cleanCloudCust) !== JSON.stringify(localCust)) {
+      saveStoredCustomers(cleanCloudCust);
       hasUpdates = true;
     }
   }
 
   // 4. Merged Authoritative Accounts Sync
   if (Array.isArray(cloudData.accounts)) {
+    const cleanCloudAcc = cloudData.accounts.filter(
+      (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
+    );
     const localAcc = getStoredAccounts().filter(
       (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
     );
-    const cleanAcc = cloudData.accounts.filter(
-      (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
-    );
 
-    const accMap = new Map<string, any>();
-    localAcc.forEach((a) => {
-      if (a.id) accMap.set(a.id, a);
-      if (a.accountNumber) accMap.set(a.accountNumber, a);
-    });
-    cleanAcc.forEach((a) => {
-      const existing = accMap.get(a.id) || (a.accountNumber ? accMap.get(a.accountNumber) : null);
-      // Prefer most recent balance & daily cycles
-      accMap.set(a.id, { ...existing, ...a });
-    });
-
-    const mergedAcc = Array.from(new Set(Array.from(accMap.values()).map((a) => a.id)))
-      .map((id) => accMap.get(id)!)
-      .filter((a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id));
-
-    if (mergedAcc.length !== localAcc.length || JSON.stringify(mergedAcc) !== JSON.stringify(localAcc)) {
-      saveStoredAccounts(mergedAcc);
+    if (JSON.stringify(cleanCloudAcc) !== JSON.stringify(localAcc)) {
+      saveStoredAccounts(cleanCloudAcc);
       hasUpdates = true;
     }
   }
@@ -294,21 +287,15 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
 
   // 6. Merged Authoritative Loans Sync
   if (Array.isArray(cloudData.loans)) {
-    const localLoans = getStoredLoans().filter((l) => !deletedCustIds.includes(l.customerId));
-    const cleanLoans = cloudData.loans.filter((l) => !deletedCustIds.includes(l.customerId));
+    const cleanLoans = cloudData.loans.filter(
+      (l) => !deletedCustIds.includes(l.customerId) && !deletedCustIds.includes(l.id)
+    );
+    const localLoans = getStoredLoans().filter(
+      (l) => !deletedCustIds.includes(l.customerId) && !deletedCustIds.includes(l.id)
+    );
 
-    const loanMap = new Map<string, any>();
-    localLoans.forEach((l) => {
-      if (l.id) loanMap.set(l.id, l);
-    });
-    cleanLoans.forEach((l) => {
-      const existing = loanMap.get(l.id);
-      loanMap.set(l.id, { ...existing, ...l });
-    });
-
-    const mergedLoans = Array.from(loanMap.values()).filter((l) => !deletedCustIds.includes(l.customerId));
-    if (mergedLoans.length !== localLoans.length || JSON.stringify(mergedLoans) !== JSON.stringify(localLoans)) {
-      saveStoredLoans(mergedLoans);
+    if (JSON.stringify(cleanLoans) !== JSON.stringify(localLoans)) {
+      saveStoredLoans(cleanLoans);
       hasUpdates = true;
     }
   }

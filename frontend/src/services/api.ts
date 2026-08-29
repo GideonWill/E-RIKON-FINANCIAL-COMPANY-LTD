@@ -1489,26 +1489,37 @@ export const createNewCustomer = (customerData: Omit<Customer, 'id' | 'customerN
  * Delete / Close Customer Record (When client does not want to save anymore)
  */
 export const deleteCustomerRecord = (customerId: string): boolean => {
-  // 1. Add to permanent deleted tombstones
-  addDeletedCustomerId(customerId);
-
-  // 2. Remove from stored customers
+  // 1. Find target customer
   const customers = getStoredCustomers();
-  const targetCust = customers.find((c) => c.id === customerId);
-  const updatedCusts = customers.filter((c) => c.id !== customerId);
+  const targetCust = customers.find((c) => c.id === customerId || c.customerNumber === customerId);
+  const resolvedId = targetCust?.id || customerId;
+
+  // 2. Add to permanent deleted tombstones
+  addDeletedCustomerId(resolvedId);
+  if (targetCust?.customerNumber) addDeletedCustomerId(targetCust.customerNumber);
+  if (targetCust?.phone) addDeletedCustomerId(targetCust.phone);
+  if (targetCust?.ghanaCardNumber) addDeletedCustomerId(targetCust.ghanaCardNumber);
+
+  // 3. Remove from stored customers
+  const updatedCusts = customers.filter((c) => c.id !== resolvedId && c.customerNumber !== targetCust?.customerNumber);
   saveStoredCustomers(updatedCusts);
 
-  // 3. Remove associated accounts
+  // 4. Remove associated accounts
   const accounts = getStoredAccounts();
-  const updatedAccs = accounts.filter((a) => a.customerId !== customerId);
+  const updatedAccs = accounts.filter((a) => a.customerId !== resolvedId && a.customerId !== customerId);
   saveStoredAccounts(updatedAccs);
 
-  // 4. Remove associated loans
+  // 5. Remove associated loans
   const loans = getStoredLoans();
-  const updatedLoans = loans.filter((l) => l.customerId !== customerId);
+  const updatedLoans = loans.filter((l) => l.customerId !== resolvedId && l.customerId !== customerId);
   saveStoredLoans(updatedLoans);
 
-  // 5. Record audit log
+  // 6. Remove associated approvals
+  const approvals = getStoredApprovals();
+  const updatedApprovals = approvals.filter((a) => a.targetId !== resolvedId && a.targetId !== customerId);
+  saveStoredApprovals(updatedApprovals);
+
+  // 7. Record audit log
   const logs = getStoredAuditLogs();
   const newLog: AuditLog = {
     id: `log-del-${Date.now()}`,
@@ -1517,20 +1528,20 @@ export const deleteCustomerRecord = (customerId: string): boolean => {
     userRole: 'SUPER_ADMIN',
     action: 'CUSTOMER_DELETED',
     resource: 'CUSTOMER',
-    previousValue: targetCust ? `${targetCust.firstName} ${targetCust.lastName} (${targetCust.customerNumber})` : customerId,
+    previousValue: targetCust ? `${targetCust.firstName} ${targetCust.lastName} (${targetCust.customerNumber})` : resolvedId,
     newValue: 'CLOSED_AND_DELETED',
     ipAddress: '127.0.0.1',
     createdAt: new Date().toISOString(),
   };
   saveStoredAuditLogs([newLog, ...logs]);
 
-  // 6. Broadcast real-time deletion event across all open windows & mobile devices
-  broadcastRealtimeEvent('CUSTOMER_DELETED', { customerId });
+  // 8. Broadcast real-time deletion event across all open windows & mobile devices
+  broadcastRealtimeEvent('CUSTOMER_DELETED', { customerId: resolvedId });
 
-  // 7. Delete from backend Neon database if connected
-  apiClient.delete(`/customers/${customerId}`).catch(() => { });
+  // 9. Delete from backend Neon database if connected
+  apiClient.delete(`/customers/${resolvedId}`).catch(() => { });
 
-  // 8. Immediately push updated state to cloud relay
+  // 10. Immediately push updated state to cloud relay
   setTimeout(() => {
     try {
       import('./cloudSync').then(({ pushLocalToCloud }) => {
