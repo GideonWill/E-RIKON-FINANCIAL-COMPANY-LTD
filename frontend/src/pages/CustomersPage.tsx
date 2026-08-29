@@ -14,7 +14,7 @@ import {
 } from '../services/api';
 import { subscribeRealtimeEvents, broadcastRealtimeEvent, useRealtimeSync } from '../services/realtimeSync';
 import { pushLocalToCloud } from '../services/cloudSync';
-import { Customer, Account, SavingsPackage, SAVINGS_PACKAGES, Transaction, DailyCollectionCycle } from '../types';
+import { Customer, Account, SavingsPackage, SAVINGS_PACKAGES, Transaction, DailyCollectionCycle, DailySplitEntry } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { GhanaCardModal } from '../components/ui/GhanaCardModal';
 import { GhanaCardInput, formatGhanaCardNumber, isValidGhanaCard } from '../components/ui/GhanaCardInput';
@@ -340,8 +340,23 @@ export const CustomersPage: React.FC = () => {
       const companyFeeAmount = isDay31Reached ? chosenPackage : 0;
       const availableBalance = isDay31Reached ? Math.max(0, depositNum - chosenPackage) : depositNum;
 
+      const generatedSplits: DailySplitEntry[] = (splitPreview?.entries && splitPreview.entries.length > 0)
+        ? splitPreview.entries
+        : (currentDayCount > 0
+          ? Array.from({ length: currentDayCount }, (_, i) => ({
+              dayNumber: i + 1,
+              date: new Date().toISOString().split('T')[0],
+              amount: chosenPackage,
+              receiptNo: `RCP-INIT-${Date.now().toString().slice(-4)}-${i + 1}`,
+              isCompanyFee: i + 1 === 31,
+              recordedBy: currentUser ? `${currentUser.firstName} ${currentUser.lastName} (${currentUser.role.replace(/_/g, ' ')})` : 'Gideon Ogunu (SUPER ADMIN)',
+              recordedAt: new Date().toISOString(),
+              batchTxRef: `TX-INIT-${Date.now().toString().slice(-8)}`,
+            }))
+          : []);
+
       const initialCycle: DailyCollectionCycle = {
-        id: `cyc-${Date.now()}`,
+        id: `cyc-${newCustId.replace('cust-', '')}`,
         cycleNumber: 1,
         currentDayCount: currentDayCount,
         dailyTargetAmount: chosenPackage,
@@ -349,18 +364,13 @@ export const CustomersPage: React.FC = () => {
         feeDeducted,
         companyFeeAmount,
         isCompleted: isDay31Reached,
-        dailySplits: splitPreview?.entries || (currentDayCount > 0 ? Array.from({ length: currentDayCount }, (_, i) => ({
-          dayNumber: i + 1,
-          date: new Date().toISOString().split('T')[0],
-          amount: chosenPackage,
-          receiptNo: `RCP-INIT-${Date.now().toString().slice(-4)}-${i + 1}`,
-          isCompanyFee: i + 1 === 31,
-        })) : []),
+        startDate: new Date().toISOString().split('T')[0],
+        dailySplits: generatedSplits,
       };
 
       // Create Savings Account on the chosen package
       const newAcc: Account = {
-        id: `acc-${Date.now()}`,
+        id: `acc-${newCustId.replace('cust-', '')}`,
         accountNumber: `ACC-1001-${Math.floor(1000 + Math.random() * 9000)}`,
         customerId: newCustId,
         customer: newCust,
@@ -377,15 +387,16 @@ export const CustomersPage: React.FC = () => {
       // Link account to customer and vice versa
       newCust.accounts = [newAcc];
 
+      // Save accounts FIRST so getStoredAccounts() never creates a blank 20gh fallback!
+      const existingAccs = getStoredAccounts();
+      const updatedAccs = [newAcc, ...existingAccs.filter((a) => a.id !== newAcc.id && a.customerId !== newCust.id)];
+      saveStoredAccounts(updatedAccs);
+      setAccounts(updatedAccs);
+
       const currentCusts = getStoredCustomers();
       const updatedCusts = [newCust, ...currentCusts.filter(c => c.id !== newCust.id)];
-      setCustomers(updatedCusts);
       saveStoredCustomers(updatedCusts);
-
-      const existingAccs = getStoredAccounts();
-      const updatedAccs = [newAcc, ...existingAccs.filter(a => a.id !== newAcc.id)];
-      setAccounts(updatedAccs);
-      saveStoredAccounts(updatedAccs);
+      setCustomers(updatedCusts);
 
       // Accumulate company interest only if Day 31 was reached
       if (isDay31Reached) {
