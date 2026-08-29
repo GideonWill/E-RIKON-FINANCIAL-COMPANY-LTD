@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   getStoredAccounts, 
@@ -42,6 +42,7 @@ export const TellerPage: React.FC = () => {
   const { currentUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const formRef = useRef<HTMLDivElement | null>(null);
   const [accounts, setAccounts] = useState<Account[]>(getStoredAccounts());
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(() => {
@@ -56,6 +57,14 @@ export const TellerPage: React.FC = () => {
   const [isDailyPolicyTick, setIsDailyPolicyTick] = useState<boolean>(true);
   const [printedTx, setPrintedTx] = useState<Transaction | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const handleSelectAccount = (acc: Account) => {
+    setSelectedAccount(acc);
+    if (acc.savingsPackage) setChosenPackage(acc.savingsPackage);
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  };
 
   // Auto-select first account if none currently selected
   useEffect(() => {
@@ -74,6 +83,9 @@ export const TellerPage: React.FC = () => {
         if (found) {
           setSelectedAccount(found);
           if (found.savingsPackage) setChosenPackage(found.savingsPackage);
+          setTimeout(() => {
+            formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 80);
         }
       }
       if (stateObj.mode) {
@@ -384,11 +396,11 @@ export const TellerPage: React.FC = () => {
                 return (
                   <div
                     key={acc.id}
-                    onClick={() => setSelectedAccount(acc)}
+                    onClick={() => handleSelectAccount(acc)}
                     className={`p-4 rounded-2xl border cursor-pointer transition-all ${
                       isSelected
-                        ? 'bg-amber-500/10 border-amber-500 dark:bg-amber-500/20 text-slate-900 dark:text-white shadow-md'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                        ? 'bg-amber-500/10 border-amber-500 dark:bg-amber-500/20 text-slate-900 dark:text-white shadow-md ring-2 ring-amber-500/30'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-500/50'
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -420,7 +432,7 @@ export const TellerPage: React.FC = () => {
 
         {/* Middle & Right Column: Deposit/Withdrawal Processing Form */}
         {selectedAccount && (
-          <div className="lg:col-span-2 space-y-6">
+          <div ref={formRef} className="lg:col-span-2 space-y-6 scroll-mt-20">
             
             <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
               
