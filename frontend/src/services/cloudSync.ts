@@ -25,7 +25,12 @@ import {
 } from './api';
 import { ApprovalRequest } from '../types';
 import { broadcastRealtimeEvent, subscribeRealtimeEvents } from './realtimeSync';
-import { saveFirestoreVault, subscribeFirestoreVault, isFirebaseConfigured } from './firebase';
+import { 
+  getFirestoreVault,
+  saveFirestoreVault, 
+  subscribeFirestoreVault, 
+  isFirebaseConfigured 
+} from './firebase';
 
 export interface CloudVaultPayload {
   registeredUsers?: RegisteredUserRecord[];
@@ -153,42 +158,9 @@ export const pushLocalToCloud = async (): Promise<boolean> => {
 };
 
 /**
- * Pulls latest state from authoritative cloud backends and merges into local storage
+ * Applies an incoming cloud vault payload to local storage and dispatches update events
  */
-export const pullCloudToLocal = async (): Promise<boolean> => {
-  const endpoints = getSyncEndpoints();
-  let cloudData: CloudVaultPayload | null = null;
-
-  for (const url of endpoints) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
-      const res = await fetch(url, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-      if (res.ok) {
-        const data = await res.json();
-        const vault = data?.vault || data;
-        if (
-          vault &&
-          ((Array.isArray(vault.registeredUsers) && vault.registeredUsers.length > 0) ||
-           (Array.isArray(vault.customers) && vault.customers.length > 0) ||
-           (Array.isArray(vault.transactions) && vault.transactions.length > 0))
-        ) {
-          cloudData = vault;
-          break; // Prioritize the active, populated vault
-        } else if (vault && !cloudData) {
-          cloudData = vault;
-        }
-      }
-    } catch (e) {
-      // Continue to next endpoint
-    }
-  }
-
+export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean => {
   if (!cloudData) return false;
 
   let hasUpdates = false;
@@ -201,6 +173,7 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
     cloudData.deletedUserEmails.forEach((email) => addDeletedUserEmail(email));
   }
   const deletedCustIds = getDeletedCustomerIds();
+
   // 1. Authoritative Registered Users Sync (Merge all active registered accounts)
   if (Array.isArray(cloudData.registeredUsers) && cloudData.registeredUsers.length > 0) {
     const localUsers = getRegisteredUsers();
@@ -397,6 +370,61 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
 };
 
 /**
+ * Pulls latest state from authoritative cloud backends and merges into local storage
+ */
+export const pullCloudToLocal = async (): Promise<boolean> => {
+  // 1. Try direct Firestore read first if configured
+  if (isFirebaseConfigured()) {
+    try {
+      const firestoreData = await getFirestoreVault();
+      if (
+        firestoreData &&
+        ((Array.isArray(firestoreData.registeredUsers) && firestoreData.registeredUsers.length > 0) ||
+         (Array.isArray(firestoreData.customers) && firestoreData.customers.length > 0) ||
+         (Array.isArray(firestoreData.transactions) && firestoreData.transactions.length > 0))
+      ) {
+        return applyIncomingCloudVault(firestoreData);
+      }
+    } catch {}
+  }
+
+  // 2. Fallback to HTTP sync endpoints
+  const endpoints = getSyncEndpoints();
+  let cloudData: CloudVaultPayload | null = null;
+
+  for (const url of endpoints) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        const vault = data?.vault || data;
+        if (
+          vault &&
+          ((Array.isArray(vault.registeredUsers) && vault.registeredUsers.length > 0) ||
+           (Array.isArray(vault.customers) && vault.customers.length > 0) ||
+           (Array.isArray(vault.transactions) && vault.transactions.length > 0))
+        ) {
+          cloudData = vault;
+          break;
+        } else if (vault && !cloudData) {
+          cloudData = vault;
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (!cloudData) return false;
+  return applyIncomingCloudVault(cloudData);
+};
+
+/**
  * Initializes background cloud synchronization.
  * - Pulls latest state from authoritative cloud backends on app launch and every 1.5s
  * - Pushes to cloud whenever a write event occurs (customers, accounts, approvals, etc.)
@@ -445,7 +473,7 @@ export const initCloudSync = () => {
   // Attach live sub-second Firestore onSnapshot listener if configured
   const unsubscribeFirestore = subscribeFirestoreVault((vaultData) => {
     if (vaultData) {
-      pullCloudToLocal().catch(() => {});
+      applyIncomingCloudVault(vaultData);
     }
   });
 
