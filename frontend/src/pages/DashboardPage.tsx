@@ -243,7 +243,7 @@ export const DashboardPage: React.FC = () => {
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard
           title="Total Customers"
           value={customers.length.toString()}
@@ -270,6 +270,13 @@ export const DashboardPage: React.FC = () => {
           value={`GHS ${totalInterestPiledUp.toFixed(2)}`}
           subtitle="30-Day Member Retention"
           icon={PiggyBank}
+          colorScheme="purple"
+        />
+        <StatCard
+          title="Company Net Balance"
+          value={`GHS ${(accounts.reduce((sum, a) => sum + a.availableBalance, 0) + availableVaultBalance).toFixed(2)}`}
+          subtitle="Total Institutional Vault"
+          icon={Landmark}
           colorScheme="emerald"
         />
         <StatCard
@@ -277,7 +284,7 @@ export const DashboardPage: React.FC = () => {
           value={`GHS ${loans.reduce((sum, l) => sum + l.amountApproved, 0).toFixed(2)}`}
           subtitle="Tenor Interest Schedule"
           icon={Calculator}
-          colorScheme="purple"
+          colorScheme="amber"
         />
       </div>
 
