@@ -29,7 +29,9 @@ import {
   Sparkles,
   ArrowDownRight,
   Trash2,
-  X
+  X,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 
 export const CompanyInterestPage: React.FC = () => {
@@ -49,11 +51,36 @@ export const CompanyInterestPage: React.FC = () => {
   // Modal State
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
   const [isConfirmEmptyOpen, setIsConfirmEmptyOpen] = useState(false);
+  const [isDestinationDropdownOpen, setIsDestinationDropdownOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [destinationType, setDestinationType] = useState<'COMPANY_BANK_ACCOUNT' | 'MTN_MOMO_MERCHANT' | 'VAULT_CASH'>('COMPANY_BANK_ACCOUNT');
   const [destinationDetails, setDestinationDetails] = useState('GCB Bank Corporate Account #10129384910');
   const [withdrawRemarks, setWithdrawRemarks] = useState('');
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const DESTINATION_OPTIONS = [
+    {
+      type: 'COMPANY_BANK_ACCOUNT' as const,
+      label: 'Company Bank Account',
+      desc: 'GCB Bank Corporate Wire Account',
+      icon: Building2,
+      defaultDetails: 'GCB Bank Corporate Account #10129384910'
+    },
+    {
+      type: 'MTN_MOMO_MERCHANT' as const,
+      label: 'MTN Mobile Money Merchant',
+      desc: 'Corporate Merchant SIM Settlement',
+      icon: Smartphone,
+      defaultDetails: 'MTN Mobile Money Merchant: 0244112233'
+    },
+    {
+      type: 'VAULT_CASH' as const,
+      label: 'Branch Vault Cash',
+      desc: 'Physical Cash Allocation at Head Office',
+      icon: Vault,
+      defaultDetails: 'Accra Central Vault Physical Cash Allocation'
+    }
+  ];
 
   // Financial Calculations
   const totalPiledUp = interestRecords.reduce((sum, r) => sum + r.accumulatedAmount, 0);
@@ -395,28 +422,34 @@ export const CompanyInterestPage: React.FC = () => {
       {/* Withdrawal Modal */}
       {isWithdrawModalOpen && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in"
-          onClick={() => setIsWithdrawModalOpen(false)}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-fade-in"
+          onClick={() => {
+            setIsWithdrawModalOpen(false);
+            setIsDestinationDropdownOpen(false);
+          }}
         >
           <div 
-            className="max-w-md w-full p-6 rounded-3xl bg-slate-900 border border-slate-700/80 shadow-2xl text-white space-y-5"
+            className="max-w-md w-full max-h-[86vh] overflow-y-auto p-5 sm:p-6 rounded-3xl bg-slate-900 border border-slate-700/80 shadow-2xl text-white space-y-4 my-auto scrollbar-thin animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
             
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3.5">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-2.5 text-amber-500">
                 <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
                   <PiggyBank className="w-5 h-5 text-amber-500" />
                 </div>
                 <div>
                   <h3 className="font-extrabold text-base text-white">Withdraw Company Interest</h3>
-                  <p className="text-[11px] text-slate-400 font-normal">Disburse corporate earnings to verified company account</p>
+                  <p className="text-[10px] sm:text-[11px] text-slate-400 font-normal">Disburse corporate earnings to company account</p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setIsWithdrawModalOpen(false)}
+                onClick={() => {
+                  setIsWithdrawModalOpen(false);
+                  setIsDestinationDropdownOpen(false);
+                }}
                 className="p-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
                 title="Close"
               >
@@ -425,21 +458,21 @@ export const CompanyInterestPage: React.FC = () => {
             </div>
 
             {/* Available Balance Pill */}
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-emerald-500/10 to-slate-950 border border-amber-500/40 flex items-center justify-between shadow-inner">
+            <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-emerald-500/10 to-slate-950 border border-amber-500/40 flex items-center justify-between shadow-inner">
               <div className="flex items-center space-x-2">
                 <Vault className="w-4 h-4 text-amber-400" />
-                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Available Vault Balance</span>
+                <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Available Vault Balance</span>
               </div>
               <span className="text-base font-black font-mono text-emerald-400">
                 GH₵ {availableVaultBalance.toFixed(2)}
               </span>
             </div>
 
-            <form onSubmit={handleWithdrawalSubmit} className="space-y-4 text-xs">
+            <form onSubmit={handleWithdrawalSubmit} className="space-y-3.5 text-xs">
               <div>
-                <label className="font-bold text-slate-200 block mb-1">Amount to Withdraw (GHS) *</label>
+                <label className="font-bold text-slate-200 block mb-1 text-xs">Amount to Withdraw (GHS) *</label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-3 font-mono font-bold text-amber-500 text-base">GH₵</span>
+                  <span className="absolute left-3.5 top-2.5 font-mono font-bold text-amber-500 text-base">GH₵</span>
                   <input
                     required
                     type="number"
@@ -454,33 +487,78 @@ export const CompanyInterestPage: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="font-bold text-slate-200 block mb-1">Destination Type *</label>
-                <select
-                  value={destinationType}
-                  onChange={(e) => {
-                    const val = e.target.value as any;
-                    setDestinationType(val);
-                    if (val === 'COMPANY_BANK_ACCOUNT') setDestinationDetails('GCB Bank Corporate Account #10129384910');
-                    if (val === 'MTN_MOMO_MERCHANT') setDestinationDetails('MTN Mobile Money Merchant: 0244112233');
-                    if (val === 'VAULT_CASH') setDestinationDetails('Accra Central Vault Physical Cash Allocation');
-                  }}
-                  className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-medium focus:outline-none focus:border-amber-500 shadow-inner cursor-pointer"
+              {/* Custom High-Contrast Dropdown */}
+              <div className="relative">
+                <label className="font-bold text-slate-200 block mb-1 text-xs">Destination Type *</label>
+                <button
+                  type="button"
+                  onClick={() => setIsDestinationDropdownOpen(!isDestinationDropdownOpen)}
+                  className="w-full p-2.5 rounded-xl bg-slate-950 border-2 border-slate-700 hover:border-amber-500 text-left flex items-center justify-between transition-all cursor-pointer shadow-inner group"
                 >
-                  <option value="COMPANY_BANK_ACCOUNT" className="bg-slate-900 text-white py-2">
-                    Company Bank Account
-                  </option>
-                  <option value="MTN_MOMO_MERCHANT" className="bg-slate-900 text-white py-2">
-                    MTN Mobile Money Merchant
-                  </option>
-                  <option value="VAULT_CASH" className="bg-slate-900 text-white py-2">
-                    Branch Vault Cash
-                  </option>
-                </select>
+                  <div className="flex items-center space-x-2.5">
+                    <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-500">
+                      {React.createElement(
+                        DESTINATION_OPTIONS.find((o) => o.type === destinationType)?.icon || Building2,
+                        { className: 'w-4 h-4 text-amber-400' }
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-bold text-white text-xs">
+                        {DESTINATION_OPTIONS.find((o) => o.type === destinationType)?.label}
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-normal">
+                        {DESTINATION_OPTIONS.find((o) => o.type === destinationType)?.desc}
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isDestinationDropdownOpen ? 'rotate-180 text-amber-400' : ''}`} />
+                </button>
+
+                {/* Floating Options Menu */}
+                {isDestinationDropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-slate-900 border-2 border-slate-700 rounded-2xl shadow-2xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-150">
+                    {DESTINATION_OPTIONS.map((opt) => {
+                      const isSelected = destinationType === opt.type;
+                      const Icon = opt.icon;
+                      return (
+                        <button
+                          key={opt.type}
+                          type="button"
+                          onClick={() => {
+                            setDestinationType(opt.type);
+                            setDestinationDetails(opt.defaultDetails);
+                            setIsDestinationDropdownOpen(false);
+                          }}
+                          className={`w-full p-2 rounded-xl text-left flex items-center justify-between transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                              : 'bg-slate-950/90 hover:bg-slate-800 text-white hover:text-amber-300'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-amber-400'}`}>
+                              <Icon className="w-3.5 h-3.5" />
+                            </div>
+                            <div>
+                              <div className={`text-xs font-bold ${isSelected ? 'text-slate-950' : 'text-white'}`}>
+                                {opt.label}
+                              </div>
+                              <div className={`text-[10px] ${isSelected ? 'text-slate-900/80' : 'text-slate-400'}`}>
+                                {opt.desc}
+                              </div>
+                            </div>
+                          </div>
+
+                          {isSelected && <Check className="w-4 h-4 text-slate-950 stroke-[3]" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div>
-                <label className="font-bold text-slate-200 block mb-1">Destination Account Details *</label>
+                <label className="font-bold text-slate-200 block mb-1 text-xs">Destination Account Details *</label>
                 <input
                   required
                   type="text"
@@ -491,7 +569,7 @@ export const CompanyInterestPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="font-bold text-slate-200 block mb-1">Purpose / Administrative Remarks</label>
+                <label className="font-bold text-slate-200 block mb-1 text-xs">Purpose / Administrative Remarks</label>
                 <textarea
                   value={withdrawRemarks}
                   onChange={(e) => setWithdrawRemarks(e.target.value)}
@@ -501,24 +579,27 @@ export const CompanyInterestPage: React.FC = () => {
                 />
               </div>
 
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200 flex items-start gap-2">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200 flex items-start gap-2">
                 <span className="text-base leading-none">⚠️</span>
                 <div>
-                  <span className="font-bold text-amber-300">Super Admin Clearance Notice:</span> This transaction request will be queued in the Super Admin Approvals Hub for authorization before funds are disbursed.
+                  <span className="font-bold text-amber-300">Super Admin Clearance Notice:</span> This request will be queued in the Super Admin Approvals Hub before funds are disbursed.
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3 pt-2">
+              <div className="flex items-center space-x-3 pt-1">
                 <button
                   type="button"
-                  onClick={() => setIsWithdrawModalOpen(false)}
-                  className="w-1/2 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs transition-colors cursor-pointer border border-slate-700"
+                  onClick={() => {
+                    setIsWithdrawModalOpen(false);
+                    setIsDestinationDropdownOpen(false);
+                  }}
+                  className="w-1/2 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs transition-colors cursor-pointer border border-slate-700"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="w-1/2 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/25 transition-all cursor-pointer"
+                  className="w-1/2 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/25 transition-all cursor-pointer"
                 >
                   Submit Request
                 </button>
