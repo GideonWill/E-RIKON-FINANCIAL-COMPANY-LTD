@@ -615,11 +615,11 @@ export const TellerPage: React.FC = () => {
 
               {/* Withdrawal as Savings-Backed Loan Fee Settlement & Presets Banner */}
               {operationType === 'WITHDRAWAL' && (
-                <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 space-y-3">
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3.5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
-                      <h4 className="font-extrabold text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1.5 uppercase tracking-wider">
-                        <ArrowDownLeft className="w-4 h-4 text-rose-500" />
+                      <h4 className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wider">
+                        <ArrowDownLeft className="w-4 h-4 text-amber-500" />
                         Withdrawal as Savings-Backed Loan (30-Day Cycle)
                       </h4>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
@@ -627,56 +627,56 @@ export const TellerPage: React.FC = () => {
                       </p>
                     </div>
 
-                    <span className="font-mono text-xs font-black text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-xl border border-emerald-500/30 w-fit">
-                      Max Loan Withdrawable: GHS {loanInfo.maxLoanAmount.toFixed(2)}
+                    <span className="font-mono text-xs font-black text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-800 w-fit shadow-xs">
+                      Max Withdrawable: <b className="text-amber-500">GH₵ {loanInfo.maxLoanAmount.toFixed(2)}</b>
                     </span>
                   </div>
 
                   {/* Net Payout Calculation Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                    <div className="p-2.5 rounded-xl bg-slate-900 text-white border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block font-medium">Total Savings Balance</span>
-                      <span className="font-mono font-black text-amber-400 text-sm">GH₵ {selectedAccount.availableBalance.toFixed(2)}</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                    <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">Total Savings Balance</span>
+                      <span className="font-mono font-black text-slate-900 dark:text-slate-100 text-sm mt-0.5 block">GH₵ {selectedAccount.availableBalance.toFixed(2)}</span>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-slate-900 text-white border border-slate-800">
-                      <span className="text-[10px] text-rose-400 block font-medium">Protected 1-Day Fee</span>
-                      <span className="font-mono font-black text-rose-400 text-sm">- GH₵ {loanInfo.protectedRetentionFee.toFixed(2)}</span>
+                    <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">Protected 1-Day Fee</span>
+                      <span className="font-mono font-black text-slate-500 dark:text-slate-400 text-sm mt-0.5 block">- GH₵ {loanInfo.protectedRetentionFee.toFixed(2)}</span>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-white">
-                      <span className="text-[10px] text-emerald-300 block font-medium">Max Loan Available</span>
-                      <span className="font-mono font-black text-emerald-400 text-sm">GH₵ {loanInfo.maxLoanAmount.toFixed(2)}</span>
+                    <div className="p-3 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 shadow-2xs">
+                      <span className="text-[10px] text-amber-700 dark:text-amber-300 block font-medium">Max Loan Available</span>
+                      <span className="font-mono font-black text-amber-600 dark:text-amber-400 text-sm mt-0.5 block">GH₵ {loanInfo.maxLoanAmount.toFixed(2)}</span>
                     </div>
                   </div>
 
                   {/* Quick Withdrawal Presets */}
-                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-rose-500/20">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold">Quick Select:</span>
+                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-800/80">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Quick Select:</span>
                     <button
                       type="button"
                       disabled={loanInfo.maxLoanAmount <= 0}
                       onClick={() => setAmount(String(loanInfo.maxLoanAmount))}
-                      className="px-2.5 py-1 rounded-lg bg-rose-500 disabled:opacity-50 text-white font-mono font-bold text-[11px] shadow-sm hover:bg-rose-600 cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-40 font-mono font-bold text-xs border border-slate-800 dark:border-slate-700 cursor-pointer transition-all shadow-xs"
                     >
-                      Max Allowable Loan (GHS {loanInfo.maxLoanAmount.toFixed(2)})
+                      Max Allowable Loan (GH₵ {loanInfo.maxLoanAmount.toFixed(2)})
                     </button>
                     {loanInfo.maxLoanAmount >= 100 && (
                       <button
                         type="button"
                         onClick={() => setAmount(String(Math.floor(loanInfo.maxLoanAmount / 2)))}
-                        className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 hover:border-rose-500 cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-amber-500 text-xs font-mono font-bold text-slate-700 dark:text-slate-200 cursor-pointer transition-all shadow-xs"
                       >
-                        50% (GHS {Math.floor(loanInfo.maxLoanAmount / 2).toFixed(2)})
+                        50% (GH₵ {Math.floor(loanInfo.maxLoanAmount / 2).toFixed(2)})
                       </button>
                     )}
                   </div>
 
                   {/* Fee Settlement Assurance */}
-                  <div className="p-2.5 rounded-xl bg-slate-900 text-white border border-slate-800 text-[11px] flex items-start gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                    <div className="text-slate-300 leading-relaxed">
-                      <b>Retention Protection Rule:</b> When a client withdraws early as a loan against their savings, the 1-day retention fee (<b>GH₵ {loanInfo.protectedRetentionFee.toFixed(2)}</b>) is never eaten into and remains safely reserved in the vault.
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] flex items-start gap-2.5 text-slate-600 dark:text-slate-300 shadow-2xs">
+                    <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <div className="leading-relaxed">
+                      <b className="text-slate-900 dark:text-white">Retention Protection Rule:</b> When a client withdraws early as a loan against their savings, the 1-day retention fee (<b>GH₵ {loanInfo.protectedRetentionFee.toFixed(2)}</b>) is never eaten into and remains safely reserved in the vault.
                     </div>
                   </div>
                 </div>
