@@ -11,13 +11,13 @@ import {
 
 // Firebase configuration for E-RIKON Financial Company PLC
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBexTaAkNwo39yg-Us8ckp8oFf_wJmRO1Y",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "erikon-company-plc.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "erikon-company-plc",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "erikon-company-plc.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "771545783989",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:771545783989:web:db166570a2ccaf713368fc",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-MSDFK20MX6"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ''
 };
 
 // Check if valid Firebase configuration is present
@@ -25,30 +25,28 @@ export const isFirebaseConfigured = (): boolean => {
   return Boolean(
     firebaseConfig.apiKey &&
     firebaseConfig.projectId &&
-    !firebaseConfig.apiKey.includes('REPLACE_WITH')
+    !firebaseConfig.apiKey.includes('your_firebase_api_key')
   );
 };
 
-// Initialize Firebase App instance
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// Initialize Firebase App instance safely if configured
+let app: any = null;
+let firestoreDb: any = null;
 
-// Initialize Cloud Firestore
-export const db = getFirestore(app);
-
-// Enable offline persistence for unstable networks in Ghana
-if (typeof window !== 'undefined') {
+if (isFirebaseConfigured()) {
   try {
-    enableIndexedDbPersistence(db).catch((err) => {
-      if (err.code === 'failed-precondition') {
-        console.warn('[Firestore] Multiple tabs open; persistence can only be enabled in one tab at a time.');
-      } else if (err.code === 'unimplemented') {
-        console.warn('[Firestore] The current browser does not support all features required for persistence.');
-      }
-    });
+    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    firestoreDb = getFirestore(app);
+    if (typeof window !== 'undefined') {
+      enableIndexedDbPersistence(firestoreDb).catch(() => {});
+    }
   } catch (e) {
-    // Ignore persistence errors
+    console.warn('[Firebase] Initialization notice:', e);
   }
 }
+
+// Export db safely
+export const db = firestoreDb;
 
 /**
  * Subscribes to live real-time Firestore updates for the global vault document.
