@@ -9,6 +9,8 @@ import {
   recordPackageDeposit,
   splitPaymentIntoDays,
   getMaxWithdrawableLoan,
+  getStoredCompanyInterest,
+  getStoredCompanyWithdrawals,
   toDecimal
 } from '../services/api';
 import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
@@ -277,7 +279,14 @@ export const TellerPage: React.FC = () => {
   const todayTellerWithdrawals = allTxs
     .filter((t) => t.type === 'WITHDRAWAL' && t.createdAt?.startsWith(todayIso))
     .reduce((sum, t) => sum + t.amount, 0);
-  const liveTillBalance = Math.max(0, todayTellerDeposits - todayTellerWithdrawals);
+  
+  // Total authoritative cash in vault across all client savings balances + corporate retained interest
+  const totalClientSavings = accounts.reduce((sum, a) => sum + (a.availableBalance || 0), 0);
+  const totalCompanyInterest = getStoredCompanyInterest().reduce((sum, r) => sum + (r.accumulatedAmount || 0), 0);
+  const totalApprovedInterestWithdrawals = getStoredCompanyWithdrawals()
+    .filter((w) => w.status === 'APPROVED')
+    .reduce((sum, w) => sum + w.amount, 0);
+  const totalVaultLiquidity = totalClientSavings + Math.max(0, totalCompanyInterest - totalApprovedInterestWithdrawals);
 
   return (
     <div className="space-y-6 pb-12">
@@ -302,8 +311,8 @@ export const TellerPage: React.FC = () => {
             </div>
           )}
           <div className="flex items-center space-x-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-xl border border-emerald-500/20 text-xs font-mono font-bold w-fit shrink-0 shadow-xs">
-            <ShieldAlert className="w-4 h-4 shrink-0" /> 
-            <span>Vault Cash Balanced: GHS {liveTillBalance.toFixed(2)}</span>
+            <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" /> 
+            <span>Vault Cash Position: GHS {totalVaultLiquidity.toFixed(2)}</span>
           </div>
         </div>
       </div>
