@@ -53,7 +53,7 @@ export const CompanyInterestPage: React.FC = () => {
   const [isConfirmEmptyOpen, setIsConfirmEmptyOpen] = useState(false);
   const [isDestinationDropdownOpen, setIsDestinationDropdownOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [destinationType, setDestinationType] = useState<'COMPANY_BANK_ACCOUNT' | 'MTN_MOMO_MERCHANT' | 'VAULT_CASH'>('COMPANY_BANK_ACCOUNT');
+  const [destinationType, setDestinationType] = useState<'COMPANY_BANK_ACCOUNT' | 'MTN_MOMO_MERCHANT'>('COMPANY_BANK_ACCOUNT');
   const [destinationDetails, setDestinationDetails] = useState('GCB Bank Corporate Account #10129384910');
   const [withdrawRemarks, setWithdrawRemarks] = useState('');
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -72,13 +72,6 @@ export const CompanyInterestPage: React.FC = () => {
       desc: 'Corporate Merchant SIM Settlement',
       icon: Smartphone,
       defaultDetails: 'MTN Mobile Money Merchant: 0244112233'
-    },
-    {
-      type: 'VAULT_CASH' as const,
-      label: 'Branch Vault Cash',
-      desc: 'Physical Cash Allocation at Head Office',
-      icon: Vault,
-      defaultDetails: 'Accra Central Vault Physical Cash Allocation'
     }
   ];
 
