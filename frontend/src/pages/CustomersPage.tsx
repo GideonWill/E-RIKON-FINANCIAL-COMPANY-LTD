@@ -879,56 +879,60 @@ export const CustomersPage: React.FC = () => {
 
         return (
           <div
-            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+            className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto"
             onClick={() => {
               setSelectedDetailCustomer(null);
               setSelectedDetailCycleNumber(null);
             }}
           >
             <div
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-5 my-auto max-h-[94vh] overflow-y-auto"
+              className="bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 rounded-t-[32px] sm:rounded-3xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-2 duration-200"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Mobile Drag Pill */}
+              <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto sm:hidden" />
+
               {/* Modal Header */}
-              <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-                <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 via-slate-800 to-slate-900 border-2 border-amber-500/40 text-amber-500 text-xl font-mono font-black flex items-center justify-center shrink-0 shadow-md">
+              <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div className="flex items-center space-x-3 sm:space-x-4">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 via-slate-800 to-slate-900 border-2 border-amber-500/40 text-amber-500 text-lg sm:text-xl font-mono font-black flex items-center justify-center shrink-0 shadow-md">
                     {selectedDetailCustomer.firstName[0]}{selectedDetailCustomer.lastName[0]}
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-amber-500">{selectedDetailCustomer.customerNumber}</span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <span className="font-mono text-[11px] sm:text-xs font-bold text-amber-500">{selectedDetailCustomer.customerNumber}</span>
+                      <span className="px-2 py-0.2 rounded-full text-[9px] sm:text-[10px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                         {selectedDetailCustomer.status}
                       </span>
                     </div>
-                    <h3 className="font-extrabold text-lg text-slate-900 dark:text-white mt-0.5">
+                    <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white mt-0.5">
                       {selectedDetailCustomer.firstName} {selectedDetailCustomer.otherNames || ''} {selectedDetailCustomer.lastName}
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
-                      <CreditCard className="w-3.5 h-3.5 text-amber-500" />
+                    <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+                      <CreditCard className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                       <span>Ghana Card: <b className="font-mono text-slate-800 dark:text-slate-200">{selectedDetailCustomer.ghanaCardNumber}</b></span>
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
                   <button
                     type="button"
                     onClick={() => handleDeleteCustomer(selectedDetailCustomer)}
-                    className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                    className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-all cursor-pointer flex items-center gap-1 text-xs font-bold"
                     title="Close & Delete Client Account"
                   >
                     <Trash2 className="w-4 h-4" />
-                    <span className="hidden sm:inline">Delete Record</span>
+                    <span className="hidden md:inline">Delete Record</span>
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => {
                       setSelectedDetailCustomer(null);
                       setSelectedDetailCycleNumber(null);
                     }}
-                    className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer"
                     title="Close Modal"
                   >
                     <X className="w-5 h-5" />
@@ -938,11 +942,11 @@ export const CustomersPage: React.FC = () => {
 
               {/* Cycle History Tab Switcher */}
               {fin.allCycles.length > 0 && (
-                <div className="space-y-2">
-                  <div className="p-2 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 overflow-x-auto">
-                    <div className="flex items-center gap-2 overflow-x-auto">
-                      <span className="text-[10px] font-black text-slate-400 uppercase px-2 shrink-0">
-                        Cycle Records:
+                <div className="space-y-1.5">
+                  <div className="p-1.5 sm:p-2 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 overflow-x-auto">
+                    <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto">
+                      <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase px-1.5 shrink-0">
+                        Cycles:
                       </span>
                       {fin.allCycles.map((c) => {
                         const isSelected = fin.cycleNumber === c.cycleNumber;
@@ -952,16 +956,16 @@ export const CustomersPage: React.FC = () => {
                             key={c.cycleNumber}
                             type="button"
                             onClick={() => setSelectedDetailCycleNumber(c.cycleNumber)}
-                            className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${isSelected
+                            className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl font-mono text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${isSelected
                                 ? 'bg-amber-500 text-slate-950 shadow-md font-black ring-2 ring-amber-500/40'
                                 : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-amber-500 border border-slate-200 dark:border-slate-800'
                               }`}
-                            title={`Switch to view detailed records of Cycle #${c.cycleNumber}`}
+                            title={`View Cycle #${c.cycleNumber}`}
                           >
-                            <Coins className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                            <Coins className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                             <span>Cycle #{c.cycleNumber}</span>
-                            <span className="text-[10px] opacity-80">
-                              {isCompleted ? '• (Completed 31/31)' : `• (${c.currentDayCount}/31 Days)`}
+                            <span className="text-[9px] opacity-80">
+                              {isCompleted ? '• (31/31)' : `• (${c.currentDayCount}/31)`}
                             </span>
                           </button>
                         );
@@ -982,104 +986,103 @@ export const CustomersPage: React.FC = () => {
                             }
                           }
                         }}
-                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-white text-[11px] font-black shrink-0 flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer transition-all"
-                        title="Start Next 31-Day Cycle for this client"
+                        className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-white text-[10px] sm:text-[11px] font-black shrink-0 flex items-center gap-1 shadow-md shadow-emerald-500/20 cursor-pointer transition-all"
                       >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Start Next Cycle (Cycle #{(fin.allCycles[0]?.cycleNumber || 1) + 1})</span>
+                        <Sparkles className="w-3 h-3" />
+                        <span>Start Next Cycle</span>
                       </button>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* 360 Financial Metrics Highlights Grid: Total Savings, Total Withdrawals, Net Balance, Daily Package */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              {/* 360 Financial Metrics Highlights 2x2 Grid on Mobile, 4-col on Desktop */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
 
                 {/* 1. Daily Package Card */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/30 space-y-1">
-                  <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Coins className="w-3.5 h-3.5" /> Daily Target
+                <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/30 space-y-0.5 shadow-2xs">
+                  <span className="text-[9px] sm:text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1 truncate">
+                    <Coins className="w-3 h-3 text-amber-500 shrink-0" /> Daily Target
                   </span>
-                  <div className="text-xl font-black font-mono text-amber-500">
+                  <div className="text-base sm:text-xl font-black font-mono text-amber-500">
                     GH₵ {fin.packageRate}.00
                   </div>
-                  <p className="text-[10px] text-slate-500">Package Rate / Day</p>
+                  <p className="text-[9px] sm:text-[10px] text-slate-500 truncate">Package Rate / Day</p>
                 </div>
 
-                {/* 2. Total Client Savings Deposited Across All Cycles */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent border-2 border-blue-500/40 space-y-1 shadow-sm">
-                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <TrendingUp className="w-3.5 h-3.5" /> Total Client Savings
+                {/* 2. Total Client Savings Deposited */}
+                <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent border-2 border-blue-500/40 space-y-0.5 shadow-2xs">
+                  <span className="text-[9px] sm:text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1 truncate">
+                    <TrendingUp className="w-3 h-3 text-blue-500 shrink-0" /> Total Savings
                   </span>
-                  <div className="text-xl font-black font-mono text-blue-500">
+                  <div className="text-base sm:text-xl font-black font-mono text-blue-500">
                     GH₵ {fin.totalDepositedAcrossCycles.toFixed(2)}
                   </div>
-                  <p className="text-[10px] text-slate-500">Gross Deposited (All Cycles)</p>
+                  <p className="text-[9px] sm:text-[10px] text-slate-500 truncate">Gross (All Cycles)</p>
                 </div>
 
                 {/* 3. Total Client Withdrawals */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-500/15 via-rose-500/5 to-transparent border-2 border-rose-500/40 space-y-1 shadow-sm">
-                  <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <ArrowDownLeft className="w-3.5 h-3.5" /> Total Withdrawals
+                <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-rose-500/15 via-rose-500/5 to-transparent border-2 border-rose-500/40 space-y-0.5 shadow-2xs">
+                  <span className="text-[9px] sm:text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1 truncate">
+                    <ArrowDownLeft className="w-3 h-3 text-rose-500 shrink-0" /> Withdrawals
                   </span>
-                  <div className="text-xl font-black font-mono text-rose-500">
+                  <div className="text-base sm:text-xl font-black font-mono text-rose-500">
                     GH₵ {fin.totalWithdrawn.toFixed(2)}
                   </div>
-                  <p className="text-[10px] text-slate-500">{fin.customerWithdrawals.length} Withdrawal Record(s)</p>
+                  <p className="text-[9px] sm:text-[10px] text-slate-500 truncate">{fin.customerWithdrawals.length} Record(s)</p>
                 </div>
 
-                {/* 4. Net Client Balance (Available in Vault) */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent border-2 border-emerald-500/40 space-y-1 shadow-sm">
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Wallet className="w-3.5 h-3.5" /> Net Client Balance
+                {/* 4. Net Client Balance */}
+                <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent border-2 border-emerald-500/40 space-y-0.5 shadow-2xs">
+                  <span className="text-[9px] sm:text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1 truncate">
+                    <Wallet className="w-3 h-3 text-emerald-500 shrink-0" /> Net Balance
                   </span>
-                  <div className="text-xl font-black font-mono text-emerald-500">
+                  <div className="text-base sm:text-xl font-black font-mono text-emerald-500">
                     GH₵ {fin.availableSavings.toFixed(2)}
                   </div>
-                  <p className="text-[10px] text-emerald-500 font-bold">Available in Vault</p>
+                  <p className="text-[9px] sm:text-[10px] text-emerald-500 font-bold truncate">Available in Vault</p>
                 </div>
 
               </div>
 
               {/* Company Management Fee (31 Days) Alert Banner */}
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-purple-500" />
-                    Company 31-Day Management Fee (Cycle #{fin.cycleNumber})
+              <div className="p-3 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+                  <span className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                    Company 31-Day Fee (Cycle #{fin.cycleNumber})
                   </span>
-                  <span className="font-mono text-xs font-black text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2.5 py-0.5 rounded-lg border border-purple-500/30">
-                    GH₵ {fin.packageRate}.00 (1 Day Package Value)
+                  <span className="font-mono text-[11px] sm:text-xs font-black text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-lg border border-purple-500/30 w-fit">
+                    GH₵ {fin.packageRate}.00 (1-Day Fee)
                   </span>
                 </div>
 
-                <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                <p className="text-[10px] sm:text-[11px] text-slate-600 dark:text-slate-300">
                   {fin.isDay31FeeRetained ? (
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                      <Check className="w-4 h-4" /> Day 31 reached for Cycle #{fin.cycleNumber}! GH₵ {fin.packageRate}.00 management fee has been retained by E-RiKON Financial Company PLC and recorded to corporate interest revenue.
+                      <Check className="w-3.5 h-3.5 shrink-0" /> Day 31 reached! GH₵ {fin.packageRate}.00 retained to corporate interest revenue.
                     </span>
                   ) : (
                     <span>
-                      Client has completed <b>{fin.daysPaid} of 31 days</b> in Cycle #{fin.cycleNumber} (Cycle Deposited: <b>GH₵ {fin.totalDeposited.toFixed(2)}</b>). Upon reaching <b>Day 31</b>, 1 day's package value (<b>GH₵ {fin.packageRate}.00</b>) will be retained as management fee.
+                      Completed <b>{fin.daysPaid} of 31 days</b> (Deposited: <b>GH₵ {fin.totalDeposited.toFixed(2)}</b>). On Day 31, 1 day's package (<b>GH₵ {fin.packageRate}.00</b>) is retained.
                     </span>
                   )}
                 </p>
               </div>
 
               {/* 31-Day Collection Cycle Grid */}
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <h4 className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-amber-500" />
-                    31-Day Collection Cycle Split Days (Cycle #{fin.cycleNumber})
+                    31-Day Split Days (Cycle #{fin.cycleNumber})
                   </h4>
                   <span className="text-[10px] font-mono text-slate-400">
                     {fin.daysPaid} / 31 Recorded ({percentCompleted}%)
                   </span>
                 </div>
 
-                <div className="grid grid-cols-6 sm:grid-cols-11 gap-1.5 max-h-48 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800/80">
+                <div className="grid grid-cols-7 sm:grid-cols-11 gap-1 max-h-40 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800/80">
                   {Array.from({ length: 31 }, (_, idx) => {
                     const dayNo = idx + 1;
                     const isPaid = dayNo <= fin.daysPaid;
@@ -1087,7 +1090,7 @@ export const CustomersPage: React.FC = () => {
                     return (
                       <div
                         key={dayNo}
-                        className={`p-1.5 rounded-xl border text-center font-mono text-[10px] transition-all ${isDay31
+                        className={`p-1 rounded-xl border text-center font-mono text-[9px] sm:text-[10px] transition-all ${isDay31
                             ? isPaid
                               ? 'bg-purple-500/20 border-purple-500 text-purple-600 dark:text-purple-400 font-black'
                               : 'bg-purple-500/5 border-purple-500/30 text-purple-400 font-medium'
@@ -1097,12 +1100,12 @@ export const CustomersPage: React.FC = () => {
                           }`}
                         title={
                           isDay31
-                            ? `Day 31: Company 1-Day Management Fee (GH₵ ${fin.packageRate})`
+                            ? `Day 31: Company 1-Day Fee (GH₵ ${fin.packageRate})`
                             : `Day ${dayNo}: GH₵ ${fin.packageRate} ${isPaid ? 'PAID' : 'PENDING'}`
                         }
                       >
                         <div className="font-extrabold">D{dayNo}</div>
-                        <div className="text-[9px] mt-0.5">
+                        <div className="text-[8px] sm:text-[9px] mt-0.5">
                           {isPaid ? `GH₵${fin.packageRate}` : '—'}
                         </div>
                       </div>
@@ -1112,63 +1115,61 @@ export const CustomersPage: React.FC = () => {
               </div>
 
               {/* Account Transactions & Withdrawals Ledger */}
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <h4 className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Client Activity & Withdrawals Ledger</span>
+                    <span>Client Activity Ledger</span>
                   </h4>
                   <span className="text-[10px] font-mono text-slate-400">
-                    {fin.customerTransactions.length} Record(s) • Total Withdrawn: GH₵ {fin.totalWithdrawn.toFixed(2)}
+                    {fin.customerTransactions.length} Record(s)
                   </span>
                 </div>
 
                 {fin.customerTransactions.length === 0 ? (
-                  <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400">
-                    No transactions recorded for this client yet.
+                  <div className="p-3 text-center rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-400">
+                    No individual counter transactions recorded yet for this client.
                   </div>
                 ) : (
-                  <div className="max-h-44 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 divide-y divide-slate-100 dark:divide-slate-800/80">
-                    {fin.customerTransactions.map((tx) => {
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                    {fin.customerTransactions.map((tx: any) => {
                       const isWithdrawal = tx.type === 'WITHDRAWAL';
                       const isFee = tx.type === 'COMPANY_FEE_DEDUCTION';
-
                       return (
-                        <div key={tx.id} className="p-2.5 sm:p-3 flex items-center justify-between gap-3 text-xs">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold shrink-0 ${
-                              isWithdrawal
-                                ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
-                                : isFee
-                                ? 'bg-purple-500/10 text-purple-500 border border-purple-500/20'
-                                : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                        <div
+                          key={tx.id}
+                          className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-2 text-xs"
+                        >
+                          <div className="flex items-center space-x-2.5 min-w-0">
+                            <div className={`p-1.5 rounded-lg shrink-0 ${
+                              isWithdrawal ? 'bg-rose-500/10 text-rose-500' : isFee ? 'bg-purple-500/10 text-purple-500' : 'bg-emerald-500/10 text-emerald-500'
                             }`}>
-                              {isWithdrawal ? <ArrowDownLeft className="w-4 h-4" /> : isFee ? <Building2 className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                              {isWithdrawal ? <ArrowDownLeft className="w-3.5 h-3.5" /> : isFee ? <Building2 className="w-3.5 h-3.5" /> : <TrendingUp className="w-3.5 h-3.5" />}
                             </div>
                             <div className="min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className={`font-black text-[11px] ${
+                              <div className="flex items-center gap-1.5">
+                                <span className={`font-black text-[10px] ${
                                   isWithdrawal ? 'text-rose-600 dark:text-rose-400' : isFee ? 'text-purple-600 dark:text-purple-400' : 'text-emerald-600 dark:text-emerald-400'
                                 }`}>
-                                  {isWithdrawal ? 'WITHDRAWAL (LOAN)' : isFee ? 'COMPANY FEE' : 'DEPOSIT'}
+                                  {isWithdrawal ? 'WITHDRAWAL' : isFee ? 'COMPANY FEE' : 'DEPOSIT'}
                                 </span>
-                                <span className="font-mono text-[10px] text-slate-400">
+                                <span className="font-mono text-[9px] text-slate-400">
                                   {tx.receiptNo || tx.referenceNo}
                                 </span>
                               </div>
-                              <div className="text-[10px] text-slate-500 truncate mt-0.5">
-                                {tx.remarks || `Recorded by ${tx.recordedBy?.firstName || 'Staff'}`} • {new Date(tx.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              <div className="text-[9px] text-slate-500 truncate mt-0.5">
+                                {tx.remarks || `Recorded by ${tx.recordedBy?.firstName || 'Staff'}`}
                               </div>
                             </div>
                           </div>
 
                           <div className="text-right shrink-0">
-                            <div className={`font-mono font-black text-xs ${
+                            <div className={`font-mono font-black text-[11px] sm:text-xs ${
                               isWithdrawal ? 'text-rose-500' : isFee ? 'text-purple-500' : 'text-emerald-500'
                             }`}>
                               {isWithdrawal ? '-' : '+'}GH₵ {tx.amount.toFixed(2)}
                             </div>
-                            <div className="text-[9px] font-mono text-slate-400">
+                            <div className="text-[8px] sm:text-[9px] font-mono text-slate-400">
                               Bal: GH₵ {tx.newBal.toFixed(2)}
                             </div>
                           </div>
@@ -1180,58 +1181,55 @@ export const CustomersPage: React.FC = () => {
               </div>
 
               {/* Personal & Next of Kin Profile */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 text-xs">
-                <h4 className="font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider text-xs flex items-center gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-2">
-                  <User className="w-4 h-4 text-amber-500" />
+              <div className="p-3 sm:p-4 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+                <h4 className="font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider text-[10px] sm:text-xs flex items-center gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-1.5">
+                  <User className="w-3.5 h-3.5 text-amber-500" />
                   <span>Client Contact & Next of Kin</span>
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-1">
-                    <span className="text-slate-500 dark:text-slate-400 text-[10px] font-extrabold block uppercase tracking-wider">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <div className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs space-y-0.5">
+                    <span className="text-slate-500 dark:text-slate-400 text-[9px] font-extrabold block uppercase tracking-wider">
                       Phone Contact
                     </span>
-                    <span className="font-black font-mono text-sm text-slate-950 dark:text-white block">
+                    <span className="font-black font-mono text-xs sm:text-sm text-slate-950 dark:text-white block truncate">
                       {selectedDetailCustomer.phone}
                     </span>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-1">
-                    <span className="text-slate-500 dark:text-slate-400 text-[10px] font-extrabold block uppercase tracking-wider">
+                  <div className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs space-y-0.5">
+                    <span className="text-slate-500 dark:text-slate-400 text-[9px] font-extrabold block uppercase tracking-wider">
                       Occupation
                     </span>
-                    <span className="font-black text-sm text-slate-950 dark:text-white block">
+                    <span className="font-black text-xs sm:text-sm text-slate-950 dark:text-white block truncate">
                       {selectedDetailCustomer.occupation || 'Not Specified'}
                     </span>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-1">
-                    <span className="text-slate-500 dark:text-slate-400 text-[10px] font-extrabold block uppercase tracking-wider">
+                  <div className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs space-y-0.5 col-span-2 sm:col-span-1">
+                    <span className="text-slate-500 dark:text-slate-400 text-[9px] font-extrabold block uppercase tracking-wider">
                       Residential Address
                     </span>
-                    <span className="font-black text-sm text-slate-950 dark:text-white block">
+                    <span className="font-black text-xs sm:text-sm text-slate-950 dark:text-white block truncate">
                       {selectedDetailCustomer.address || 'Not Specified'}
                     </span>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-1">
-                    <span className="text-slate-500 dark:text-slate-400 text-[10px] font-extrabold block uppercase tracking-wider">
+                  <div className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs space-y-0.5 col-span-2 sm:col-span-1">
+                    <span className="text-slate-500 dark:text-slate-400 text-[9px] font-extrabold block uppercase tracking-wider">
                       Next of Kin
                     </span>
-                    <div className="font-black text-sm text-slate-950 dark:text-white block">
+                    <div className="font-black text-xs sm:text-sm text-slate-950 dark:text-white block truncate">
                       {selectedDetailCustomer.nextOfKin?.fullName || 'Not Specified'}
-                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1">
+                      <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 ml-1">
                         ({selectedDetailCustomer.nextOfKin?.relationship || 'Family'})
-                      </span>
-                      <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200 block mt-1">
-                        📞 {selectedDetailCustomer.nextOfKin?.phone || selectedDetailCustomer.phone}
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Modal Action Buttons */}
-              <div className="pt-2 flex flex-col sm:flex-row items-center gap-2.5">
+              {/* Modal Action Buttons (Grid 2x2 on Mobile, Flex Row on Desktop) */}
+              <div className="pt-1 grid grid-cols-2 sm:flex sm:items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -1239,10 +1237,10 @@ export const CustomersPage: React.FC = () => {
                     setSelectedDetailCustomer(null);
                     navigate('/teller', { state: { accountId: accId, mode: 'DEPOSIT' } });
                   }}
-                  className="w-full sm:flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer transition-all"
+                  className="py-2.5 sm:py-3 sm:flex-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer transition-all"
                 >
                   <ArrowUpRight className="w-4 h-4" />
-                  <span>Record Deposit</span>
+                  <span>Deposit</span>
                 </button>
 
                 <button
@@ -1252,10 +1250,24 @@ export const CustomersPage: React.FC = () => {
                     setSelectedDetailCustomer(null);
                     navigate('/teller', { state: { accountId: accId, mode: 'WITHDRAWAL' } });
                   }}
-                  className="w-full sm:flex-1 py-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-rose-500/20 cursor-pointer transition-all"
+                  className="py-2.5 sm:py-3 sm:flex-1 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-rose-500/20 cursor-pointer transition-all"
                 >
                   <ArrowDownLeft className="w-4 h-4" />
-                  <span>Record Withdrawal</span>
+                  <span>Withdraw</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (fin.acc?.id) {
+                      setSelectedDetailCustomer(null);
+                      navigate('/accounts', { state: { accountId: fin.acc.id } });
+                    }
+                  }}
+                  className="py-2.5 sm:py-3 sm:flex-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-amber-500 hover:text-slate-950 font-bold text-slate-900 dark:text-white text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Calendar className="w-4 h-4" />
+                  <span>31-Day Scheme</span>
                 </button>
 
                 <button
@@ -1264,18 +1276,10 @@ export const CustomersPage: React.FC = () => {
                     setSelectedDetailCustomer(null);
                     navigate('/reports');
                   }}
-                  className="w-full sm:flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="py-2.5 sm:py-3 sm:flex-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                   <FileText className="w-4 h-4" />
                   <span>Statement</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedDetailCustomer(null)}
-                  className="w-full sm:w-auto px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-bold cursor-pointer"
-                >
-                  Close
                 </button>
               </div>
 
