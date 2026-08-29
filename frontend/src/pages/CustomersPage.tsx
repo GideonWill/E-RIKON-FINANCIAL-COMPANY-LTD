@@ -868,14 +868,15 @@ export const CustomersPage: React.FC = () => {
 
         return (
           <div
-            className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto"
+            className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
             onClick={() => {
               setSelectedDetailCustomer(null);
               setSelectedDetailCycleNumber(null);
             }}
           >
             <div
-              className="bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 rounded-t-[32px] sm:rounded-3xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-2 duration-200"
+              className="bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 rounded-t-[32px] sm:rounded-3xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl space-y-4 max-h-[88vh] overflow-y-auto overscroll-contain animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-2 duration-200"
+              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Mobile Drag Pill */}
