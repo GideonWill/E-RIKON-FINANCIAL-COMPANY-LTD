@@ -19,8 +19,7 @@ import {
   BellRing,
   Menu,
   RotateCw,
-  Compass,
-  ArrowLeft
+  Compass
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -95,19 +94,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                 aria-label="Toggle Mobile Menu"
               >
                 <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-slate-700 dark:text-slate-200" />
-              </button>
-            )}
-
-            {/* Back Button (Shown on all pages except root dashboard) */}
-            {location.pathname !== '/' && location.pathname !== '/dashboard' && (
-              <button
-                type="button"
-                onClick={() => navigate(-1)}
-                className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 transition-all font-black cursor-pointer shadow-md shadow-amber-500/20 shrink-0"
-                title="Return to Previous Page"
-                aria-label="Return to Previous Page"
-              >
-                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
               </button>
             )}
 
