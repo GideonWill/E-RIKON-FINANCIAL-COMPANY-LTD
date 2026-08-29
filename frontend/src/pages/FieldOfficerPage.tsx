@@ -7,7 +7,8 @@ import {
 } from '../services/api';
 import { Account, Transaction, SavingsPackage, SAVINGS_PACKAGES } from '../types';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
-import { useRealtimeSync } from '../services/realtimeSync';
+import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
+import { pushLocalToCloud } from '../services/cloudSync';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   Smartphone, 
@@ -164,6 +165,8 @@ export const FieldOfficerPage: React.FC = () => {
       setAccounts(refreshedAccounts);
       setPrintedTx(transaction);
       setFieldRemarks('');
+      broadcastRealtimeEvent('PACKAGE_DEPOSIT_RECORDED', { accountId: selectedAccount.id, amount: numAmount });
+      pushLocalToCloud().catch(() => {});
 
       setSuccessMessage(
         `✅ Recorded GHS ${numAmount.toFixed(2)} for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}! Automatically spread across ${splitResult.daysCovered} day(s) (Days ${splitResult.startDay} to ${splitResult.endDay}) on the GH₵ ${currentPackage} Package.${splitResult.isDay31Included ? ' 🌟 Day 31 company management fee retained & added to Company Interest Vault!' : ''}`

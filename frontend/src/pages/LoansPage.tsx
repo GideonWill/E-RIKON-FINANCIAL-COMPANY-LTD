@@ -11,7 +11,8 @@ import {
 import { LoanApplication, LoanStatus, Transaction } from '../types';
 import { LoanCalculatorWidget } from '../components/ui/LoanCalculatorWidget';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
-import { useRealtimeSync } from '../services/realtimeSync';
+import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
+import { pushLocalToCloud } from '../services/cloudSync';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   Calculator, 
@@ -139,6 +140,8 @@ export const LoansPage: React.FC = () => {
     setLoans(updatedLoans);
     setSelectedLoan(newLoan);
     saveStoredLoans(updatedLoans);
+    broadcastRealtimeEvent('LOAN_CREATED', newLoan);
+    pushLocalToCloud().catch(() => {});
     setShowApplyModal(false);
   };
 
@@ -148,6 +151,8 @@ export const LoansPage: React.FC = () => {
     );
     setLoans(updatedLoans);
     saveStoredLoans(updatedLoans);
+    broadcastRealtimeEvent('LOAN_APPROVED', { loanId });
+    pushLocalToCloud().catch(() => {});
     if (selectedLoan?.id === loanId) {
       setSelectedLoan({ ...selectedLoan, status: 'APPROVED' });
     }
@@ -193,6 +198,8 @@ export const LoansPage: React.FC = () => {
     };
 
     saveStoredTransactions([newTx, ...getStoredTransactions()]);
+    broadcastRealtimeEvent('LOAN_DISBURSED', { loanId, newTx });
+    pushLocalToCloud().catch(() => {});
   };
 
   const handleRecordRepaymentSubmit = (e: React.FormEvent) => {
@@ -255,6 +262,8 @@ export const LoansPage: React.FC = () => {
     };
 
     saveStoredTransactions([newTx, ...getStoredTransactions()]);
+    broadcastRealtimeEvent('LOAN_REPAYMENT_RECORDED', { loanId: selectedLoan.id, newTx });
+    pushLocalToCloud().catch(() => {});
     setShowRepayModal(false);
     setPrintedTx(newTx);
   };

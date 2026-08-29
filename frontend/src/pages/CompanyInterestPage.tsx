@@ -6,7 +6,8 @@ import {
   getStoredAccounts,
   emptyVaultBalance
 } from '../services/api';
-import { useRealtimeSync } from '../services/realtimeSync';
+import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
+import { pushLocalToCloud } from '../services/cloudSync';
 import { CompanyInterestRecord, CompanyInterestWithdrawal } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -67,6 +68,8 @@ export const CompanyInterestPage: React.FC = () => {
     setInterestRecords([]);
     setWithdrawals([]);
     setIsConfirmEmptyOpen(false);
+    broadcastRealtimeEvent('VAULT_CLEARED', {});
+    pushLocalToCloud().catch(() => {});
     setSuccessMsg('🎉 Company Interest Vault balance has been successfully emptied to GHS 0.00.');
     setTimeout(() => {
       setSuccessMsg(null);
@@ -97,6 +100,8 @@ export const CompanyInterestPage: React.FC = () => {
     );
 
     setWithdrawals(getStoredCompanyWithdrawals());
+    broadcastRealtimeEvent('INTEREST_WITHDRAWAL_REQUESTED', newWd);
+    pushLocalToCloud().catch(() => {});
     setIsWithdrawModalOpen(false);
     setWithdrawAmount('');
     setWithdrawRemarks('');
