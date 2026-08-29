@@ -118,10 +118,6 @@ export const DashboardPage: React.FC = () => {
 
   const totalDepositsSum = Math.max(txDepositsSum, accountDepositsSum, 100);
 
-  const totalWithdrawalsSum = transactions
-    .filter((t) => t.type === 'WITHDRAWAL' || t.type === 'COMPANY_INTEREST_WITHDRAWAL')
-    .reduce((sum, t) => sum + t.amount, 0);
-
   const currentMonthName = new Date().toLocaleString('en-US', { month: 'short' });
   const chartData = [
     { month: 'May', deposits: 0, interest: 0, loans: 0 },
@@ -140,6 +136,20 @@ export const DashboardPage: React.FC = () => {
     package: `GH₵ ${pkg}`,
     clients: accounts.filter((a) => (a.savingsPackage || a.dailyCycles?.[0]?.dailyTargetAmount) === pkg).length,
   }));
+
+  // Authoritative calculations for Executive KPI Cards
+  const totalGrossSavings = accounts.reduce((sum, a) => {
+    const cycleTotal = (a.dailyCycles || []).reduce((cSum, c) => cSum + (c.totalDeposited || 0), 0);
+    return sum + Math.max(a.currentBalance || 0, cycleTotal, a.availableBalance || 0);
+  }, 0);
+
+  const totalWithdrawalsSum = transactions
+    .filter((t) => t.type === 'WITHDRAWAL')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const netClientSavings = accounts.reduce((sum, a) => sum + (a.availableBalance || 0), 0);
+  const availableCompanyInterest = Math.max(0, totalInterestPiledUp - totalApprovedWithdrawn);
+  const companyNetVaultBalance = netClientSavings + availableCompanyInterest;
 
   return (
     <div className="space-y-8 pb-12">
@@ -243,7 +253,11 @@ export const DashboardPage: React.FC = () => {
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+
+      {/* 6 Executive Financial KPI Cards (Clean, Spacious 3x2 Matrix) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        
+        {/* 1. Total Registered Clients */}
         <StatCard
           title="Total Customers"
           value={customers.length.toString()}
@@ -251,41 +265,52 @@ export const DashboardPage: React.FC = () => {
           icon={Users}
           colorScheme="amber"
         />
+
+        {/* 2. Total Gross Client Savings */}
         <StatCard
-          title="Savings Balance"
-          value={`GHS ${accounts.reduce((sum, a) => sum + a.availableBalance, 0).toFixed(2)}`}
-          subtitle="31-Day Policy Scheme"
+          title="Gross Client Savings"
+          value={`GHS ${totalGrossSavings.toFixed(2)}`}
+          subtitle="Cumulative Member Deposits"
           icon={Wallet}
           colorScheme="blue"
         />
+
+        {/* 3. Total Client Withdrawals */}
         <StatCard
-          title="Withdrawal Balance"
+          title="Client Withdrawals"
           value={`GHS ${totalWithdrawalsSum.toFixed(2)}`}
-          subtitle="Client Payouts & Liquidations"
+          subtitle="Disbursed Loans & Liquidations"
           icon={ArrowDownLeft}
           colorScheme="rose"
         />
+
+        {/* 4. Net Client Savings in Vault */}
         <StatCard
-          title="Company Interest Piled Up"
+          title="Net Client Savings"
+          value={`GHS ${netClientSavings.toFixed(2)}`}
+          subtitle="Available in Member Vault"
+          icon={TrendingUp}
+          colorScheme="emerald"
+        />
+
+        {/* 5. Company Retained Interest */}
+        <StatCard
+          title="Company Interest Vault"
           value={`GHS ${totalInterestPiledUp.toFixed(2)}`}
-          subtitle="30-Day Member Retention"
+          subtitle="30-Day Member Retention Fees"
           icon={PiggyBank}
           colorScheme="purple"
         />
+
+        {/* 6. Company Net Balance / Liquidity */}
         <StatCard
           title="Company Net Balance"
-          value={`GHS ${(accounts.reduce((sum, a) => sum + a.availableBalance, 0) + availableVaultBalance).toFixed(2)}`}
-          subtitle="Total Institutional Vault"
+          value={`GHS ${companyNetVaultBalance.toFixed(2)}`}
+          subtitle="Total Physical Liquidity in Vault"
           icon={Landmark}
           colorScheme="emerald"
         />
-        <StatCard
-          title="ER-Fast Loan Portfolio"
-          value={`GHS ${loans.reduce((sum, l) => sum + l.amountApproved, 0).toFixed(2)}`}
-          subtitle="Tenor Interest Schedule"
-          icon={Calculator}
-          colorScheme="amber"
-        />
+
       </div>
 
       {/* Charts & Interactive Modules */}
