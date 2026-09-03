@@ -16,7 +16,8 @@
     "test": "jest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "ts-node prisma/seed.ts"
+    "prisma:seed": "ts-node prisma/seed.ts",
+    "prisma:clear": "ts-node prisma/clear-database.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",

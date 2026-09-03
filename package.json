@@ -13,6 +13,7 @@
     "lint": "npm run lint --prefix frontend",
     "install:all": "npm install --prefix frontend && npm install --prefix backend",
     "prisma:generate": "npm run prisma:generate --prefix backend",
-    "prisma:seed": "npm run prisma:seed --prefix backend"
+    "prisma:seed": "npm run prisma:seed --prefix backend",
+    "prisma:clear": "npm run prisma:clear --prefix backend"
   }
 }

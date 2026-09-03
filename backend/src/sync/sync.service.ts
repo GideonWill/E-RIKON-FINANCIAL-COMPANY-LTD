@@ -125,6 +125,11 @@ export class SyncService {
       this.vault.branches = incoming.branches;
     }
 
+    if (incoming.authoritative) {
+      this.vault.deletedCustomerIds = [];
+      this.vault.approvals = (this.vault.approvals || []).filter((a) => a.type === 'STAFF_ROLE_SIGNUP');
+    }
+
     this.vault.updatedAt = new Date().toISOString();
 
     // Broadcast instant sync event to ALL connected devices
@@ -138,17 +143,17 @@ export class SyncService {
 
   resetVault(): CloudVaultPayload {
     this.vault = {
-      registeredUsers: [],
+      registeredUsers: this.vault.registeredUsers || [],
       customers: [],
       accounts: [],
       transactions: [],
       loans: [],
       companyInterest: [],
       companyWithdrawals: [],
-      approvals: [],
+      approvals: (this.vault.approvals || []).filter((a) => a.type === 'STAFF_ROLE_SIGNUP'),
       auditLogs: [],
-      branches: [],
-      deletedUserEmails: [],
+      branches: this.vault.branches || [],
+      deletedUserEmails: this.vault.deletedUserEmails || [],
       deletedCustomerIds: [],
       updatedAt: new Date().toISOString(),
     };

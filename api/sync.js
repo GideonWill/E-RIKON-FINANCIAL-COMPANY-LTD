@@ -65,6 +65,23 @@ export default async function handler(req, res) {
     try {
       const incoming = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
 
+      const deletedUserEmails = Array.isArray(incoming.deletedUserEmails) ? incoming.deletedUserEmails.map(e => (e || '').toLowerCase()) : [];
+
+      // 0. Authoritative Reset / Fresh Slate handling
+      if (incoming.authoritative || incoming.action === 'CLEAR_FINANCIALS' || incoming.isReset) {
+        globalCloudVault.customers = Array.isArray(incoming.customers) ? incoming.customers : [];
+        globalCloudVault.accounts = Array.isArray(incoming.accounts) ? incoming.accounts : [];
+        globalCloudVault.transactions = Array.isArray(incoming.transactions) ? incoming.transactions : [];
+        globalCloudVault.loans = Array.isArray(incoming.loans) ? incoming.loans : [];
+        globalCloudVault.companyInterest = Array.isArray(incoming.companyInterest) ? incoming.companyInterest : [];
+        globalCloudVault.companyWithdrawals = Array.isArray(incoming.companyWithdrawals) ? incoming.companyWithdrawals : [];
+        globalCloudVault.auditLogs = Array.isArray(incoming.auditLogs) ? incoming.auditLogs : [];
+        globalCloudVault.deletedCustomerIds = [];
+        if (Array.isArray(globalCloudVault.approvals)) {
+          globalCloudVault.approvals = globalCloudVault.approvals.filter(a => a.type === 'STAFF_ROLE_SIGNUP');
+        }
+      }
+
       // 1. Merge registered staff accounts
       if (Array.isArray(incoming.registeredUsers)) {
         const existingUsersMap = new Map();
@@ -125,7 +142,8 @@ export default async function handler(req, res) {
         );
       }
 
-      // 3. Merge customers & apply deletions
+      if (!incoming.authoritative) {
+        // 3. Merge customers & apply deletions
       const deletedCustIds = Array.isArray(incoming.deletedCustomerIds) ? incoming.deletedCustomerIds : [];
       if (Array.isArray(incoming.customers)) {
         const custMap = new Map();
@@ -196,6 +214,7 @@ export default async function handler(req, res) {
 
       if (Array.isArray(incoming.branches)) {
         globalCloudVault.branches = incoming.branches;
+      }
       }
 
       globalCloudVault.updatedAt = new Date().toISOString();

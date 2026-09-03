@@ -99,6 +99,38 @@ export const INITIAL_COMPANY_WITHDRAWALS: CompanyInterestWithdrawal[] = [];
 export const INITIAL_APPROVALS: ApprovalRequest[] = [];
 export const INITIAL_AUDIT_LOGS: AuditLog[] = [];
 
+// Automatic one-time clean slate purge for fresh entries
+const CURRENT_DATA_VERSION = 'ecfms_clean_slate_2026_09_03';
+
+if (typeof window !== 'undefined') {
+  try {
+    const activeVersion = localStorage.getItem('erikon_data_version');
+    if (activeVersion !== CURRENT_DATA_VERSION) {
+      localStorage.setItem('erikon_customers', JSON.stringify([]));
+      localStorage.setItem('erikon_accounts', JSON.stringify([]));
+      localStorage.setItem('erikon_transactions', JSON.stringify([]));
+      localStorage.setItem('erikon_loans', JSON.stringify([]));
+      localStorage.setItem('erikon_company_interest', JSON.stringify([]));
+      localStorage.setItem('erikon_company_withdrawals', JSON.stringify([]));
+      localStorage.setItem('erikon_deleted_customer_ids', JSON.stringify([]));
+      localStorage.setItem('erikon_dynamic_notifications', JSON.stringify([]));
+      localStorage.setItem('erikon_read_notifications', JSON.stringify([]));
+      localStorage.setItem('erikon_audit_logs', JSON.stringify([]));
+
+      const rawAppr = localStorage.getItem('erikon_approvals');
+      if (rawAppr) {
+        const parsed = JSON.parse(rawAppr);
+        if (Array.isArray(parsed)) {
+          const staffOnly = parsed.filter((a: any) => a.type === 'STAFF_ROLE_SIGNUP');
+          localStorage.setItem('erikon_approvals', JSON.stringify(staffOnly));
+        }
+      }
+      localStorage.setItem('erikon_data_version', CURRENT_DATA_VERSION);
+      import('./cloudSync').then((m) => m.pushLocalToCloud(true)).catch(() => {});
+    }
+  } catch {}
+}
+
 // --- PERSISTENCE & REAL-TIME REPOSITORY ---
 
 export const getDeletedCustomerIds = (): string[] => {
@@ -303,13 +335,26 @@ export const clearClientAndFinancialDatabase = () => {
   localStorage.setItem('erikon_read_notifications', JSON.stringify([]));
   localStorage.setItem('erikon_audit_logs', JSON.stringify([]));
 
+  try {
+    const rawAppr = localStorage.getItem('erikon_approvals');
+    if (rawAppr) {
+      const parsed = JSON.parse(rawAppr);
+      if (Array.isArray(parsed)) {
+        const staffOnly = parsed.filter((a: any) => a.type === 'STAFF_ROLE_SIGNUP');
+        localStorage.setItem('erikon_approvals', JSON.stringify(staffOnly));
+      }
+    }
+  } catch {}
+
+  localStorage.setItem('erikon_data_version', CURRENT_DATA_VERSION);
+
   broadcastRealtimeEvent('MANUAL_SYNC', { source: 'DATABASE_RESET' });
   broadcastRealtimeEvent('AUDIT_LOG_RECORDED', []);
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('erikon_realtime_update', { detail: { type: 'MANUAL_SYNC' } }));
     window.dispatchEvent(new CustomEvent('erikon_cloud_synced', { detail: { timestamp: new Date().toISOString() } }));
   }
-  import('./cloudSync').then((m) => m.pushLocalToCloud()).catch(() => {});
+  import('./cloudSync').then((m) => m.pushLocalToCloud(true)).catch(() => {});
 };
 
 export const saveStoredTransactions = (txs: Transaction[]) => {

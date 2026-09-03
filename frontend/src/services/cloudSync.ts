@@ -44,6 +44,8 @@ export interface CloudVaultPayload {
   auditLogs?: any[];
   deletedCustomerIds?: string[];
   deletedUserEmails?: string[];
+  authoritative?: boolean;
+  action?: string;
   updatedAt?: string;
 }
 
@@ -89,7 +91,7 @@ const getSyncEndpoints = (): string[] => {
 /**
  * Pushes all local storage state to all reachable central cloud sync endpoints
  */
-export const pushLocalToCloud = async (): Promise<boolean> => {
+export const pushLocalToCloud = async (authoritative = false): Promise<boolean> => {
   if (isPushing) {
     pushPending = true;
     return false;
@@ -109,6 +111,7 @@ export const pushLocalToCloud = async (): Promise<boolean> => {
     auditLogs: getStoredAuditLogs(),
     deletedCustomerIds: getDeletedCustomerIds(),
     deletedUserEmails: getDeletedUserEmails(),
+    authoritative,
     updatedAt: new Date().toISOString(),
   };
 
@@ -150,7 +153,7 @@ export const pushLocalToCloud = async (): Promise<boolean> => {
     lastSyncTimestamp = new Date().toLocaleTimeString();
     isPushing = false;
     if (pushPending) {
-      setTimeout(() => pushLocalToCloud(), 150);
+      setTimeout(() => pushLocalToCloud(authoritative), 150);
     }
   }
 
@@ -164,6 +167,25 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
   if (!cloudData) return false;
 
   let hasUpdates = false;
+
+  // Handle Authoritative Clean Slate Reset payload directly
+  if (cloudData.authoritative) {
+    if (Array.isArray(cloudData.customers)) saveStoredCustomers(cloudData.customers);
+    if (Array.isArray(cloudData.accounts)) saveStoredAccounts(cloudData.accounts);
+    if (Array.isArray(cloudData.transactions)) saveStoredTransactions(cloudData.transactions);
+    if (Array.isArray(cloudData.loans)) saveStoredLoans(cloudData.loans);
+    if (Array.isArray(cloudData.companyInterest)) saveStoredCompanyInterest(cloudData.companyInterest);
+    if (Array.isArray(cloudData.companyWithdrawals)) saveStoredCompanyWithdrawals(cloudData.companyWithdrawals);
+    if (Array.isArray(cloudData.auditLogs)) saveStoredAuditLogs(cloudData.auditLogs);
+    if (Array.isArray(cloudData.approvals)) saveStoredApprovals(cloudData.approvals);
+    localStorage.setItem('erikon_deleted_customer_ids', JSON.stringify([]));
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('erikon_realtime_update', { detail: { type: 'MANUAL_SYNC' } }));
+      window.dispatchEvent(new CustomEvent('erikon_cloud_synced', { detail: { timestamp: new Date().toISOString() } }));
+    }
+    return true;
+  }
 
   // Process incoming deleted customer and user tombstones
   if (Array.isArray(cloudData.deletedCustomerIds)) {
