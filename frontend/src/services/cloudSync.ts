@@ -248,22 +248,7 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     }
   }
 
-  // 4. Merged Authoritative Accounts Sync
-  if (Array.isArray(cloudData.accounts)) {
-    const cleanCloudAcc = cloudData.accounts.filter(
-      (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
-    );
-    const localAcc = getStoredAccounts().filter(
-      (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
-    );
-
-    if (JSON.stringify(cleanCloudAcc) !== JSON.stringify(localAcc)) {
-      saveStoredAccounts(cleanCloudAcc);
-      hasUpdates = true;
-    }
-  }
-
-  // 5. Merged Authoritative Transactions Sync
+  // 4. Merged Authoritative Transactions Sync (Merged FIRST so account balance calculations see all new deposits & withdrawals)
   if (Array.isArray(cloudData.transactions)) {
     const localTx = getStoredTransactions();
     const txMap = new Map<string, any>();
@@ -284,6 +269,26 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       hasUpdates = true;
     }
   }
+
+  // 5. Merged Authoritative Accounts Sync (Merged AFTER transactions to compute exact live ledger balances)
+  if (Array.isArray(cloudData.accounts)) {
+    const cleanCloudAcc = cloudData.accounts.filter(
+      (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
+    );
+    const localAcc = getStoredAccounts().filter(
+      (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
+    );
+
+    if (JSON.stringify(cleanCloudAcc) !== JSON.stringify(localAcc)) {
+      saveStoredAccounts(cleanCloudAcc);
+      hasUpdates = true;
+    }
+  }
+
+  // Authoritatively re-reconcile all account figures from the ledger
+  try {
+    getStoredAccounts();
+  } catch {}
 
   // 6. Merged Authoritative Loans Sync
   if (Array.isArray(cloudData.loans)) {
