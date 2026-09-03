@@ -201,8 +201,9 @@ export const getStoredAccounts = (): Account[] => {
       if (!acc) {
         const isGladys = cust.firstName?.toLowerCase().includes('gladys');
         const pkgRate = isGladys ? 50 : 20;
-        const initialBal = isGladys ? 800.00 : 0.00;
-        const initialDays = isGladys ? 16 : 0;
+        const initialGross = isGladys ? 1000.00 : 0.00;
+        const initialBal = isGladys ? 900.00 : 0.00;
+        const initialDays = isGladys ? 20 : 0;
 
         acc = {
           id: `acc-${cust.id.replace('cust-', '')}`,
@@ -222,21 +223,63 @@ export const getStoredAccounts = (): Account[] => {
               cycleNumber: 1,
               currentDayCount: initialDays,
               dailyTargetAmount: pkgRate,
-              totalDeposited: initialBal,
+              totalDeposited: initialGross,
               feeDeducted: false,
               companyFeeAmount: 0,
               isCompleted: false,
               startDate: '2026-08-28',
-              dailySplits: isGladys ? Array.from({ length: 16 }, (_, i) => ({
-                dayNumber: i + 1,
-                date: '2026-08-28',
-                amount: 50.00,
-                receiptNo: `RCP-SPLIT-800-${i + 1}`,
-                isCompanyFee: false,
-                recordedBy: 'Eric Annor (SUPER ADMIN)',
-                recordedAt: '2026-08-28T08:00:00.000Z',
-                batchTxRef: 'TX-DEP-GLADYS-800',
-              })) : [],
+              dailySplits: isGladys ? [
+                ...Array.from({ length: 16 }, (_, i) => ({
+                  dayNumber: i + 1,
+                  date: '2026-08-28',
+                  amount: 50.00,
+                  receiptNo: `RCP-SPLIT-800-${i + 1}`,
+                  isCompanyFee: false,
+                  recordedBy: 'Eric Annor (SUPER ADMIN)',
+                  recordedAt: '2026-08-28T08:00:00.000Z',
+                  batchTxRef: 'TX-DEP-GLADYS-800',
+                })),
+                {
+                  dayNumber: 17,
+                  date: '2026-08-29',
+                  amount: 50.00,
+                  receiptNo: 'RCP-DEP-LEWIS-17',
+                  isCompanyFee: false,
+                  recordedBy: 'Authorized Teller (TELLER)',
+                  recordedAt: '2026-08-29T10:00:00.000Z',
+                  batchTxRef: 'TX-DEP-LEWIS-100',
+                },
+                {
+                  dayNumber: 18,
+                  date: '2026-08-29',
+                  amount: 50.00,
+                  receiptNo: 'RCP-DEP-LEWIS-18',
+                  isCompanyFee: false,
+                  recordedBy: 'Authorized Teller (TELLER)',
+                  recordedAt: '2026-08-29T10:00:00.000Z',
+                  batchTxRef: 'TX-DEP-LEWIS-100',
+                },
+                {
+                  dayNumber: 19,
+                  date: '2026-08-30',
+                  amount: 50.00,
+                  receiptNo: 'RCP-DEP-GLADYS-19',
+                  isCompanyFee: false,
+                  recordedBy: 'Authorized Teller (TELLER)',
+                  recordedAt: '2026-08-30T11:00:00.000Z',
+                  batchTxRef: 'TX-DEP-GLADYS-100',
+                },
+                {
+                  dayNumber: 20,
+                  date: '2026-08-30',
+                  amount: 50.00,
+                  receiptNo: 'RCP-DEP-GLADYS-20',
+                  isCompanyFee: false,
+                  recordedBy: 'Authorized Teller (TELLER)',
+                  recordedAt: '2026-08-30T11:00:00.000Z',
+                  batchTxRef: 'TX-DEP-GLADYS-100',
+                },
+              ] : [],
             },
           ],
         };
@@ -332,23 +375,65 @@ export const getStoredAccounts = (): Account[] => {
           {
             id: `cyc-${acc.id}`,
             cycleNumber: 1,
-            currentDayCount: 16,
+            currentDayCount: 20,
             dailyTargetAmount: 50,
-            totalDeposited: 800.00,
+            totalDeposited: 1000.00,
             feeDeducted: false,
             companyFeeAmount: 0,
             isCompleted: false,
             startDate: '2026-08-28',
-            dailySplits: Array.from({ length: 16 }, (_, i) => ({
-              dayNumber: i + 1,
-              date: '2026-08-28',
-              amount: 50.00,
-              receiptNo: `RCP-SPLIT-800-${i + 1}`,
-              isCompanyFee: false,
-              recordedBy: 'Eric Annor (SUPER ADMIN)',
-              recordedAt: '2026-08-28T08:00:00.000Z',
-              batchTxRef: 'TX-DEP-GLADYS-800',
-            })),
+            dailySplits: [
+              ...Array.from({ length: 16 }, (_, i) => ({
+                dayNumber: i + 1,
+                date: '2026-08-28',
+                amount: 50.00,
+                receiptNo: `RCP-SPLIT-800-${i + 1}`,
+                isCompanyFee: false,
+                recordedBy: 'Eric Annor (SUPER ADMIN)',
+                recordedAt: '2026-08-28T08:00:00.000Z',
+                batchTxRef: 'TX-DEP-GLADYS-800',
+              })),
+              {
+                dayNumber: 17,
+                date: '2026-08-29',
+                amount: 50.00,
+                receiptNo: 'RCP-DEP-LEWIS-17',
+                isCompanyFee: false,
+                recordedBy: 'Authorized Teller (TELLER)',
+                recordedAt: '2026-08-29T10:00:00.000Z',
+                batchTxRef: 'TX-DEP-LEWIS-100',
+              },
+              {
+                dayNumber: 18,
+                date: '2026-08-29',
+                amount: 50.00,
+                receiptNo: 'RCP-DEP-LEWIS-18',
+                isCompanyFee: false,
+                recordedBy: 'Authorized Teller (TELLER)',
+                recordedAt: '2026-08-29T10:00:00.000Z',
+                batchTxRef: 'TX-DEP-LEWIS-100',
+              },
+              {
+                dayNumber: 19,
+                date: '2026-08-30',
+                amount: 50.00,
+                receiptNo: 'RCP-DEP-GLADYS-19',
+                isCompanyFee: false,
+                recordedBy: 'Authorized Teller (TELLER)',
+                recordedAt: '2026-08-30T11:00:00.000Z',
+                batchTxRef: 'TX-DEP-GLADYS-100',
+              },
+              {
+                dayNumber: 20,
+                date: '2026-08-30',
+                amount: 50.00,
+                receiptNo: 'RCP-DEP-GLADYS-20',
+                isCompanyFee: false,
+                recordedBy: 'Authorized Teller (TELLER)',
+                recordedAt: '2026-08-30T11:00:00.000Z',
+                batchTxRef: 'TX-DEP-GLADYS-100',
+              },
+            ],
           },
         ];
         splitsUpdated = true;
@@ -545,6 +630,129 @@ export const getStoredTransactions = (): Transaction[] => {
         createdAt: '2026-08-28T08:00:00.000Z',
       };
       parsed.unshift(gladysTx);
+      localStorage.setItem('erikon_transactions', JSON.stringify(parsed));
+    }
+  }
+
+  // Ensure Gladys deposit of 100 GHS by Lewis exists
+  const hasLewisTx = parsed.some((t) => t.referenceNo === 'TX-DEP-LEWIS-100');
+  if (!hasLewisTx) {
+    const gladysAcc = rawAccounts.find((a) => a.customer?.firstName?.toLowerCase().includes('gladys') || a.customerId === 'cust-gladys-001');
+    if (gladysAcc) {
+      const lewisTx: Transaction = {
+        id: 'tx-dep-lewis-100',
+        referenceNo: 'TX-DEP-LEWIS-100',
+        receiptNo: 'RCP-DEP-LEWIS-100',
+        accountId: gladysAcc.id,
+        account: gladysAcc,
+        type: 'DEPOSIT',
+        paymentMode: 'PHYSICAL_CASH',
+        amount: 100.00,
+        previousBal: 800.00,
+        newBal: 900.00,
+        recordedBy: {
+          id: 'staff-teller',
+          employeeId: 'EMP-TEL-001',
+          firstName: 'Authorized',
+          lastName: 'Teller',
+          email: 'teller@erikon.com',
+          phone: '0240000000',
+          role: 'TELLER' as RoleName,
+          branchId: 'br-01',
+        },
+        remarks: 'Deposit of GH₵ 100.00 by Lewis (Friend) covering Days 17 to 18 on GH₵ 50/day package',
+        createdAt: '2026-08-29T10:00:00.000Z',
+        transactor: {
+          isThirdParty: true,
+          fullName: 'Lewis Mensah',
+          phone: '0244123456',
+          ghanaCard: 'GHA-712345678-9',
+          relationship: 'Friend',
+        },
+      };
+      parsed.unshift(lewisTx);
+      localStorage.setItem('erikon_transactions', JSON.stringify(parsed));
+    }
+  }
+
+  // Ensure Gladys second deposit of 100 GHS exists
+  const hasGladysDep2 = parsed.some((t) => t.referenceNo === 'TX-DEP-GLADYS-100');
+  if (!hasGladysDep2) {
+    const gladysAcc = rawAccounts.find((a) => a.customer?.firstName?.toLowerCase().includes('gladys') || a.customerId === 'cust-gladys-001');
+    if (gladysAcc) {
+      const gladysDep2Tx: Transaction = {
+        id: 'tx-dep-gladys-100',
+        referenceNo: 'TX-DEP-GLADYS-100',
+        receiptNo: 'RCP-DEP-GLADYS-100',
+        accountId: gladysAcc.id,
+        account: gladysAcc,
+        type: 'DEPOSIT',
+        paymentMode: 'PHYSICAL_CASH',
+        amount: 100.00,
+        previousBal: 900.00,
+        newBal: 1000.00,
+        recordedBy: {
+          id: 'staff-teller',
+          employeeId: 'EMP-TEL-001',
+          firstName: 'Authorized',
+          lastName: 'Teller',
+          email: 'teller@erikon.com',
+          phone: '0240000000',
+          role: 'TELLER' as RoleName,
+          branchId: 'br-01',
+        },
+        remarks: 'Teller deposit of GH₵ 100.00 covering Days 19 to 20 on GH₵ 50/day package',
+        createdAt: '2026-08-30T11:00:00.000Z',
+        transactor: {
+          isThirdParty: false,
+          fullName: 'Gladys Mensah',
+          phone: '0244892123',
+          ghanaCard: 'GHA-789012345-6',
+          relationship: 'Self / Account Holder',
+        },
+      };
+      parsed.unshift(gladysDep2Tx);
+      localStorage.setItem('erikon_transactions', JSON.stringify(parsed));
+    }
+  }
+
+  // Ensure Gladys withdrawal of 100 GHS by Maame exists
+  const hasMaameWithdrawal = parsed.some((t) => t.referenceNo === 'TX-WITH-MAAME-100' || (t.type === 'WITHDRAWAL' && t.amount === 100 && t.transactor?.fullName?.toLowerCase().includes('maame')));
+  if (!hasMaameWithdrawal) {
+    const gladysAcc = rawAccounts.find((a) => a.customer?.firstName?.toLowerCase().includes('gladys') || a.customerId === 'cust-gladys-001');
+    if (gladysAcc) {
+      const maameWithdrawalTx: Transaction = {
+        id: 'tx-with-maame-100',
+        referenceNo: 'TX-WITH-MAAME-100',
+        receiptNo: 'RCP-WITH-MAAME-100',
+        accountId: gladysAcc.id,
+        account: gladysAcc,
+        type: 'WITHDRAWAL',
+        paymentMode: 'PHYSICAL_CASH',
+        amount: 100.00,
+        previousBal: 1000.00,
+        newBal: 900.00,
+        recordedBy: {
+          id: 'staff-teller',
+          employeeId: 'EMP-TEL-001',
+          firstName: 'Authorized',
+          lastName: 'Teller',
+          email: 'teller@erikon.com',
+          phone: '0240000000',
+          role: 'TELLER' as RoleName,
+          branchId: 'br-01',
+        },
+        remarks: 'Withdrawal loan of GH₵ 100.00 executed by Maame (Sister / Representative)',
+        createdAt: '2026-08-31T14:30:00.000Z',
+        transactor: {
+          isThirdParty: true,
+          fullName: 'Maame Mensah',
+          phone: '0244987654',
+          ghanaCard: 'GHA-987654321-0',
+          relationship: 'Sister',
+        },
+      };
+      parsed.unshift(maameWithdrawalTx);
       localStorage.setItem('erikon_transactions', JSON.stringify(parsed));
     }
   }

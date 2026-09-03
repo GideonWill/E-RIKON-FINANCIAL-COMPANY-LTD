@@ -59,15 +59,18 @@ export const getLastSyncTime = () => lastSyncTimestamp;
 const getSyncEndpoints = (): string[] => {
   const endpoints: string[] = [];
 
-  // 1. Authoritative Production Backend Endpoint
+  // 1. Authoritative Production Vercel Serverless Relay
+  endpoints.push('https://e-rikon-financial-company-ltd.vercel.app/api/sync');
+
+  // 2. Authoritative Production Backend Endpoint
   endpoints.push('https://e-rikon-ecfms-backend.onrender.com/api/sync');
 
-  // 2. Same-Origin / Vercel Serverless Function Endpoint (Primary)
+  // 3. Same-Origin / Vercel Serverless Function Endpoint (Primary)
   if (typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes('localhost')) {
     endpoints.push(`${window.location.origin}/api/sync`);
   }
 
-  // 3. Relative Endpoint
+  // 4. Relative Endpoint (proxied via Vite on local or direct on Vercel)
   endpoints.push('/api/sync');
 
   // 4. Localhost Dev Backend (if running locally)

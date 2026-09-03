@@ -12,5 +12,12 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    proxy: {
+      '/api': {
+        target: 'https://e-rikon-financial-company-ltd.vercel.app',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 });
