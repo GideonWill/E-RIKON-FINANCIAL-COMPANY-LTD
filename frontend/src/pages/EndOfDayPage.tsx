@@ -210,7 +210,7 @@ export const EndOfDayPage: React.FC = () => {
     .filter((t) => t.type === 'LOAN_REPAYMENT')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // 4. Company 31-Day Retained Fees (Unified with getStoredCompanyInterest)
+  // 4. Company 31-Day Retained Fees & Corporate Vault Withdrawals
   const totalCompanyInterestAccumulated = companyInterest
     .reduce((sum, ci) => sum + (ci.accumulatedAmount || 0), 0);
 
@@ -218,9 +218,13 @@ export const EndOfDayPage: React.FC = () => {
     .filter((ci) => ci.createdAt && ci.createdAt.startsWith(selectedDate))
     .reduce((sum, ci) => sum + (ci.accumulatedAmount || 0), 0);
 
+  const companyInterestWithdrawalsToday = dayTransactions
+    .filter((t) => t.type === 'COMPANY_INTEREST_WITHDRAWAL')
+    .reduce((sum, t) => sum + t.amount, 0);
+
   // 5. Total Daily Inflow & Outflow Across Whole Institution
   const totalDailyInflow = Math.max(tellerDeposits + tellerElectronicInflow, fieldCollectionsTotal) + loanRepaymentsTotal;
-  const totalDailyOutflow = tellerWithdrawals + loansDisbursedTotal;
+  const totalDailyOutflow = tellerWithdrawals + loansDisbursedTotal + companyInterestWithdrawalsToday;
   const netDailyCashPosition = totalDailyInflow - totalDailyOutflow;
 
   // Formatted date string

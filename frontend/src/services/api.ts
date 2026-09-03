@@ -401,27 +401,59 @@ export const getStoredCompanyInterest = (): CompanyInterestRecord[] => {
   });
   parsed = uniqueRecords;
 
-  // Ensure Kwame Djan Cycle 1 interest record exists (Day 31 fee retention)
-  const hasKwameInterest = parsed.some((r) => (r.customerName?.toLowerCase().includes('kwame') || r.customerId?.includes('kwame')) && r.cycleNumber === 1);
-  if (!hasKwameInterest) {
-    const kwameAcc = rawAccounts.find((a) => a.customer?.firstName?.toLowerCase().includes('kwame') || a.customerId?.includes('kwame'));
-    if (kwameAcc) {
-      const kwameIntRecord: CompanyInterestRecord = {
-        id: 'int-kwame-cyc-1',
-        customerId: kwameAcc.customerId,
-        customerName: `${kwameAcc.customer?.firstName || 'Kwame'} ${kwameAcc.customer?.lastName || 'Djan'}`,
-        accountId: kwameAcc.id,
-        accountNumber: kwameAcc.accountNumber,
+  // Dynamically reconcile 30-day retention fees from all client accounts & cycles
+  rawAccounts.forEach((acc) => {
+    (acc.dailyCycles || []).forEach((c) => {
+      if (c.feeDeducted || (c.companyFeeAmount && c.companyFeeAmount > 0) || c.currentDayCount >= 31) {
+        const feeAmt = c.companyFeeAmount || c.dailyTargetAmount || acc.savingsPackage || 20;
+        const exists = parsed.some(
+          (r) => (r.accountId === acc.id || r.accountNumber === acc.accountNumber) && r.cycleNumber === c.cycleNumber
+        );
+        if (!exists) {
+          parsed.unshift({
+            id: `int-${acc.id}-cyc-${c.cycleNumber}`,
+            customerId: acc.customerId,
+            customerName: acc.customer ? `${acc.customer.firstName} ${acc.customer.lastName}` : 'Client',
+            accountId: acc.id,
+            accountNumber: acc.accountNumber,
+            cycleNumber: c.cycleNumber,
+            packageAmount: acc.savingsPackage || feeAmt,
+            accumulatedAmount: feeAmt,
+            period: `${c.startDate ? c.startDate.slice(0, 7) : new Date().toISOString().slice(0, 7)} (Cycle #${c.cycleNumber} - 31 Days)`,
+            status: 'ACCUMULATED',
+            createdAt: c.startDate ? `${c.startDate}T10:00:00.000Z` : new Date().toISOString(),
+          });
+        }
+      }
+    });
+  });
+
+  // Also reconcile any transactions of type COMPANY_FEE_DEDUCTION
+  let rawTxs: Transaction[] = [];
+  try {
+    const rawTxsStr = localStorage.getItem('erikon_transactions');
+    if (rawTxsStr) rawTxs = JSON.parse(rawTxsStr);
+  } catch {}
+
+  rawTxs.filter((t) => t.type === 'COMPANY_FEE_DEDUCTION').forEach((t) => {
+    const exists = parsed.some((r) => r.accountId === t.accountId && Math.abs(r.accumulatedAmount - t.amount) < 0.01);
+    if (!exists) {
+      const matchingAcc = rawAccounts.find((a) => a.id === t.accountId);
+      parsed.unshift({
+        id: `int-tx-${t.id}`,
+        customerId: matchingAcc?.customerId || t.account?.customerId || 'cust-generic',
+        customerName: matchingAcc?.customer ? `${matchingAcc.customer.firstName} ${matchingAcc.customer.lastName}` : (t.account?.customer ? `${t.account.customer.firstName} ${t.account.customer.lastName}` : 'Client'),
+        accountId: t.accountId,
+        accountNumber: matchingAcc?.accountNumber || t.account?.accountNumber || 'ER-ACC',
         cycleNumber: 1,
-        packageAmount: 20,
-        accumulatedAmount: 20,
-        period: `${new Date().toISOString().slice(0, 7)} (Cycle #1 - 31 Days)`,
+        packageAmount: t.amount,
+        accumulatedAmount: t.amount,
+        period: `${(t.createdAt || new Date().toISOString()).slice(0, 7)} (Day 31 Retention Fee)`,
         status: 'ACCUMULATED',
-        createdAt: '2026-08-01T10:00:00.000Z',
-      };
-      parsed.unshift(kwameIntRecord);
+        createdAt: t.createdAt || new Date().toISOString(),
+      });
     }
-  }
+  });
 
   localStorage.setItem('erikon_company_interest', JSON.stringify(parsed));
   return parsed;
@@ -1580,21 +1612,62 @@ export const approveRequest = (
       saveStoredCompanyWithdrawals(withdrawals);
 
       const txs = getStoredTransactions();
+      const currentVaultInterest = getStoredCompanyInterest().reduce((sum, r) => sum + r.accumulatedAmount, 0);
+      const prevVaultWithdrawn = withdrawals.filter((w) => w.status === 'APPROVED' && w.id !== withdrawals[wIndex].id).reduce((sum, w) => sum + w.amount, 0);
+      const prevVaultBalance = Math.max(0, currentVaultInterest - prevVaultWithdrawn);
+      const newVaultBalance = Math.max(0, prevVaultBalance - withdrawals[wIndex].amount);
+
       const newTx: Transaction = {
         id: `tx-wd-${Date.now()}`,
         referenceNo: `TX-WD-${Date.now().toString().slice(-8)}`,
         receiptNo: `RCP-WD-${Date.now().toString().slice(-8)}`,
         accountId: 'acc-company-vault',
+        account: {
+          id: 'acc-company-vault',
+          customerId: 'cust-company-vault',
+          customer: {
+            id: 'cust-company-vault',
+            firstName: 'E-RIKON',
+            lastName: 'Institutional Vault',
+            customerNumber: 'ER-CORP-VAULT',
+            ghanaCardNumber: 'CORP-VAULT-GHA',
+            phone: '0302000000',
+            address: 'Head Office, Ridge',
+            status: 'ACTIVE',
+            createdAt: '2026-01-01T00:00:00.000Z',
+          } as any,
+          accountNumber: 'ER-VAULT-CORP',
+          accountType: 'COMPANY_VAULT',
+          currentBalance: newVaultBalance,
+          availableBalance: newVaultBalance,
+          status: 'ACTIVE',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        } as any,
         type: 'COMPANY_INTEREST_WITHDRAWAL',
         paymentMode: withdrawals[wIndex].destinationType === 'MTN_MOMO_MERCHANT' ? 'MTN_MOBILE_MONEY' : 'BANK_TRANSFER',
         amount: withdrawals[wIndex].amount,
-        previousBal: 0,
-        newBal: 0,
+        previousBal: prevVaultBalance,
+        newBal: newVaultBalance,
         recordedBy: reviewerUser,
         remarks: `Super Admin Approved Company Interest Payout: ${withdrawals[wIndex].destinationDetails}`,
         createdAt: new Date().toISOString(),
       };
       saveStoredTransactions([newTx, ...txs]);
+
+      // Add immutable audit log for vault payout
+      const auditLogs = getStoredAuditLogs();
+      const newAudit: AuditLog = {
+        id: `audit-wd-${Date.now()}`,
+        userId: reviewerUser.id,
+        userEmail: reviewerUser.email,
+        action: 'COMPANY_INTEREST_DISBURSED',
+        resource: 'COMPANY_VAULT',
+        previousValue: `Vault Balance: GHS ${prevVaultBalance.toFixed(2)}`,
+        newValue: `Payout GHS ${withdrawals[wIndex].amount.toFixed(2)} to ${withdrawals[wIndex].destinationDetails}. Remaining Balance: GHS ${newVaultBalance.toFixed(2)}. Authorized by ${reviewerUser.firstName} ${reviewerUser.lastName}.`,
+        ipAddress: '127.0.0.1',
+        createdAt: new Date().toISOString(),
+      };
+      saveStoredAuditLogs([newAudit, ...auditLogs]);
     }
   } else if (req.type === 'LOAN_APPROVAL') {
     const loans = getStoredLoans();

@@ -131,13 +131,44 @@ export const ReportsPage: React.FC = () => {
     }
   }, [location.key, location.state, accounts, transactions, navigate, location.pathname, location.search]);
 
+  const COMPANY_VAULT_ACCOUNT: Account = {
+    id: 'acc-company-vault',
+    customerId: 'cust-company-vault',
+    customer: {
+      id: 'cust-company-vault',
+      firstName: 'E-RIKON',
+      lastName: 'Institutional Vault',
+      customerNumber: 'ER-CORP-VAULT',
+      ghanaCardNumber: 'CORP-VAULT-GHA',
+      phone: '0302000000',
+      address: 'Head Office, Ridge',
+      status: 'ACTIVE',
+      createdAt: '2026-01-01T00:00:00.000Z',
+    } as any,
+    accountNumber: 'ER-VAULT-CORP',
+    type: 'SAVINGS',
+    interestRate: 0,
+    openingDate: '2026-01-01',
+    savingsPackage: 0 as any,
+    currentBalance: 0,
+    availableBalance: 0,
+    status: 'ACTIVE',
+  };
+
   const isAllAccounts = selectedAccountId === 'ALL';
-  const selectedAccount: Account | undefined = isAllAccounts ? undefined : (accounts.find((a) => a.id === selectedAccountId) || accounts[0]);
+  const isCompanyVault = selectedAccountId === 'COMPANY_VAULT';
+  const selectedAccount: Account | undefined = isAllAccounts 
+    ? undefined 
+    : isCompanyVault 
+    ? COMPANY_VAULT_ACCOUNT 
+    : (accounts.find((a) => a.id === selectedAccountId) || accounts[0]);
   
   // Dynamically resolve client package rate and label based on the specific chosen client account
   const packageRate = selectedAccount?.savingsPackage || 0;
   const clientPackageLabel = isAllAccounts
     ? 'All Registered Clients (Consolidated)'
+    : isCompanyVault
+    ? 'Institutional Vault & 30-Day Retained Fees'
     : selectedAccount 
     ? (selectedAccount.savingsPackage 
         ? `GH₵ ${selectedAccount.savingsPackage}.00 / Day`
@@ -302,7 +333,9 @@ export const ReportsPage: React.FC = () => {
   // Transactions belonging strictly to the selected client and selected month
   const monthlyClientTransactions: Transaction[] = transactions.filter((t) => {
     let isClient = true;
-    if (!isAllAccounts) {
+    if (isCompanyVault) {
+      isClient = t.type === 'COMPANY_INTEREST_WITHDRAWAL' || t.type === 'COMPANY_FEE_DEDUCTION' || t.accountId === 'acc-company-vault';
+    } else if (!isAllAccounts) {
       if (!selectedAccount) return false;
       const targetCustId = selectedAccount.customerId || selectedAccount.customer?.id;
       const targetAccNo = selectedAccount.accountNumber;
@@ -361,7 +394,7 @@ export const ReportsPage: React.FC = () => {
     monthlyDailySplits.filter((s) => s.isCompanyFee && s.amount > 0).reduce((sum, s) => sum + s.amount, 0);
 
   const monthWithdrawals = monthlyClientTransactions
-    .filter((tx) => tx.type === 'WITHDRAWAL')
+    .filter((tx) => tx.type === 'WITHDRAWAL' || tx.type === 'COMPANY_INTEREST_WITHDRAWAL')
     .reduce((sum, tx) => sum + tx.amount, 0);
 
   const monthNetSavings = Math.max(0, monthDeposits - monthCompanyFee - monthWithdrawals);
@@ -663,6 +696,9 @@ export const ReportsPage: React.FC = () => {
                 <option value="ALL" className="font-black text-[#0d9488] bg-white dark:bg-slate-900">
                   🌟 All Clients (Consolidated Ledger View)
                 </option>
+                <option value="COMPANY_VAULT" className="font-black text-purple-600 dark:text-purple-400 bg-white dark:bg-slate-900">
+                  🏦 E-RIKON Company Interest Vault (Corporate Payouts & Fees)
+                </option>
                 {accounts.map((acc) => {
                   const name = acc.customer ? `${acc.customer.firstName} ${acc.customer.lastName}` : 'Client';
                   return (
@@ -829,7 +865,11 @@ export const ReportsPage: React.FC = () => {
                       <td className="py-2.5 px-3 text-slate-500">{tx.referenceNo || '—'}</td>
                       <td className="py-2.5 px-3 font-sans">
                         <span className="font-medium text-slate-800 dark:text-slate-200">
-                          {tx.type === 'COMPANY_FEE_DEDUCTION' ? 'Day 31 Company Fee Retained' : tx.type?.replace('_', ' ') || 'Transaction'}
+                          {tx.type === 'COMPANY_FEE_DEDUCTION' 
+                            ? 'Day 31 Company Fee Retained' 
+                            : tx.type === 'COMPANY_INTEREST_WITHDRAWAL'
+                            ? 'Company Vault Interest Payout'
+                            : tx.type?.replace('_', ' ') || 'Transaction'}
                         </span>
                       </td>
                       <td className="py-2.5 px-3 font-sans">
@@ -854,7 +894,11 @@ export const ReportsPage: React.FC = () => {
                         {tx.paymentMode ? tx.paymentMode.replace('_', ' ') : 'Cash'}
                       </td>
                       <td className="py-2.5 px-3 text-right font-black text-slate-900 dark:text-white">
-                        GHS {tx.amount.toFixed(2)}
+                        {tx.type === 'COMPANY_INTEREST_WITHDRAWAL' ? (
+                          <span className="text-rose-600 dark:text-rose-400 font-black">- GHS {tx.amount.toFixed(2)}</span>
+                        ) : (
+                          <span>GHS {tx.amount.toFixed(2)}</span>
+                        )}
                       </td>
                       <td className="py-2.5 px-3 text-right font-bold text-emerald-600">
                         GHS {(tx.newBal || 0).toFixed(2)}
