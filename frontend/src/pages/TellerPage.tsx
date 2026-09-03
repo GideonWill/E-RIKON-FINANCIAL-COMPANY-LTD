@@ -77,7 +77,7 @@ export const TellerPage: React.FC = () => {
     return accs.length > 0 ? accs[0] : null;
   });
   const [operationType, setOperationType] = useState<'DEPOSIT' | 'WITHDRAWAL'>('DEPOSIT');
-  const [amount, setAmount] = useState<string>('100');
+  const [amount, setAmount] = useState<string>('');
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('PHYSICAL_CASH');
   const [remarks, setRemarks] = useState('');
   const [chosenPackage, setChosenPackage] = useState<SavingsPackage>(selectedAccount?.savingsPackage || 20);
@@ -85,6 +85,7 @@ export const TellerPage: React.FC = () => {
   const [printedTx, setPrintedTx] = useState<Transaction | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [transactionSuccess, setTransactionSuccess] = useState<TransactionSuccessDetails | null>(null);
+  const successTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Transactor Information State (Person Depositing or Withdrawing)
   const [isThirdParty, setIsThirdParty] = useState<boolean>(false);
@@ -378,15 +379,30 @@ export const TellerPage: React.FC = () => {
       }
     }
 
-    setAmount('100');
+    // Immediately clear all form fields so fields go back to empty for new inputs
+    setAmount('');
     setRemarks('');
+    setIsThirdParty(false);
+    setTransactorName('');
+    setTransactorPhone('');
+    setTransactorGhanaCard('');
+    setTransactorRelationship('Self / Account Holder');
+    setTransactorError(null);
+
+    // Automatically dismiss the popup banner after exactly 3 seconds
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    successTimerRef.current = setTimeout(() => {
+      setTransactionSuccess(null);
+      setSuccessMessage(null);
+    }, 3000);
   };
 
   const handleConfirmPaid = (tx: Transaction) => {
     setSuccessMessage(
       `✅ Money Paid Successfully! GHS ${tx.amount.toFixed(2)} recorded for ${tx.account?.customer?.firstName} ${tx.account?.customer?.lastName}.`
     );
-    setTimeout(() => {
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    successTimerRef.current = setTimeout(() => {
       setSuccessMessage(null);
     }, 3000);
   };
@@ -409,7 +425,67 @@ export const TellerPage: React.FC = () => {
   const totalVaultLiquidity = totalClientSavings + Math.max(0, totalCompanyInterest - totalApprovedInterestWithdrawals);
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 relative">
+
+      {/* Floating 3-Second Pop-up Success Banner */}
+      {transactionSuccess && (
+        <div className="fixed top-4 sm:top-6 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-xl animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="relative overflow-hidden rounded-3xl bg-slate-900/95 backdrop-blur-xl border-2 border-emerald-500/80 shadow-2xl p-4 sm:p-5 text-white">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start space-x-3.5">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center font-black shadow-lg shadow-emerald-500/30 shrink-0 mt-0.5 animate-bounce">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                      transactionSuccess.type === 'DEPOSIT' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
+                    }`}>
+                      {transactionSuccess.type === 'DEPOSIT' ? 'Deposit Successful' : 'Withdrawal Executed'}
+                    </span>
+                    <span className="font-mono text-xs font-bold text-amber-400">
+                      Receipt: {transactionSuccess.receiptNo}
+                    </span>
+                  </div>
+                  <h4 className="font-extrabold text-sm sm:text-base text-white">
+                    GH₵ {transactionSuccess.amount.toFixed(2)} processed for {transactionSuccess.customerName}
+                  </h4>
+                  <p className="text-xs text-slate-300">
+                    Transactor: <b className="text-white">{transactionSuccess.transactor.fullName}</b> ({transactionSuccess.transactor.relationship}) • New Available: <b className="text-emerald-400 font-mono">GH₵ {transactionSuccess.newAvailableBalance.toFixed(2)}</b>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setPrintedTx(transactionSuccess.transaction)}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-1 shadow-md transition-all cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Slip</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+                    setTransactionSuccess(null);
+                    setSuccessMessage(null);
+                  }}
+                  className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* 3-Second Visual Countdown Progress Bar */}
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-800 overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-300 animate-shrink-width" />
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Header - Fully Responsive on iPhone & Desktop */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">

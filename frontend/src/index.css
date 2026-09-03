@@ -174,3 +174,16 @@ input::placeholder, textarea::placeholder {
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out forwards;
 }
+
+@keyframes shrinkWidth {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+.animate-shrink-width {
+  animation: shrinkWidth 3s linear forwards;
+}
