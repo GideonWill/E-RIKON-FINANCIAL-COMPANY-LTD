@@ -2,7 +2,7 @@ import React from 'react';
 import { Transaction } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import logoImg from '../../assets/logo.png';
-import { Printer, CheckCircle2, X, ShieldCheck, Building2, Sparkles, Check } from 'lucide-react';
+import { ShieldCheckIcon, XMarkIcon, CheckIcon, PrinterIcon } from '@heroicons/react/24/outline';
 
 interface ReceiptPrinterModalProps {
   transaction: Transaction | null;
@@ -41,7 +41,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
         {/* Modal Top Header Bar */}
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5 shrink-0">
           <div className="flex items-center space-x-2">
-            <ShieldCheck className="w-5 h-5 text-amber-500" />
+            <ShieldCheckIcon className="w-5 h-5 text-amber-500" />
             <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
               Official Paperless Receipt
             </h3>
@@ -51,7 +51,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
             onClick={onClose}
             className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
 
@@ -209,7 +209,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
             onClick={handleMarkPaid}
             className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs sm:text-sm flex items-center justify-center space-x-2 transition-all shadow-lg shadow-emerald-500/25 cursor-pointer"
           >
-            <Check className="w-4 h-4 stroke-[3]" />
+            <CheckIcon className="w-4 h-4 stroke-[3]" />
             <span>Mark Paid & Return to Screen</span>
           </button>
 
@@ -218,7 +218,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
             onClick={handlePrint}
             className="w-full py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center justify-center space-x-2 cursor-pointer"
           >
-            <Printer className="w-3.5 h-3.5" />
+            <PrinterIcon className="w-3.5 h-3.5" />
             <span>Print Official Paper Copy</span>
           </button>
         </div>

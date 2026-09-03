@@ -14,31 +14,31 @@ import { useRealtimeSync } from '../services/realtimeSync';
 import { useAuth } from '../contexts/AuthContext';
 import { Transaction, LoanApplication, Account, ApprovalRequest, AuditLog } from '../types';
 import logoImg from '../assets/logo.png';
-import { 
-  CalendarCheck2, 
-  Landmark, 
-  Smartphone, 
-  Calculator, 
-  ShieldCheck, 
-  PiggyBank, 
-  Clock, 
-  Download, 
-  Printer, 
-  TrendingUp, 
-  TrendingDown, 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  Users, 
-  CheckCircle2, 
-  Calendar, 
-  Filter, 
-  Building2,
-  FileSpreadsheet,
-  BadgeCheck,
-  Search,
-  DollarSign,
-  Trash2
-} from 'lucide-react';
+import {
+  CalendarDaysIcon,
+  BuildingLibraryIcon,
+  DevicePhoneMobileIcon,
+  CalculatorIcon,
+  ShieldCheckIcon,
+  BanknotesIcon,
+  ClockIcon,
+  ArrowDownTrayIcon,
+  PrinterIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  ArrowUpRightIcon,
+  ArrowDownLeftIcon,
+  UsersIcon,
+  CheckCircleIcon,
+  CalendarIcon,
+  FunnelIcon,
+  BuildingOffice2Icon,
+  DocumentChartBarIcon,
+  CheckBadgeIcon,
+  MagnifyingGlassIcon,
+  CurrencyDollarIcon,
+  TrashIcon
+} from '@heroicons/react/24/outline';
 
 export const EndOfDayPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -320,7 +320,7 @@ export const EndOfDayPage: React.FC = () => {
         <div>
           <div className="flex items-center space-x-2">
             <div className="p-2 rounded-2xl bg-teal-50 text-[#0d9488] border border-teal-200">
-              <CalendarCheck2 className="w-6 h-6" />
+              <CalendarDaysIcon className="w-6 h-6" />
             </div>
             <div>
               <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
@@ -351,7 +351,7 @@ export const EndOfDayPage: React.FC = () => {
 
           {/* Date Picker Input */}
           <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-xs shadow-2xs">
-            <Calendar className="w-4 h-4 text-[#0d9488]" />
+            <CalendarIcon className="w-4 h-4 text-[#0d9488]" />
             <input
               type="date"
               value={selectedDate}
@@ -367,7 +367,7 @@ export const EndOfDayPage: React.FC = () => {
             className="px-3.5 py-2 rounded-xl bg-[#0a3866] hover:bg-[#082d52] text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-slate-900/10 cursor-pointer transition-all"
             title="Download/Print Official End of Day Balancing Statement"
           >
-            <Printer className="w-4 h-4" />
+            <PrinterIcon className="w-4 h-4" />
             <span>Print EOD Summary</span>
           </button>
 
@@ -377,7 +377,7 @@ export const EndOfDayPage: React.FC = () => {
             onClick={exportEodCsv}
             className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs"
           >
-            <Download className="w-4 h-4" />
+            <ArrowDownTrayIcon className="w-4 h-4" />
             <span>Export CSV</span>
           </button>
 
@@ -394,7 +394,7 @@ export const EndOfDayPage: React.FC = () => {
               className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/30 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all"
               title="Clear all transactions from the system"
             >
-              <Trash2 className="w-4 h-4" />
+              <TrashIcon className="w-4 h-4" />
               <span>Clear Ledger</span>
             </button>
           )}
@@ -414,7 +414,7 @@ export const EndOfDayPage: React.FC = () => {
           <div className="text-left sm:text-right">
             <span className="text-[10px] font-mono text-teal-200 block uppercase">Reconciliation Status</span>
             <span className="text-xs font-black text-white bg-white/20 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 border border-white/20">
-              <BadgeCheck className="w-3.5 h-3.5 text-emerald-300" />
+              <CheckBadgeIcon className="w-3.5 h-3.5 text-emerald-300" />
               <span>{eodSignoffDone ? 'Day Closed & Certified' : 'Live Operating Session Active'}</span>
             </span>
           </div>
@@ -429,7 +429,7 @@ export const EndOfDayPage: React.FC = () => {
           <div className="flex items-center justify-between text-xs text-slate-500">
             <span className="font-bold uppercase tracking-wider text-[10px]">Total Daily Inflow</span>
             <div className="p-1.5 rounded-xl bg-emerald-50 text-emerald-600">
-              <ArrowDownLeft className="w-4 h-4" />
+              <ArrowDownLeftIcon className="w-4 h-4" />
             </div>
           </div>
           <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
@@ -445,7 +445,7 @@ export const EndOfDayPage: React.FC = () => {
           <div className="flex items-center justify-between text-xs text-slate-500">
             <span className="font-bold uppercase tracking-wider text-[10px]">Total Daily Outflow</span>
             <div className="p-1.5 rounded-xl bg-rose-50 text-rose-600">
-              <ArrowUpRight className="w-4 h-4" />
+              <ArrowUpRightIcon className="w-4 h-4" />
             </div>
           </div>
           <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
@@ -461,7 +461,7 @@ export const EndOfDayPage: React.FC = () => {
           <div className="flex items-center justify-between text-xs text-slate-500">
             <span className="font-bold uppercase tracking-wider text-[10px]">Net Daily Cash Variance</span>
             <div className="p-1.5 rounded-xl bg-teal-50 text-[#0d9488]">
-              <DollarSign className="w-4 h-4" />
+              <CurrencyDollarIcon className="w-4 h-4" />
             </div>
           </div>
           <div className={`text-xl font-black font-mono ${netDailyCashPosition >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
@@ -477,7 +477,7 @@ export const EndOfDayPage: React.FC = () => {
           <div className="flex items-center justify-between text-xs text-slate-500">
             <span className="font-bold uppercase tracking-wider text-[10px]">Company Interest Piled Up</span>
             <div className="p-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600">
-              <PiggyBank className="w-4 h-4" />
+              <BanknotesIcon className="w-4 h-4" />
             </div>
           </div>
           <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
@@ -493,12 +493,12 @@ export const EndOfDayPage: React.FC = () => {
       {/* Role Tabs Navigation */}
       <div className="flex items-center space-x-1.5 border-b border-slate-200 dark:border-slate-800 overflow-x-auto pb-2">
         {[
-          { id: 'ALL', label: 'All Roles Overview', icon: Users },
-          { id: 'TELLER', label: `Tellers (${dayTransactions.length})`, icon: Landmark },
-          { id: 'FIELD', label: `Field Officers (${dayFieldSplits.length})`, icon: Smartphone },
-          { id: 'LOANS', label: `Loans Desk (${dayLoans.length})`, icon: Calculator },
-          { id: 'APPROVALS', label: `Super Admin Approvals (${dayApprovals.length})`, icon: ShieldCheck },
-          { id: 'AUDIT', label: `Security Logs (${dayAuditLogs.length})`, icon: Clock },
+          { id: 'ALL', label: 'All Roles Overview', icon: UsersIcon },
+          { id: 'TELLER', label: `Tellers (${dayTransactions.length})`, icon: BuildingLibraryIcon },
+          { id: 'FIELD', label: `Field Officers (${dayFieldSplits.length})`, icon: DevicePhoneMobileIcon },
+          { id: 'LOANS', label: `Loans Desk (${dayLoans.length})`, icon: CalculatorIcon },
+          { id: 'APPROVALS', label: `Super Admin Approvals (${dayApprovals.length})`, icon: ShieldCheckIcon },
+          { id: 'AUDIT', label: `Security Logs (${dayAuditLogs.length})`, icon: ClockIcon },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -524,7 +524,7 @@ export const EndOfDayPage: React.FC = () => {
         <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <div className="flex items-center space-x-2">
-              <Landmark className="w-5 h-5 text-[#0d9488]" />
+              <BuildingLibraryIcon className="w-5 h-5 text-[#0d9488]" />
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
                 Teller Workstation Daily Close
               </h3>
@@ -609,7 +609,7 @@ export const EndOfDayPage: React.FC = () => {
         <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <div className="flex items-center space-x-2">
-              <Smartphone className="w-5 h-5 text-emerald-600" />
+              <DevicePhoneMobileIcon className="w-5 h-5 text-emerald-600" />
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
                 Field Officer Collections & Mobile Splitter Close
               </h3>
@@ -692,7 +692,7 @@ export const EndOfDayPage: React.FC = () => {
         <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <div className="flex items-center space-x-2">
-              <Calculator className="w-5 h-5 text-blue-600" />
+              <CalculatorIcon className="w-5 h-5 text-blue-600" />
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
                 Loan Desk Daily Activity & Credit Movements
               </h3>
@@ -752,7 +752,7 @@ export const EndOfDayPage: React.FC = () => {
         <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <div className="flex items-center space-x-2">
-              <ShieldCheck className="w-5 h-5 text-[#0a3866]" />
+              <ShieldCheckIcon className="w-5 h-5 text-[#0a3866]" />
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
                 Super Admin Authorizations & Security Log
               </h3>
@@ -810,7 +810,7 @@ export const EndOfDayPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <h4 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <CheckCircleIcon className="w-4 h-4 text-emerald-600" />
               <span>Official End of Day Institutional Sign-Off</span>
             </h4>
             <p className="text-xs text-slate-500">
@@ -961,7 +961,7 @@ export const EndOfDayPage: React.FC = () => {
                 onClick={() => window.print()}
                 className="px-5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-black text-xs flex items-center gap-2 cursor-pointer shadow-lg"
               >
-                <Printer className="w-4 h-4" />
+                <PrinterIcon className="w-4 h-4" />
                 <span>Print Official Document</span>
               </button>
               <button

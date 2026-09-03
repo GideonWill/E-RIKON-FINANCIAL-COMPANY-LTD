@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { RoleName } from '../../types';
-import { ShieldAlert, ArrowLeft } from 'lucide-react';
+import { ShieldExclamationIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { PendingApprovalScreen } from '../auth/PendingApprovalScreen';
 import { BlockedAccountScreen } from '../auth/BlockedAccountScreen';
 import { isUserBlocked } from '../../services/api';
@@ -35,7 +35,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center text-center p-6 space-y-4">
         <div className="p-4 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20">
-          <ShieldAlert className="w-12 h-12" />
+          <ShieldExclamationIcon className="w-12 h-12" />
         </div>
         <div className="space-y-1 max-w-md">
           <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
@@ -49,7 +49,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
           onClick={logout}
           className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs flex items-center space-x-2 transition-all cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeftIcon className="w-4 h-4" />
           <span>Return to Role Login Portal</span>
         </button>
       </div>

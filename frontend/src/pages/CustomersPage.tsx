@@ -23,37 +23,37 @@ import { GhanaCardInput, formatGhanaCardNumber, normalizeGhanaCardNumber, isVali
 import { GhanaPhoneInput, isValidGhanaPhone, formatGhanaianPhoneNumber } from '../components/ui/GhanaPhoneInput';
 import { addSystemNotification } from '../components/ui/NotificationsModal';
 import {
-  Users,
-  User,
-  UserPlus,
-  Search,
-  ShieldCheck,
-  CreditCard,
-  Phone,
-  MapPin,
-  Briefcase,
-  Building2,
-  FileText,
-  Calendar,
-  X,
-  CheckCircle2,
-  Trash2,
-  AlertTriangle,
-  Coins,
-  Sparkles,
-  CalendarCheck,
-  Filter,
-  Wallet,
-  Clock,
-  ArrowRight,
-  ArrowUpRight,
-  ArrowDownLeft,
-  TrendingUp,
-  Landmark,
-  ExternalLink,
-  ChevronRight,
-  Check
-} from 'lucide-react';
+  UsersIcon,
+  UserIcon,
+  UserPlusIcon,
+  MagnifyingGlassIcon,
+  ShieldCheckIcon,
+  CreditCardIcon,
+  PhoneIcon,
+  MapPinIcon,
+  BriefcaseIcon,
+  BuildingOffice2Icon,
+  DocumentTextIcon,
+  CalendarIcon,
+  XMarkIcon,
+  CheckCircleIcon,
+  TrashIcon,
+  ExclamationTriangleIcon,
+  CurrencyDollarIcon,
+  SparklesIcon,
+  CalendarDaysIcon,
+  FunnelIcon,
+  WalletIcon,
+  ClockIcon,
+  ArrowRightIcon,
+  ArrowUpRightIcon,
+  ArrowDownLeftIcon,
+  ArrowTrendingUpIcon,
+  BuildingLibraryIcon,
+  ArrowTopRightOnSquareIcon,
+  ChevronRightIcon,
+  CheckIcon
+} from '@heroicons/react/24/outline';
 
 export const CustomersPage: React.FC = () => {
   const navigate = useNavigate();
@@ -613,7 +613,7 @@ export const CustomersPage: React.FC = () => {
         <div className="p-4 rounded-3xl bg-gradient-to-r from-amber-500/20 via-emerald-500/10 to-transparent border-2 border-amber-500/50 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-300 shadow-xl">
           <div className="flex items-center space-x-3.5">
             <div className="w-10 h-10 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shrink-0 shadow-md">
-              <CheckCircle2 className="w-6 h-6" />
+              <CheckCircleIcon className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -648,7 +648,7 @@ export const CustomersPage: React.FC = () => {
             className="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white cursor-pointer transition-all"
             title="Dismiss banner"
           >
-            <X className="w-4 h-4" />
+            <XMarkIcon className="w-4 h-4" />
           </button>
         </div>
       )}
@@ -671,7 +671,7 @@ export const CustomersPage: React.FC = () => {
               className="px-4 py-2.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-extrabold text-xs flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
               title="Clear all old/demo client records and start from a fresh slate"
             >
-              <Trash2 className="w-4 h-4" />
+              <TrashIcon className="w-4 h-4" />
               <span>Clear to Fresh Slate</span>
             </button>
           )}
@@ -680,7 +680,7 @@ export const CustomersPage: React.FC = () => {
             onClick={() => setShowRegisterModal(true)}
             className="px-5 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs flex items-center justify-center space-x-2 transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
           >
-            <UserPlus className="w-4 h-4" />
+            <UserPlusIcon className="w-4 h-4" />
             <span>Register New Customer</span>
           </button>
         </div>
@@ -690,7 +690,7 @@ export const CustomersPage: React.FC = () => {
       <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2">
-            <Coins className="w-4 h-4 text-amber-500" />
+            <CurrencyDollarIcon className="w-4 h-4 text-amber-500" />
             <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
               Filter by Savings Package Tier
             </h3>
@@ -703,7 +703,7 @@ export const CustomersPage: React.FC = () => {
                 onClick={() => handleSelectPackageFilter(null)}
                 className="text-[11px] font-bold text-amber-500 hover:text-amber-600 dark:hover:text-amber-400 flex items-center gap-1 cursor-pointer"
               >
-                <X className="w-3.5 h-3.5" />
+                <XMarkIcon className="w-3.5 h-3.5" />
                 <span>Clear Package Filter</span>
               </button>
             )}
@@ -766,7 +766,7 @@ export const CustomersPage: React.FC = () => {
       {selectedPackageFilter !== null && (
         <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-center justify-between gap-3 shadow-sm animate-in fade-in duration-200">
           <div className="flex items-center space-x-2">
-            <Coins className="w-4 h-4 text-amber-500 shrink-0" />
+            <CurrencyDollarIcon className="w-4 h-4 text-amber-500 shrink-0" />
             <span>
               Showing only clients registered under the <b>GH₵ {selectedPackageFilter}.00 / Day</b> package ({filteredCustomers.length} registered {filteredCustomers.length === 1 ? 'client' : 'clients'})
             </span>
@@ -784,7 +784,7 @@ export const CustomersPage: React.FC = () => {
       {/* Search and Filters */}
       <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+          <MagnifyingGlassIcon className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
           <input
             type="text"
             placeholder="Search by name, phone, Ghana ID number, or customer number..."
@@ -803,7 +803,7 @@ export const CustomersPage: React.FC = () => {
       {filteredCustomers.length === 0 ? (
         <div className="p-12 text-center rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
           <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
-            <Users className="w-8 h-8" />
+            <UsersIcon className="w-8 h-8" />
           </div>
           <div className="space-y-1">
             <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
@@ -819,7 +819,7 @@ export const CustomersPage: React.FC = () => {
             onClick={() => setShowRegisterModal(true)}
             className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs inline-flex items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer"
           >
-            <UserPlus className="w-4 h-4" />
+            <UserPlusIcon className="w-4 h-4" />
             <span>Register First Customer</span>
           </button>
         </div>
@@ -842,7 +842,7 @@ export const CustomersPage: React.FC = () => {
                 {/* Just Onboarded Badge */}
                 {isJustAdded && (
                   <div className="absolute top-0 right-0 bg-amber-500 text-slate-950 text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-widest flex items-center gap-1 shadow-sm">
-                    <Sparkles className="w-3 h-3" /> Just Onboarded
+                    <SparklesIcon className="w-3 h-3" /> Just Onboarded
                   </div>
                 )}
 
@@ -861,13 +861,13 @@ export const CustomersPage: React.FC = () => {
                         {cust.firstName || ''} {cust.otherNames ? `${cust.otherNames} ` : ''}{cust.lastName || ''}
                       </h3>
                       <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
-                        <Briefcase className="w-3.5 h-3.5 text-slate-400" /> {cust.occupation || 'Trader / Self Employed'}
+                        <BriefcaseIcon className="w-3.5 h-3.5 text-slate-400" /> {cust.occupation || 'Trader / Self Employed'}
                       </div>
                     </div>
                   </div>
 
                   <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3" /> {cust.status || 'VERIFIED'}
+                    <ShieldCheckIcon className="w-3 h-3" /> {cust.status || 'VERIFIED'}
                   </span>
                 </div>
 
@@ -875,7 +875,7 @@ export const CustomersPage: React.FC = () => {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 text-xs">
                   <div className="space-y-0.5">
                     <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3 text-blue-500" /> Total Savings
+                      <ArrowTrendingUpIcon className="w-3 h-3 text-blue-500" /> Total Savings
                     </span>
                     <div className="font-mono font-black text-blue-600 dark:text-blue-400 text-xs">
                       GH₵ {fin.totalDepositedAcrossCycles.toFixed(2)}
@@ -887,7 +887,7 @@ export const CustomersPage: React.FC = () => {
 
                   <div className="space-y-0.5">
                     <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                      <ArrowDownLeft className="w-3 h-3 text-rose-500" /> Total Withdrawals
+                      <ArrowDownLeftIcon className="w-3 h-3 text-rose-500" /> Total Withdrawals
                     </span>
                     <div className="font-mono font-black text-rose-600 dark:text-rose-400 text-xs">
                       GH₵ {fin.totalWithdrawn.toFixed(2)}
@@ -899,7 +899,7 @@ export const CustomersPage: React.FC = () => {
 
                   <div className="space-y-0.5">
                     <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                      <Wallet className="w-3 h-3 text-emerald-500" /> Net Balance
+                      <WalletIcon className="w-3 h-3 text-emerald-500" /> Net Balance
                     </span>
                     <div className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-xs">
                       GH₵ {fin.availableSavings.toFixed(2)}
@@ -911,7 +911,7 @@ export const CustomersPage: React.FC = () => {
 
                   <div className="space-y-0.5">
                     <span className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                      <Coins className="w-3 h-3 text-amber-500" /> Package Tier
+                      <CurrencyDollarIcon className="w-3 h-3 text-amber-500" /> Package Tier
                     </span>
                     <div className="font-mono font-black text-amber-600 dark:text-amber-400 text-xs">
                       GH₵ {fin.packageRate}/Day
@@ -926,7 +926,7 @@ export const CustomersPage: React.FC = () => {
                 <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-slate-50/70 dark:bg-slate-950/70 text-xs border border-slate-100 dark:border-slate-800/60">
                   <div className="space-y-0.5">
                     <span className="text-[9px] text-slate-400 font-semibold uppercase flex items-center gap-1">
-                      <CreditCard className="w-3 h-3 text-amber-500" /> Ghana Card PIN
+                      <CreditCardIcon className="w-3 h-3 text-amber-500" /> Ghana Card PIN
                     </span>
                     <div className="font-mono font-bold text-slate-800 dark:text-slate-200">
                       {cust.ghanaCardNumber}
@@ -935,7 +935,7 @@ export const CustomersPage: React.FC = () => {
 
                   <div className="space-y-0.5">
                     <span className="text-[9px] text-slate-400 font-semibold uppercase flex items-center gap-1">
-                      <Phone className="w-3 h-3 text-blue-500" /> Phone Contact
+                      <PhoneIcon className="w-3 h-3 text-blue-500" /> Phone Contact
                     </span>
                     <div className="font-mono font-bold text-slate-800 dark:text-slate-200">
                       {cust.phone}
@@ -946,7 +946,7 @@ export const CustomersPage: React.FC = () => {
                 {/* Bottom Row: Address & Actions */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs pt-1 border-t border-slate-100 dark:border-slate-800/80">
                   <div className="text-slate-500 dark:text-slate-400 flex items-center gap-1 text-[11px] truncate">
-                    <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" /> {cust.address}
+                    <MapPinIcon className="w-3.5 h-3.5 text-rose-500 shrink-0" /> {cust.address}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -963,7 +963,7 @@ export const CustomersPage: React.FC = () => {
                       className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/30 transition-all flex items-center gap-1 text-[11px] cursor-pointer"
                       title="View 31-day scheme visual calendar"
                     >
-                      <Calendar className="w-3.5 h-3.5" />
+                      <CalendarIcon className="w-3.5 h-3.5" />
                       <span>31-Day Scheme</span>
                     </button>
 
@@ -976,7 +976,7 @@ export const CustomersPage: React.FC = () => {
                       className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-amber-500 hover:text-slate-950 font-bold text-slate-800 dark:text-slate-200 transition-all flex items-center gap-1 text-[11px] cursor-pointer"
                     >
                       <span>360 Dossier</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <ChevronRightIcon className="w-3.5 h-3.5" />
                     </button>
 
                     <button
@@ -988,7 +988,7 @@ export const CustomersPage: React.FC = () => {
                       className="p-1.5 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 font-bold border border-rose-500/30 transition-all flex items-center gap-1 text-xs cursor-pointer"
                       title="Close and delete client record"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <TrashIcon className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
@@ -1037,7 +1037,7 @@ export const CustomersPage: React.FC = () => {
                       {selectedDetailCustomer.firstName} {selectedDetailCustomer.otherNames || ''} {selectedDetailCustomer.lastName}
                     </h3>
                     <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
-                      <CreditCard className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <CreditCardIcon className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                       <span>Ghana Card: <b className="font-mono text-slate-800 dark:text-slate-200">{selectedDetailCustomer.ghanaCardNumber}</b></span>
                     </p>
                   </div>
@@ -1050,7 +1050,7 @@ export const CustomersPage: React.FC = () => {
                     className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-all cursor-pointer flex items-center gap-1 text-xs font-bold"
                     title="Close & Delete Client Account"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <TrashIcon className="w-4 h-4" />
                     <span className="hidden md:inline">Delete Record</span>
                   </button>
 
@@ -1063,7 +1063,7 @@ export const CustomersPage: React.FC = () => {
                     className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer"
                     title="Close Modal"
                   >
-                    <X className="w-5 h-5" />
+                    <XMarkIcon className="w-5 h-5" />
                   </button>
                 </div>
               </div>
@@ -1090,7 +1090,7 @@ export const CustomersPage: React.FC = () => {
                               }`}
                             title={`View Cycle #${c.cycleNumber}`}
                           >
-                            <Coins className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                            <CurrencyDollarIcon className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                             <span>Cycle #{c.cycleNumber}</span>
                             <span className="text-[9px] opacity-80">
                               {isCompleted ? '• (31/31)' : `• (${c.currentDayCount}/31)`}
@@ -1116,7 +1116,7 @@ export const CustomersPage: React.FC = () => {
                         }}
                         className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-white text-[10px] sm:text-[11px] font-black shrink-0 flex items-center gap-1 shadow-md shadow-emerald-500/20 cursor-pointer transition-all"
                       >
-                        <Sparkles className="w-3 h-3" />
+                        <SparklesIcon className="w-3 h-3" />
                         <span>Start Next Cycle</span>
                       </button>
                     )}
@@ -1130,7 +1130,7 @@ export const CustomersPage: React.FC = () => {
                 {/* 1. Daily Package Card */}
                 <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/30 space-y-0.5 shadow-2xs">
                   <span className="text-[9px] sm:text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1 truncate">
-                    <Coins className="w-3 h-3 text-amber-500 shrink-0" /> Daily Target
+                    <CurrencyDollarIcon className="w-3 h-3 text-amber-500 shrink-0" /> Daily Target
                   </span>
                   <div className="text-base sm:text-xl font-black font-mono text-amber-500">
                     GH₵ {fin.packageRate}.00
@@ -1141,7 +1141,7 @@ export const CustomersPage: React.FC = () => {
                 {/* 2. Total Client Savings Deposited */}
                 <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent border-2 border-blue-500/40 space-y-0.5 shadow-2xs">
                   <span className="text-[9px] sm:text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1 truncate">
-                    <TrendingUp className="w-3 h-3 text-blue-500 shrink-0" /> Total Savings
+                    <ArrowTrendingUpIcon className="w-3 h-3 text-blue-500 shrink-0" /> Total Savings
                   </span>
                   <div className="text-base sm:text-xl font-black font-mono text-blue-500">
                     GH₵ {fin.totalDepositedAcrossCycles.toFixed(2)}
@@ -1152,7 +1152,7 @@ export const CustomersPage: React.FC = () => {
                 {/* 3. Total Client Withdrawals */}
                 <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-rose-500/15 via-rose-500/5 to-transparent border-2 border-rose-500/40 space-y-0.5 shadow-2xs">
                   <span className="text-[9px] sm:text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1 truncate">
-                    <ArrowDownLeft className="w-3 h-3 text-rose-500 shrink-0" /> Withdrawals
+                    <ArrowDownLeftIcon className="w-3 h-3 text-rose-500 shrink-0" /> Withdrawals
                   </span>
                   <div className="text-base sm:text-xl font-black font-mono text-rose-500">
                     GH₵ {fin.totalWithdrawn.toFixed(2)}
@@ -1163,7 +1163,7 @@ export const CustomersPage: React.FC = () => {
                 {/* 4. Net Client Balance */}
                 <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent border-2 border-emerald-500/40 space-y-0.5 shadow-2xs">
                   <span className="text-[9px] sm:text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1 truncate">
-                    <Wallet className="w-3 h-3 text-emerald-500 shrink-0" /> Net Balance
+                    <WalletIcon className="w-3 h-3 text-emerald-500 shrink-0" /> Net Balance
                   </span>
                   <div className="text-base sm:text-xl font-black font-mono text-emerald-500">
                     GH₵ {fin.availableSavings.toFixed(2)}
@@ -1177,7 +1177,7 @@ export const CustomersPage: React.FC = () => {
               <div className="p-3 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
                   <span className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                    <BuildingOffice2Icon className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                     Company 31-Day Fee (Cycle #{fin.cycleNumber})
                   </span>
                   <span className="font-mono text-[11px] sm:text-xs font-black text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-lg border border-purple-500/30 w-fit">
@@ -1188,7 +1188,7 @@ export const CustomersPage: React.FC = () => {
                 <p className="text-[10px] sm:text-[11px] text-slate-600 dark:text-slate-300">
                   {fin.isDay31FeeRetained ? (
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5 shrink-0" /> Day 31 reached! GH₵ {fin.packageRate}.00 retained to corporate interest revenue.
+                      <CheckIcon className="w-3.5 h-3.5 shrink-0" /> Day 31 reached! GH₵ {fin.packageRate}.00 retained to corporate interest revenue.
                     </span>
                   ) : (
                     <span>
@@ -1202,7 +1202,7 @@ export const CustomersPage: React.FC = () => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h4 className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-amber-500" />
+                    <ClockIcon className="w-3.5 h-3.5 text-amber-500" />
                     31-Day Split Days (Cycle #{fin.cycleNumber})
                   </h4>
                   <span className="text-[10px] font-mono text-slate-400">
@@ -1246,7 +1246,7 @@ export const CustomersPage: React.FC = () => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h4 className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-amber-500" />
+                    <DocumentTextIcon className="w-3.5 h-3.5 text-amber-500" />
                     <span>Client Activity Ledger</span>
                   </h4>
                   <span className="text-[10px] font-mono text-slate-400">
@@ -1272,7 +1272,7 @@ export const CustomersPage: React.FC = () => {
                             <div className={`p-1.5 rounded-lg shrink-0 ${
                               isWithdrawal ? 'bg-rose-500/10 text-rose-500' : isFee ? 'bg-purple-500/10 text-purple-500' : 'bg-emerald-500/10 text-emerald-500'
                             }`}>
-                              {isWithdrawal ? <ArrowDownLeft className="w-3.5 h-3.5" /> : isFee ? <Building2 className="w-3.5 h-3.5" /> : <TrendingUp className="w-3.5 h-3.5" />}
+                              {isWithdrawal ? <ArrowDownLeftIcon className="w-3.5 h-3.5" /> : isFee ? <BuildingOffice2Icon className="w-3.5 h-3.5" /> : <ArrowTrendingUpIcon className="w-3.5 h-3.5" />}
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
@@ -1311,7 +1311,7 @@ export const CustomersPage: React.FC = () => {
               {/* Personal & Next of Kin Profile */}
               <div className="p-3 sm:p-4 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
                 <h4 className="font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider text-[10px] sm:text-xs flex items-center gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-1.5">
-                  <User className="w-3.5 h-3.5 text-amber-500" />
+                  <UserIcon className="w-3.5 h-3.5 text-amber-500" />
                   <span>Client Contact & Next of Kin</span>
                 </h4>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
@@ -1367,7 +1367,7 @@ export const CustomersPage: React.FC = () => {
                   }}
                   className="py-2.5 sm:py-3 sm:flex-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer transition-all"
                 >
-                  <ArrowUpRight className="w-4 h-4" />
+                  <ArrowUpRightIcon className="w-4 h-4" />
                   <span>Deposit</span>
                 </button>
 
@@ -1380,7 +1380,7 @@ export const CustomersPage: React.FC = () => {
                   }}
                   className="py-2.5 sm:py-3 sm:flex-1 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-rose-500/20 cursor-pointer transition-all"
                 >
-                  <ArrowDownLeft className="w-4 h-4" />
+                  <ArrowDownLeftIcon className="w-4 h-4" />
                   <span>Withdraw</span>
                 </button>
 
@@ -1394,7 +1394,7 @@ export const CustomersPage: React.FC = () => {
                   }}
                   className="py-2.5 sm:py-3 sm:flex-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-amber-500 hover:text-slate-950 font-bold text-slate-900 dark:text-white text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
-                  <Calendar className="w-4 h-4" />
+                  <CalendarIcon className="w-4 h-4" />
                   <span>31-Day Scheme</span>
                 </button>
 
@@ -1407,7 +1407,7 @@ export const CustomersPage: React.FC = () => {
                   }}
                   className="py-2.5 sm:py-3 sm:flex-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
-                  <FileText className="w-4 h-4" />
+                  <DocumentTextIcon className="w-4 h-4" />
                   <span>Statement</span>
                 </button>
               </div>
@@ -1436,11 +1436,11 @@ export const CustomersPage: React.FC = () => {
 
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-amber-500" />
+                <UserPlusIcon className="w-5 h-5 text-amber-500" />
                 Register New Customer (Ghana Card Onboarding)
               </h3>
               <button onClick={() => setShowRegisterModal(false)} className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer">
-                <X className="w-5 h-5" />
+                <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
 
@@ -1448,7 +1448,7 @@ export const CustomersPage: React.FC = () => {
               {/* Form Error Banner */}
               {formError && (
                 <div className="p-3.5 rounded-2xl bg-rose-500/10 border-2 border-rose-500/80 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2.5 animate-in fade-in duration-200">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                  <ExclamationTriangleIcon className="w-4 h-4 shrink-0 text-rose-500" />
                   <span>{formError}</span>
                 </div>
               )}
@@ -1559,7 +1559,7 @@ export const CustomersPage: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-bold text-amber-500 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                      <Coins className="w-3.5 h-3.5 text-amber-500" />
+                      <CurrencyDollarIcon className="w-3.5 h-3.5 text-amber-500" />
                       Choose Daily Savings Package (Ghana Cedis) *
                     </h4>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400">
@@ -1600,7 +1600,7 @@ export const CustomersPage: React.FC = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
                     <div>
                       <label className="font-bold text-slate-200 flex items-center gap-1.5 text-xs">
-                        <CalendarCheck className="w-4 h-4 text-emerald-400" />
+                        <CalendarDaysIcon className="w-4 h-4 text-emerald-400" />
                         Savings Deposit (Day 1 / Multi-Day Advance)
                       </label>
                       <span className="text-[10px] text-slate-400">Credited to customer's available savings balance</span>
@@ -1629,14 +1629,14 @@ export const CustomersPage: React.FC = () => {
                   {/* Live Splittability Feedback */}
                   {depositNum > 0 && depositNum < chosenPackage && (
                     <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-[11px] font-bold flex items-center gap-2 animate-in fade-in">
-                      <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+                      <ExclamationTriangleIcon className="w-4 h-4 shrink-0 text-rose-400" />
                       <span>Deposit cannot be lower than the GH₵ {chosenPackage}.00 package rate. Minimum deposit is GH₵ {chosenPackage}.00.</span>
                     </div>
                   )}
 
                   {depositNum >= chosenPackage && depositNum % chosenPackage !== 0 && (
                     <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-[11px] font-bold flex items-center gap-2 animate-in fade-in">
-                      <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+                      <ExclamationTriangleIcon className="w-4 h-4 shrink-0 text-rose-400" />
                       <span>
                         GH₵ {depositNum}.00 cannot split evenly into GH₵ {chosenPackage}/day. Must be an exact multiple (e.g. GH₵ {chosenPackage}, GH₵ {chosenPackage * 2}, GH₵ {chosenPackage * 3}).
                       </span>
@@ -1645,7 +1645,7 @@ export const CustomersPage: React.FC = () => {
 
                   {depositNum >= chosenPackage && depositNum % chosenPackage === 0 && (
                     <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-semibold flex items-center gap-2">
-                      <Sparkles className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                      <SparklesIcon className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
                       <span>
                         ✓ GH₵ {depositNum}.00 splits perfectly into <b>{depositNum / chosenPackage} day(s)</b> ({depositNum / chosenPackage} × GH₵ {chosenPackage}.00/day).
                       </span>
@@ -1672,7 +1672,7 @@ export const CustomersPage: React.FC = () => {
 
                   {/* 30-Day Cycle & Retention Policy Note */}
                   <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] leading-relaxed flex items-start gap-2">
-                    <Sparkles className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                    <SparklesIcon className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
                     <div>
                       <b>30-Day Savings & Company Retention Policy:</b> Clients contribute daily according to package (GH₵ {chosenPackage}/Day). The company retains 1 day's contribution (<b>GH₵ {chosenPackage}.00</b>) directly from the deposited money upon reaching the 31st contribution day. Mid-cycle withdrawals are issued as <b>loans against accumulated savings</b>, with the 1-day retention fee strictly safeguarded and never eaten into.
                     </div>
@@ -1683,7 +1683,7 @@ export const CustomersPage: React.FC = () => {
               {/* Bottom Form Error Alert */}
               {formError && (
                 <div className="p-3.5 rounded-2xl bg-rose-500/10 border-2 border-rose-500/80 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2.5 animate-in fade-in duration-200">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                  <ExclamationTriangleIcon className="w-4 h-4 shrink-0 text-rose-500" />
                   <span>{formError}</span>
                 </div>
               )}

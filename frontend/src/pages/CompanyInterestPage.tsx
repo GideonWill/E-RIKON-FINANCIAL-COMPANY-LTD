@@ -10,29 +10,28 @@ import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSyn
 import { pushLocalToCloud } from '../services/cloudSync';
 import { CompanyInterestRecord, CompanyInterestWithdrawal } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  PiggyBank, 
-  ArrowUpRight, 
-  Building2, 
-  Smartphone, 
-  Vault, 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle, 
-  Coins, 
-  ShieldCheck, 
-  Search, 
-  Filter,
-  Download,
-  Calendar,
-  Layers,
-  Sparkles,
-  ArrowDownRight,
-  Trash2,
-  X,
-  ChevronDown,
-  Check
-} from 'lucide-react';
+import {
+  BanknotesIcon,
+  ArrowUpRightIcon,
+  BuildingOffice2Icon,
+  DevicePhoneMobileIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  ExclamationCircleIcon,
+  CurrencyDollarIcon,
+  ShieldCheckIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  ArrowDownTrayIcon,
+  CalendarIcon,
+  Square3Stack3DIcon,
+  SparklesIcon,
+  ArrowDownRightIcon,
+  TrashIcon,
+  XMarkIcon,
+  ChevronDownIcon,
+  CheckIcon
+} from '@heroicons/react/24/outline';
 
 export const CompanyInterestPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -63,14 +62,14 @@ export const CompanyInterestPage: React.FC = () => {
       type: 'COMPANY_BANK_ACCOUNT' as const,
       label: 'Company Bank Account',
       desc: 'GCB Bank Corporate Wire Account',
-      icon: Building2,
+      icon: BuildingOffice2Icon,
       defaultDetails: 'GCB Bank Corporate Account #10129384910'
     },
     {
       type: 'MTN_MOMO_MERCHANT' as const,
       label: 'MTN Mobile Money Merchant',
       desc: 'Corporate Merchant SIM Settlement',
-      icon: Smartphone,
+      icon: DevicePhoneMobileIcon,
       defaultDetails: 'MTN Mobile Money Merchant: 0244112233'
     }
   ];
@@ -165,7 +164,7 @@ export const CompanyInterestPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <PiggyBank className="w-6 h-6 text-amber-500" />
+            <BanknotesIcon className="w-6 h-6 text-amber-500" />
             Company Interest Vault & 30-Day Accumulation
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -180,7 +179,7 @@ export const CompanyInterestPage: React.FC = () => {
             onClick={() => setIsConfirmEmptyOpen(true)}
             className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-rose-500/10 text-slate-700 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-rose-500/20 hover:text-rose-500 dark:hover:text-rose-400 font-bold text-xs flex items-center space-x-1.5 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
           >
-            <Trash2 className="w-4 h-4 text-rose-500" />
+            <TrashIcon className="w-4 h-4 text-rose-500" />
             <span>Empty Vault Balance</span>
           </button>
 
@@ -188,7 +187,7 @@ export const CompanyInterestPage: React.FC = () => {
             onClick={() => setIsWithdrawModalOpen(true)}
             className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold text-xs flex items-center space-x-2 transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
           >
-            <ArrowUpRight className="w-4 h-4" />
+            <ArrowUpRightIcon className="w-4 h-4" />
             <span>Withdraw Company Interest</span>
           </button>
         </div>
@@ -198,7 +197,7 @@ export const CompanyInterestPage: React.FC = () => {
       {successMsg && (
         <div className="p-4 rounded-2xl bg-emerald-500 text-white font-bold text-xs flex items-center justify-between shadow-xl animate-fade-in">
           <div className="flex items-center space-x-2">
-            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+            <CheckCircleIcon className="w-5 h-5 flex-shrink-0" />
             <span>{successMsg}</span>
           </div>
           <button
@@ -217,14 +216,14 @@ export const CompanyInterestPage: React.FC = () => {
           <div className="flex items-center justify-between text-slate-400 text-xs">
             <span>Total 30-Day Interest Piled Up</span>
             <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500">
-              <Coins className="w-4 h-4" />
+              <CurrencyDollarIcon className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
             GHS {totalPiledUp.toFixed(2)}
           </div>
           <div className="text-[11px] text-emerald-500 font-semibold flex items-center gap-1">
-            <Sparkles className="w-3 h-3" /> Accumulated across active cycles
+            <SparklesIcon className="w-3 h-3" /> Accumulated across active cycles
           </div>
         </div>
 
@@ -232,7 +231,7 @@ export const CompanyInterestPage: React.FC = () => {
           <div className="flex items-center justify-between text-slate-400 text-xs">
             <span>Available for Company Withdrawal</span>
             <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500">
-              <Vault className="w-4 h-4" />
+              <BanknotesIcon className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-black text-emerald-500 font-mono">
@@ -247,7 +246,7 @@ export const CompanyInterestPage: React.FC = () => {
           <div className="flex items-center justify-between text-slate-400 text-xs">
             <span>Total Corporate Payouts</span>
             <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
-              <ArrowDownRight className="w-4 h-4" />
+              <ArrowDownRightIcon className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-black text-blue-500 font-mono">
@@ -262,7 +261,7 @@ export const CompanyInterestPage: React.FC = () => {
           <div className="flex items-center justify-between text-slate-400 text-xs">
             <span>Contributing Members</span>
             <div className="p-2 rounded-xl bg-purple-500/10 text-purple-500">
-              <Layers className="w-4 h-4" />
+              <Square3Stack3DIcon className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-black text-purple-500 font-mono">
@@ -289,7 +288,7 @@ export const CompanyInterestPage: React.FC = () => {
           </div>
 
           <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <MagnifyingGlassIcon className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
               value={searchQuery}
@@ -376,9 +375,9 @@ export const CompanyInterestPage: React.FC = () => {
                   <td className="py-3 px-3 font-bold text-amber-500">{wd.referenceNo}</td>
                   <td className="py-3 px-3 font-sans">
                     <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                      {wd.destinationType === 'COMPANY_BANK_ACCOUNT' && <Building2 className="w-3.5 h-3.5 text-blue-400" />}
-                      {wd.destinationType === 'MTN_MOMO_MERCHANT' && <Smartphone className="w-3.5 h-3.5 text-amber-400" />}
-                      {wd.destinationType === 'VAULT_CASH' && <Vault className="w-3.5 h-3.5 text-emerald-400" />}
+                      {wd.destinationType === 'COMPANY_BANK_ACCOUNT' && <BuildingOffice2Icon className="w-3.5 h-3.5 text-blue-400" />}
+                      {wd.destinationType === 'MTN_MOMO_MERCHANT' && <DevicePhoneMobileIcon className="w-3.5 h-3.5 text-amber-400" />}
+                      {wd.destinationType === 'VAULT_CASH' && <BanknotesIcon className="w-3.5 h-3.5 text-emerald-400" />}
                       <span>{wd.destinationType.replace(/_/g, ' ')}</span>
                     </div>
                     <div className="text-[11px] text-slate-400">{wd.destinationDetails}</div>
@@ -430,7 +429,7 @@ export const CompanyInterestPage: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-2.5 text-amber-500">
                 <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                  <PiggyBank className="w-5 h-5 text-amber-500" />
+                  <BanknotesIcon className="w-5 h-5 text-amber-500" />
                 </div>
                 <div>
                   <h3 className="font-extrabold text-base text-white">Withdraw Company Interest</h3>
@@ -446,14 +445,14 @@ export const CompanyInterestPage: React.FC = () => {
                 className="p-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
                 title="Close"
               >
-                <X className="w-5 h-5" />
+                <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
 
             {/* Available Balance Pill */}
             <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-emerald-500/10 to-slate-950 border border-amber-500/40 flex items-center justify-between shadow-inner">
               <div className="flex items-center space-x-2">
-                <Vault className="w-4 h-4 text-amber-400" />
+                <BanknotesIcon className="w-4 h-4 text-amber-400" />
                 <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Available Vault Balance</span>
               </div>
               <span className="text-base font-black font-mono text-emerald-400">
@@ -491,7 +490,7 @@ export const CompanyInterestPage: React.FC = () => {
                   <div className="flex items-center space-x-2.5">
                     <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-500">
                       {React.createElement(
-                        DESTINATION_OPTIONS.find((o) => o.type === destinationType)?.icon || Building2,
+                        DESTINATION_OPTIONS.find((o) => o.type === destinationType)?.icon || BuildingOffice2Icon,
                         { className: 'w-4 h-4 text-amber-400' }
                       )}
                     </div>
@@ -504,7 +503,7 @@ export const CompanyInterestPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isDestinationDropdownOpen ? 'rotate-180 text-amber-400' : ''}`} />
+                  <ChevronDownIcon className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isDestinationDropdownOpen ? 'rotate-180 text-amber-400' : ''}`} />
                 </button>
 
                 {/* Floating Options Menu */}
@@ -542,7 +541,7 @@ export const CompanyInterestPage: React.FC = () => {
                             </div>
                           </div>
 
-                          {isSelected && <Check className="w-4 h-4 text-slate-950 stroke-[3]" />}
+                          {isSelected && <CheckIcon className="w-4 h-4 text-slate-950 stroke-[3]" />}
                         </button>
                       );
                     })}
@@ -615,7 +614,7 @@ export const CompanyInterestPage: React.FC = () => {
           >
             <div className="flex items-center space-x-3 text-rose-500">
               <div className="p-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/20">
-                <Trash2 className="w-6 h-6 text-rose-500" />
+                <TrashIcon className="w-6 h-6 text-rose-500" />
               </div>
               <div>
                 <h3 className="font-extrabold text-base text-white">Empty Interest Vault?</h3>
@@ -650,7 +649,7 @@ export const CompanyInterestPage: React.FC = () => {
                 onClick={handleEmptyVault}
                 className="w-1/2 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-lg shadow-rose-600/20 cursor-pointer flex items-center justify-center space-x-1.5"
               >
-                <Trash2 className="w-4 h-4" />
+                <TrashIcon className="w-4 h-4" />
                 <span>Confirm Empty</span>
               </button>
             </div>

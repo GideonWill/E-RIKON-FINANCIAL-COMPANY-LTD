@@ -8,21 +8,20 @@ import { LoadingScreen } from '../components/ui/LoadingScreen';
 import { GhanaCardInput, formatGhanaCardNumber, isValidGhanaCard } from '../components/ui/GhanaCardInput';
 import { GhanaPhoneInput, isValidGhanaPhone } from '../components/ui/GhanaPhoneInput';
 import logoImg from '../assets/logo.png';
-import { 
-  Building2, 
-  ShieldCheck, 
-  Landmark, 
-  Smartphone, 
-  Calculator, 
-  FileCheck, 
-  Eye, 
-  EyeOff, 
-  Shield, 
-  CheckCircle2, 
-  Trash2,
-  ChevronRight,
-  ChevronDown
-} from 'lucide-react';
+import {
+  BuildingOffice2Icon,
+  ShieldCheckIcon,
+  BuildingLibraryIcon,
+  DevicePhoneMobileIcon,
+  CalculatorIcon,
+  DocumentCheckIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  CheckCircleIcon,
+  TrashIcon,
+  ChevronRightIcon,
+  ChevronDownIcon
+} from '@heroicons/react/24/outline';
 
 export const LoginPage: React.FC = () => {
   const { currentUser, isAuthenticated, login, signupRole } = useAuth();
@@ -377,7 +376,7 @@ export const LoginPage: React.FC = () => {
               {signupSuccessMsg && (
                 <div className="mb-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium space-y-1.5">
                   <div className="flex items-start space-x-1.5 font-bold text-xs text-emerald-700">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                    <CheckCircleIcon className="w-4 h-4 shrink-0 mt-0.5" />
                     <span>{signupSuccessMsg}</span>
                   </div>
                   <button
@@ -385,7 +384,7 @@ export const LoginPage: React.FC = () => {
                     className="px-3 py-1 rounded-lg bg-emerald-600 text-white font-bold text-[11px] hover:bg-emerald-700 transition-all cursor-pointer inline-flex items-center gap-1"
                   >
                     <span>Proceed to Login</span>
-                    <ChevronRight className="w-3 h-3" />
+                    <ChevronRightIcon className="w-3 h-3" />
                   </button>
                 </div>
               )}
@@ -411,7 +410,7 @@ export const LoginPage: React.FC = () => {
                         ))}
                       </select>
                     </div>
-                    <ChevronDown className="w-4 h-4 text-slate-500 shrink-0 pointer-events-none" />
+                    <ChevronDownIcon className="w-4 h-4 text-slate-500 shrink-0 pointer-events-none" />
                   </div>
 
                   {/* Email / Login Input matching Figma */}
@@ -449,7 +448,7 @@ export const LoginPage: React.FC = () => {
                       onClick={() => setShowPassword(!showPassword)}
                       className="text-slate-400 hover:text-slate-700 cursor-pointer"
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4 text-slate-500" />}
+                      {showPassword ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4 text-slate-500" />}
                     </button>
                   </div>
 
@@ -468,7 +467,7 @@ export const LoginPage: React.FC = () => {
                       className="px-6 py-2.5 rounded-full bg-[#166534] hover:bg-[#14532d] text-white font-bold text-xs flex items-center space-x-2 transition-all shadow-md shadow-emerald-900/20 cursor-pointer transform hover:scale-[1.02] active:scale-[0.98] shrink-0"
                     >
                       <span>login</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <ChevronRightIcon className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
@@ -585,7 +584,7 @@ export const LoginPage: React.FC = () => {
                           ))}
                         </select>
                       </div>
-                      <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0 pointer-events-none" />
+                      <ChevronDownIcon className="w-3.5 h-3.5 text-slate-500 shrink-0 pointer-events-none" />
                     </div>
                   </div>
 
@@ -608,7 +607,7 @@ export const LoginPage: React.FC = () => {
                       onClick={() => setShowSignupPassword(!showSignupPassword)}
                       className="text-slate-400 hover:text-slate-700 cursor-pointer"
                     >
-                      {showSignupPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4 text-slate-500" />}
+                      {showSignupPassword ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4 text-slate-500" />}
                     </button>
                   </div>
 
@@ -626,7 +625,7 @@ export const LoginPage: React.FC = () => {
                       className="px-6 py-2 rounded-full bg-[#166534] hover:bg-[#14532d] text-white font-bold text-xs flex items-center space-x-2 transition-all shadow-md shadow-emerald-900/20 cursor-pointer transform hover:scale-[1.02] active:scale-[0.98] shrink-0"
                     >
                       <span>sign up</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <ChevronRightIcon className="w-3.5 h-3.5" />
                     </button>
                   </div>
 

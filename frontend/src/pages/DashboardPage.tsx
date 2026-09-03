@@ -17,31 +17,30 @@ import {
 import { useRealtimeSync } from '../services/realtimeSync';
 import { useAuth } from '../contexts/AuthContext';
 import { SAVINGS_PACKAGES, RegisteredUserRecord } from '../types';
-import { 
-  Users, 
-  Wallet, 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  Calculator, 
-  Clock, 
-  Building2, 
-  TrendingUp, 
-  ShieldCheck,
-  CalendarCheck,
-  PiggyBank,
-  Coins,
-  Shield,
-  Sparkles,
-  Layers,
-  ArrowRight,
-  CheckCircle2,
-  XCircle,
-  UserCheck,
-  Trash2,
-  Landmark,
-  Smartphone,
-  UserPlus
-} from 'lucide-react';
+import {
+  UsersIcon,
+  WalletIcon,
+  ArrowUpRightIcon,
+  ArrowDownLeftIcon,
+  CalculatorIcon,
+  ClockIcon,
+  BuildingOffice2Icon,
+  ArrowTrendingUpIcon,
+  ShieldCheckIcon,
+  CalendarDaysIcon,
+  BanknotesIcon,
+  CurrencyDollarIcon,
+  SparklesIcon,
+  Square3Stack3DIcon,
+  ArrowRightIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  UserCircleIcon,
+  TrashIcon,
+  BuildingLibraryIcon,
+  DevicePhoneMobileIcon,
+  UserPlusIcon
+} from '@heroicons/react/24/outline';
 import { 
   AreaChart, 
   Area, 
@@ -170,7 +169,7 @@ export const DashboardPage: React.FC = () => {
 
         <div className="flex items-center space-x-3">
           <div className="bg-slate-800 px-4 py-2 rounded-xl text-xs border border-slate-700 font-mono flex items-center gap-2">
-            <Clock className="w-4 h-4 text-amber-400" />
+            <ClockIcon className="w-4 h-4 text-amber-400" />
             <span>Operational Day: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
           </div>
         </div>
@@ -181,7 +180,7 @@ export const DashboardPage: React.FC = () => {
         <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-500/20 via-amber-500/10 to-slate-900 border border-rose-500/40 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
           <div className="flex items-center space-x-3">
             <div className="p-2 rounded-xl bg-rose-500 text-white">
-              <ShieldCheck className="w-5 h-5" />
+              <ShieldCheckIcon className="w-5 h-5" />
             </div>
             <div>
               <div className="font-extrabold text-sm text-rose-300">
@@ -198,7 +197,7 @@ export const DashboardPage: React.FC = () => {
             className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md cursor-pointer whitespace-nowrap"
           >
             <span>Open Approvals Hub</span>
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRightIcon className="w-4 h-4" />
           </button>
         </div>
       )}
@@ -207,7 +206,7 @@ export const DashboardPage: React.FC = () => {
       <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-            <Coins className="w-4 h-4 text-amber-500" />
+            <CurrencyDollarIcon className="w-4 h-4 text-amber-500" />
             <span>Executive Cash Desk & Client Operations</span>
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -221,7 +220,7 @@ export const DashboardPage: React.FC = () => {
             onClick={() => navigate('/teller', { state: { mode: 'DEPOSIT' } })}
             className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 cursor-pointer transition-all"
           >
-            <ArrowUpRight className="w-4 h-4" />
+            <ArrowUpRightIcon className="w-4 h-4" />
             <span>Record Client Deposit</span>
           </button>
 
@@ -230,7 +229,7 @@ export const DashboardPage: React.FC = () => {
             onClick={() => navigate('/teller', { state: { mode: 'WITHDRAWAL' } })}
             className="px-4 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-rose-500/20 cursor-pointer transition-all"
           >
-            <ArrowDownLeft className="w-4 h-4" />
+            <ArrowDownLeftIcon className="w-4 h-4" />
             <span>Record Client Withdrawal</span>
           </button>
 
@@ -239,7 +238,7 @@ export const DashboardPage: React.FC = () => {
             onClick={() => navigate('/field-officer')}
             className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
           >
-            <Smartphone className="w-4 h-4 text-teal-500" />
+            <DevicePhoneMobileIcon className="w-4 h-4 text-teal-500" />
             <span>Field Splitter</span>
           </button>
 
@@ -248,7 +247,7 @@ export const DashboardPage: React.FC = () => {
             onClick={() => navigate('/customers')}
             className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
           >
-            <UserPlus className="w-4 h-4 text-amber-500" />
+            <UserPlusIcon className="w-4 h-4 text-amber-500" />
             <span>New Customer</span>
           </button>
         </div>
@@ -262,7 +261,7 @@ export const DashboardPage: React.FC = () => {
           title="Total Customers"
           value={customers.length.toString()}
           subtitle="Verified Ghana Card Clients"
-          icon={Users}
+          icon={UsersIcon}
           colorScheme="amber"
           onClick={() => navigate('/customers')}
         />
@@ -272,7 +271,7 @@ export const DashboardPage: React.FC = () => {
           title="Gross Client Savings"
           value={`GHS ${totalGrossSavings.toFixed(2)}`}
           subtitle="Cumulative Member Deposits"
-          icon={Wallet}
+          icon={WalletIcon}
           colorScheme="blue"
           onClick={() => navigate('/accounts')}
         />
@@ -282,7 +281,7 @@ export const DashboardPage: React.FC = () => {
           title="Client Withdrawals"
           value={`GHS ${totalWithdrawalsSum.toFixed(2)}`}
           subtitle="Disbursed Loans & Liquidations"
-          icon={ArrowDownLeft}
+          icon={ArrowDownLeftIcon}
           colorScheme="rose"
           onClick={() => navigate('/reports')}
         />
@@ -292,7 +291,7 @@ export const DashboardPage: React.FC = () => {
           title="Net Client Savings"
           value={`GHS ${netClientSavings.toFixed(2)}`}
           subtitle="Available in Member Vault"
-          icon={TrendingUp}
+          icon={ArrowTrendingUpIcon}
           colorScheme="emerald"
           onClick={() => navigate('/accounts')}
         />
@@ -302,7 +301,7 @@ export const DashboardPage: React.FC = () => {
           title="Company Interest Vault"
           value={`GHS ${totalInterestPiledUp.toFixed(2)}`}
           subtitle="30-Day Member Retention Fees"
-          icon={PiggyBank}
+          icon={BanknotesIcon}
           colorScheme="purple"
           onClick={() => navigate('/company-interest')}
         />
@@ -312,7 +311,7 @@ export const DashboardPage: React.FC = () => {
           title="Company Net Balance"
           value={`GHS ${companyNetVaultBalance.toFixed(2)}`}
           subtitle="Total Physical Liquidity in Vault"
-          icon={Landmark}
+          icon={BuildingLibraryIcon}
           colorScheme="emerald"
           onClick={() => navigate('/company-interest')}
         />
@@ -327,7 +326,7 @@ export const DashboardPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-amber-500" />
+                <ArrowTrendingUpIcon className="w-5 h-5 text-amber-500" />
                 Deposit Inflows vs. Company 30-Day Interest Accumulation
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -388,7 +387,7 @@ export const DashboardPage: React.FC = () => {
       <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2">
-            <Coins className="w-5 h-5 text-amber-500" />
+            <CurrencyDollarIcon className="w-5 h-5 text-amber-500" />
             <div>
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
                 Ghana Cedis (GH₵) Savings Packages Adoption Matrix
@@ -428,7 +427,7 @@ export const DashboardPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
             <div className="flex items-center space-x-3">
               <div className="p-2.5 rounded-2xl bg-teal-50 text-[#0d9488] border border-teal-200">
-                <Users className="w-5 h-5" />
+                <UsersIcon className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
@@ -448,9 +447,9 @@ export const DashboardPage: React.FC = () => {
               onClick={() => navigate('/approvals')}
               className="px-4 py-2 rounded-xl bg-[#0a3866] hover:bg-[#082d52] text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-slate-900/10 cursor-pointer transition-all w-fit"
             >
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <ShieldCheckIcon className="w-4 h-4 text-emerald-400" />
               <span>Manage Approvals & Permissions</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRightIcon className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -483,7 +482,7 @@ export const DashboardPage: React.FC = () => {
                             <div>
                               <div className="font-bold text-slate-900 dark:text-white font-sans text-xs flex items-center gap-1">
                                 {staff.firstName} {staff.lastName}
-                                {isSuperAdminRole && <ShieldCheck className="w-3 h-3 text-emerald-600 inline" />}
+                                {isSuperAdminRole && <ShieldCheckIcon className="w-3 h-3 text-emerald-600 inline" />}
                               </div>
                               <div className="text-[9px] text-slate-400 font-mono">{staff.employeeId || 'STAFF'}</div>
                             </div>
@@ -515,12 +514,12 @@ export const DashboardPage: React.FC = () => {
                         <td className="py-2.5 px-3">
                           {isApproved ? (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3" />
+                              <CheckCircleIcon className="w-3 h-3" />
                               <span>Active</span>
                             </span>
                           ) : (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1 animate-pulse">
-                              <Clock className="w-3 h-3" />
+                              <ClockIcon className="w-3 h-3" />
                               <span>Pending</span>
                             </span>
                           )}
@@ -537,7 +536,7 @@ export const DashboardPage: React.FC = () => {
                                 className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-[10px] transition-all cursor-pointer inline-flex items-center gap-1"
                                 title="Permanently delete user"
                               >
-                                <Trash2 className="w-3 h-3" />
+                                <TrashIcon className="w-3 h-3" />
                                 <span>Delete</span>
                               </button>
                             )}
@@ -572,7 +571,7 @@ export const DashboardPage: React.FC = () => {
             
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-2 text-rose-500">
-                <Trash2 className="w-5 h-5" />
+                <TrashIcon className="w-5 h-5" />
                 <h3 className="font-extrabold text-base text-white">
                   Permanently Delete User Account
                 </h3>
@@ -620,7 +619,7 @@ export const DashboardPage: React.FC = () => {
                 disabled={isDeleting}
                 className="w-1/2 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-lg shadow-rose-600/30 cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <Trash2 className="w-4 h-4" />
+                <TrashIcon className="w-4 h-4" />
                 <span>{isDeleting ? 'Deleting...' : 'Delete Permanently'}</span>
               </button>
             </div>

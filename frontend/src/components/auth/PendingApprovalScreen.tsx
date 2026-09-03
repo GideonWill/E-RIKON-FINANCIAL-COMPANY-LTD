@@ -2,14 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import logoImg from '../../assets/logo.png';
 import { 
-  ShieldAlert, 
-  LogOut, 
-  RefreshCw, 
-  CheckCircle2,
-  Lock,
-  Sparkles,
-  ChevronRight
-} from 'lucide-react';
+  ShieldExclamationIcon, 
+  ArrowRightOnRectangleIcon, 
+  ArrowPathIcon, 
+  LockClosedIcon 
+} from '@heroicons/react/24/outline';
 import { apiClient, getRegisteredUsers } from '../../services/api';
 import { useRealtimeSync } from '../../services/realtimeSync';
 import { pullCloudToLocal } from '../../services/cloudSync';
@@ -109,7 +106,7 @@ export const PendingApprovalScreen: React.FC = () => {
           onClick={logout}
           className="h-8 sm:h-9 px-3 sm:px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-slate-200 shadow-2xs shrink-0"
         >
-          <LogOut className="w-3.5 h-3.5" />
+          <ArrowRightOnRectangleIcon className="w-3.5 h-3.5" />
           <span>Sign Out</span>
         </button>
       </header>
@@ -122,7 +119,7 @@ export const PendingApprovalScreen: React.FC = () => {
           <div className="relative inline-flex items-center justify-center">
             <span className="animate-ping absolute inline-flex h-16 w-16 rounded-full bg-teal-400/20"></span>
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0d9488] to-[#166534] text-white flex items-center justify-center shadow-lg shadow-teal-900/20 relative">
-              <Lock className="w-8 h-8" />
+              <LockClosedIcon className="w-8 h-8" />
             </div>
           </div>
 
@@ -142,7 +139,7 @@ export const PendingApprovalScreen: React.FC = () => {
           {/* Info Box */}
           <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-left space-y-2 text-xs text-slate-700">
             <div className="flex items-center space-x-2 text-[#065f46] font-black">
-              <ShieldAlert className="w-4 h-4 shrink-0" />
+              <ShieldExclamationIcon className="w-4 h-4 shrink-0" />
               <span>Super Administrator Clearance Required</span>
             </div>
             <p className="text-[11px] text-slate-600 leading-normal">
@@ -161,7 +158,7 @@ export const PendingApprovalScreen: React.FC = () => {
               disabled={isChecking}
               className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#0d9488] via-[#059669] to-[#166534] hover:from-[#0f766e] hover:to-[#14532d] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all shadow-lg shadow-teal-900/20 cursor-pointer disabled:opacity-50 transform hover:scale-[1.01] active:scale-[0.99]"
             >
-              <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
+              <ArrowPathIcon className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
               <span>{isChecking ? 'Checking Clearance...' : 'Check Approval Status Now'}</span>
             </button>
 

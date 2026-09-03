@@ -5,25 +5,25 @@ import { useRealtimeSync } from '../services/realtimeSync';
 import { useAuth } from '../contexts/AuthContext';
 import { addSystemNotification } from '../components/ui/NotificationsModal';
 import { Account } from '../types';
-import { 
-  Wallet, 
-  Calendar, 
-  CheckCircle2, 
-  Clock, 
-  Building2, 
-  TrendingUp, 
-  ShieldAlert,
-  HelpCircle,
-  FileText,
-  UserPlus,
-  ArrowRight,
-  ArrowUpRight,
-  ArrowDownLeft,
-  Coins,
-  Trash2,
-  Sparkles,
-  Search
-} from 'lucide-react';
+import {
+  WalletIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  BuildingOffice2Icon,
+  ArrowTrendingUpIcon,
+  ShieldExclamationIcon,
+  QuestionMarkCircleIcon,
+  DocumentTextIcon,
+  UserPlusIcon,
+  ArrowRightIcon,
+  ArrowUpRightIcon,
+  ArrowDownLeftIcon,
+  CurrencyDollarIcon,
+  TrashIcon,
+  SparklesIcon,
+  MagnifyingGlassIcon
+} from '@heroicons/react/24/outline';
 
 export const AccountsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -140,7 +140,7 @@ export const AccountsPage: React.FC = () => {
       {/* Header */}
       <div>
         <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-          <Wallet className="w-6 h-6 text-amber-500" />
+          <WalletIcon className="w-6 h-6 text-amber-500" />
           Savings Accounts & 31-Day Policy Tracker
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -151,7 +151,7 @@ export const AccountsPage: React.FC = () => {
       {accounts.length === 0 ? (
         <div className="p-12 text-center rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
           <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
-            <Wallet className="w-8 h-8" />
+            <WalletIcon className="w-8 h-8" />
           </div>
           <div className="space-y-1">
             <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
@@ -165,7 +165,7 @@ export const AccountsPage: React.FC = () => {
             onClick={() => navigate('/customers')}
             className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs inline-flex items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer"
           >
-            <UserPlus className="w-4 h-4" />
+            <UserPlusIcon className="w-4 h-4" />
             <span>Go to Customer Registration</span>
           </button>
         </div>
@@ -183,7 +183,7 @@ export const AccountsPage: React.FC = () => {
 
             {/* Quick Client Search Input */}
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search by full name, account, card..."
@@ -307,7 +307,7 @@ export const AccountsPage: React.FC = () => {
                         className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer transition-all"
                         title="Record physical cash deposit for this client"
                       >
-                        <ArrowUpRight className="w-4 h-4" />
+                        <ArrowUpRightIcon className="w-4 h-4" />
                         <span>Record Deposit</span>
                       </button>
 
@@ -317,7 +317,7 @@ export const AccountsPage: React.FC = () => {
                         className="px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-500/20 cursor-pointer transition-all"
                         title="Process physical cash withdrawal / loan for this client"
                       >
-                        <ArrowDownLeft className="w-4 h-4" />
+                        <ArrowDownLeftIcon className="w-4 h-4" />
                         <span>Record Withdrawal</span>
                       </button>
 
@@ -357,7 +357,7 @@ export const AccountsPage: React.FC = () => {
                         className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-all flex items-center justify-center cursor-pointer"
                         title="Close Account / Delete Record"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <TrashIcon className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -384,7 +384,7 @@ export const AccountsPage: React.FC = () => {
                                   : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-amber-500 border border-slate-200 dark:border-slate-800'
                               }`}
                             >
-                              <Coins className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                              <CurrencyDollarIcon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                               <span>Cycle #{c.cycleNumber}</span>
                               <span className="text-[10px] opacity-80">
                                 {completed ? '• (Completed 31/31)' : `• (${c.currentDayCount}/31 Days)`}
@@ -421,7 +421,7 @@ export const AccountsPage: React.FC = () => {
                           className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-white text-[11px] font-black shrink-0 flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer transition-all"
                           title="Start Next 31-Day Cycle"
                         >
-                          <Sparkles className="w-3.5 h-3.5" />
+                          <SparklesIcon className="w-3.5 h-3.5" />
                           <span>Start Next Cycle (Cycle #{(cycles[0]?.cycleNumber || 1) + 1})</span>
                         </button>
                       )}
@@ -432,7 +432,7 @@ export const AccountsPage: React.FC = () => {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                        <Calendar className="w-4 h-4 text-amber-500" />
+                        <CalendarIcon className="w-4 h-4 text-amber-500" />
                         31-Day Contribution Calendar (Cycle #{displayedCycleNo})
                       </h4>
                       <span className="text-[11px] text-slate-400">
@@ -477,7 +477,7 @@ export const AccountsPage: React.FC = () => {
                   {/* Policy Guidance Alert */}
                   <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 text-xs space-y-1.5">
                     <div className="font-extrabold flex items-center gap-1.5 text-sm">
-                      <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
+                      <ShieldExclamationIcon className="w-4 h-4 text-amber-500 shrink-0" />
                       30-Day Client Savings & Company Fee Retention Policy
                     </div>
                     <div className="text-[11px] opacity-90 leading-relaxed space-y-1">

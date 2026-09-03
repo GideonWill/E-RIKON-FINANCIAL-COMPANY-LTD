@@ -2,36 +2,35 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import logoImg from '../../assets/logo.png';
 import { RoleName } from '../../types';
-import { 
-  Sparkles, 
-  Users, 
-  Wallet, 
-  Landmark, 
-  Smartphone, 
-  Calculator, 
-  FileSpreadsheet, 
-  CalendarCheck2, 
-  ShieldCheck, 
-  CheckCircle2, 
-  ArrowRight, 
-  ArrowLeft, 
-  X, 
-  PiggyBank, 
-  Compass, 
-  Check, 
-  Clock, 
-  Printer, 
-  Coins,
-  ShieldAlert,
-  Building2,
-  Receipt,
-  FileCheck,
-  TrendingUp,
-  UserCheck,
-  Search,
-  KeyRound,
-  Shield
-} from 'lucide-react';
+import {
+  SparklesIcon,
+  UsersIcon,
+  WalletIcon,
+  BuildingLibraryIcon,
+  DevicePhoneMobileIcon,
+  CalculatorIcon,
+  DocumentChartBarIcon,
+  CalendarDaysIcon,
+  ShieldCheckIcon,
+  CheckCircleIcon,
+  ArrowRightIcon,
+  ArrowLeftIcon,
+  XMarkIcon,
+  BanknotesIcon,
+  GlobeAltIcon,
+  CheckIcon,
+  ClockIcon,
+  PrinterIcon,
+  CurrencyDollarIcon,
+  ShieldExclamationIcon,
+  BuildingOffice2Icon,
+  ReceiptPercentIcon,
+  DocumentCheckIcon,
+  ArrowTrendingUpIcon,
+  UserCircleIcon,
+  MagnifyingGlassIcon,
+  KeyIcon
+} from '@heroicons/react/24/outline';
 
 interface AppWalkthroughModalProps {
   isOpen: boolean;
@@ -71,7 +70,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: `Welcome, Super Admin ${currentUser.firstName}!`,
             subtitle: 'Executive Master Governance & Institutional Clearance Hub',
             badge: 'Super Admin Overview',
-            icon: ShieldCheck,
+            icon: ShieldCheckIcon,
             color: 'from-[#0a3866] via-[#0d9488] to-[#166534]',
             content: (
               <div className="space-y-3.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -80,7 +79,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="p-3.5 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/50 space-y-2">
                   <div className="font-bold text-[#0d9488] flex items-center gap-1.5 text-xs">
-                    <Shield className="w-4 h-4" />
+                    <ShieldCheckIcon className="w-4 h-4" />
                     <span>Master Operational Authority</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300">
@@ -104,7 +103,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: 'Personnel Clearance & Account Management',
             subtitle: 'One-Click Staff Clearances, User Roster & Account Deletion',
             badge: 'Access Governance',
-            icon: UserCheck,
+            icon: UserCircleIcon,
             color: 'from-blue-600 to-teal-600',
             content: (
               <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -113,13 +112,13 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="space-y-2 text-xs">
                   <div className="flex items-start gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <CheckCircleIcon className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
                       <strong className="text-slate-900 dark:text-white">Approvals Hub:</strong> Review pending staff sign-ups, verify Ghana Card numbers, and approve with custom remarks.
                     </div>
                   </div>
                   <div className="flex items-start gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <CheckCircleIcon className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
                       <strong className="text-slate-900 dark:text-white">User Deletion & Revocation:</strong> Safely delete staff accounts you no longer need with instant confirmation while company records stay 100% intact.
                     </div>
@@ -132,7 +131,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: 'Global Daily Savings & 31-Day Company Vault',
             subtitle: 'Monitoring Customer Deposits (GH₵ 5 – GH₵ 200) & Retention Revenue',
             badge: 'Financial Oversight',
-            icon: PiggyBank,
+            icon: BanknotesIcon,
             color: 'from-amber-600 to-teal-600',
             content: (
               <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -141,7 +140,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 space-y-1.5">
                   <div className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5 text-xs">
-                    <Coins className="w-4 h-4" />
+                    <CurrencyDollarIcon className="w-4 h-4" />
                     <span>Day 31 Company Retention Vault</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300">
@@ -155,7 +154,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: 'End of Day (EOD) Institutional Sign-Off & Audit',
             subtitle: 'Multi-Branch Cash Balancing, Till Reconciliation & Immutable Audit Trail',
             badge: 'Daily Close',
-            icon: CalendarCheck2,
+            icon: CalendarDaysIcon,
             color: 'from-[#0a3866] via-[#0d9488] to-[#166534]',
             content: (
               <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -164,13 +163,13 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="space-y-2 text-xs">
                   <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                    <CalendarCheck2 className="w-4 h-4 text-[#0d9488]" />
+                    <CalendarDaysIcon className="w-4 h-4 text-[#0d9488]" />
                     <div>
                       <strong className="text-slate-900 dark:text-white">Multi-Workstation EOD Close:</strong> Tellers till variance, field mobile remits, and loan recoveries.
                     </div>
                   </div>
                   <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                    <ShieldAlert className="w-4 h-4 text-rose-500" />
+                    <ShieldExclamationIcon className="w-4 h-4 text-rose-500" />
                     <div>
                       <strong className="text-slate-900 dark:text-white">Immutable Security Audit Trail:</strong> Every single ledger alteration is timestamped and permanently logged.
                     </div>
@@ -187,7 +186,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: `Welcome, Teller ${currentUser.firstName}!`,
             subtitle: 'Counter Cash Operations & Cashier Till Workstation',
             badge: 'Teller Workstation',
-            icon: Landmark,
+            icon: BuildingLibraryIcon,
             color: 'from-amber-600 via-orange-600 to-teal-700',
             content: (
               <div className="space-y-3.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -196,7 +195,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 space-y-1.5">
                   <div className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5 text-xs">
-                    <Landmark className="w-4 h-4" />
+                    <BuildingLibraryIcon className="w-4 h-4" />
                     <span>Physical Cashier Till Management</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300">
@@ -210,7 +209,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: 'Processing Deposits & Counter Withdrawals',
             subtitle: 'Fast Account Lookup, Daily Savings Tiers & Real-Time Balance Updating',
             badge: 'Counter Transactions',
-            icon: Wallet,
+            icon: WalletIcon,
             color: 'from-emerald-600 to-teal-700',
             content: (
               <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -219,13 +218,13 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="space-y-2 text-xs">
                   <div className="flex items-start gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <CheckCircleIcon className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
                       <strong className="text-slate-900 dark:text-white">Customer Account Lookup:</strong> Search clients instantly by Account Number (<code>ACC-100XXX</code>), Phone Number, or Ghana Card PIN.
                     </div>
                   </div>
                   <div className="flex items-start gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <CheckCircleIcon className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
                       <strong className="text-slate-900 dark:text-white">Package Selection:</strong> Credit daily savings (GH₵ 5 – GH₵ 200) with automatic cycle progression (Days 1–31).
                     </div>
@@ -238,7 +237,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: 'Paperless Digital Receipts & Printing',
             subtitle: 'Instant Official Receipts with Validation Code & Company Seal',
             badge: 'Receipt Issuance',
-            icon: Receipt,
+            icon: ReceiptPercentIcon,
             color: 'from-blue-600 to-indigo-700',
             content: (
               <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -247,7 +246,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/50 space-y-1.5">
                   <div className="font-bold text-blue-700 dark:text-blue-300 flex items-center gap-1.5 text-xs">
-                    <Printer className="w-4 h-4" />
+                    <PrinterIcon className="w-4 h-4" />
                     <span>Instant POS & Standard Thermal Printing</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300">
@@ -261,7 +260,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: 'Daily Teller Till Balancing & Evening Close',
             subtitle: 'Reconciling Cash Drawer, Physical Variance & Supervisor Handover',
             badge: 'End of Day Balancing',
-            icon: CalendarCheck2,
+            icon: CalendarDaysIcon,
             color: 'from-[#0a3866] via-[#0d9488] to-[#166534]',
             content: (
               <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -270,7 +269,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
                   <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs">
-                    <Clock className="w-4 h-4 text-[#0d9488]" />
+                    <ClockIcon className="w-4 h-4 text-[#0d9488]" />
                     <span>Cash Drawer Till Balancing</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300">
@@ -288,7 +287,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: `Welcome, Field Officer ${currentUser.firstName}!`,
             subtitle: 'Mobile Onsite Daily Savings & Route Collection Workstation',
             badge: 'Mobile Field Operations',
-            icon: Smartphone,
+            icon: DevicePhoneMobileIcon,
             color: 'from-blue-600 via-teal-600 to-emerald-700',
             content: (
               <div className="space-y-3.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -297,7 +296,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/50 space-y-1.5">
                   <div className="font-bold text-blue-700 dark:text-blue-300 flex items-center gap-1.5 text-xs">
-                    <Smartphone className="w-4 h-4" />
+                    <DevicePhoneMobileIcon className="w-4 h-4" />
                     <span>Swipe-Friendly Mobile Workstation</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300">
@@ -311,7 +310,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: '12 Daily Savings Packages & The 31-Day Splitter',
             subtitle: 'Standardized Rates (GH₵ 5 – GH₵ 200) & Automated Cycle Tracking',
             badge: 'Daily Splitter',
-            icon: PiggyBank,
+            icon: BanknotesIcon,
             color: 'from-emerald-600 to-teal-700',
             content: (
               <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -320,7 +319,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 space-y-1.5">
                   <div className="font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 text-xs">
-                    <Coins className="w-4 h-4" />
+                    <CurrencyDollarIcon className="w-4 h-4" />
                     <span>Days 1–30 Client Savings & Day 31 Retention</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300">
@@ -341,7 +340,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: 'Onsite Customer Onboarding & Instant Verification',
             subtitle: 'Registering New Clients On-the-Go with Ghana Card Capture',
             badge: 'Onsite Onboarding',
-            icon: Users,
+            icon: UsersIcon,
             color: 'from-purple-600 to-indigo-700',
             content: (
               <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -350,13 +349,13 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="space-y-2 text-xs">
                   <div className="flex items-start gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <CheckCircleIcon className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
                       <strong className="text-slate-900 dark:text-white">Ghana Card Capture:</strong> Enter client PIN, name, and phone number for immediate KYC compliance.
                     </div>
                   </div>
                   <div className="flex items-start gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <CheckCircleIcon className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
                       <strong className="text-slate-900 dark:text-white">Assigned Daily Package:</strong> Attach the customer to their preferred daily package rate to begin daily collection immediately.
                     </div>
@@ -369,7 +368,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: 'Evening Remittance & Branch Cash Hand-In',
             subtitle: 'Reconciling Route Collections & Remitting Physical Cash to Vault',
             badge: 'Field Close',
-            icon: CalendarCheck2,
+            icon: CalendarDaysIcon,
             color: 'from-[#0a3866] via-[#0d9488] to-[#166534]',
             content: (
               <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -378,7 +377,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
                   <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs">
-                    <Clock className="w-4 h-4 text-[#0d9488]" />
+                    <ClockIcon className="w-4 h-4 text-[#0d9488]" />
                     <span>Field Collection Remittance</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300">
@@ -396,7 +395,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: `Welcome, Loan Officer ${currentUser.firstName}!`,
             subtitle: 'ER-Fast Microfinance Credit Desk & Portfolio Origination',
             badge: 'Credit Desk',
-            icon: Calculator,
+            icon: CalculatorIcon,
             color: 'from-purple-600 via-indigo-600 to-teal-700',
             content: (
               <div className="space-y-3.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -405,7 +404,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="p-3.5 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/50 space-y-1.5">
                   <div className="font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5 text-xs">
-                    <Calculator className="w-4 h-4" />
+                    <CalculatorIcon className="w-4 h-4" />
                     <span>Automated Tiered Tenor Calculator</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300">
@@ -419,7 +418,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: 'Tiered Tenor Rates & Credit Calculator',
             subtitle: '10% (1M), 15% (2M), 25% (3M), 30% (4M+) Flat Interest Tiers',
             badge: 'Interest Calculation',
-            icon: TrendingUp,
+            icon: ArrowTrendingUpIcon,
             color: 'from-indigo-600 to-teal-700',
             content: (
               <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -451,7 +450,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: 'Origination, Guarantors & Super Admin Clearance',
             subtitle: 'Submitting Applications for Clearance & Immediate Disbursement',
             badge: 'Approval Workflow',
-            icon: FileCheck,
+            icon: DocumentCheckIcon,
             color: 'from-teal-600 to-emerald-700',
             content: (
               <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -460,13 +459,13 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="space-y-2 text-xs">
                   <div className="flex items-start gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <CheckCircleIcon className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
                       <strong className="text-slate-900 dark:text-white">Guarantor & Collateral:</strong> Capture guarantor Ghana Card and contact details with business location data.
                     </div>
                   </div>
                   <div className="flex items-start gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <CheckCircleIcon className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
                       <strong className="text-slate-900 dark:text-white">Super Admin Clearance:</strong> Applications submit in real time to the Super Admin approvals hub for fast disbursement authorization.
                     </div>
@@ -483,7 +482,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: `Welcome, Operations Administrator ${currentUser.firstName}!`,
             subtitle: 'Governance, Operations Oversight & Vault Coordination',
             badge: 'Operations Hub',
-            icon: Building2,
+            icon: BuildingOffice2Icon,
             color: 'from-emerald-600 via-teal-600 to-[#0a3866]',
             content: (
               <div className="space-y-3.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -492,7 +491,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 space-y-1.5">
                   <div className="font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 text-xs">
-                    <Building2 className="w-4 h-4" />
+                    <BuildingOffice2Icon className="w-4 h-4" />
                     <span>Workstation Authority</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300">
@@ -506,7 +505,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: 'Customer 360 & Daily Savings Packages',
             subtitle: 'Managing Client Profiles, 12 Package Tiers & Statement Inquiries',
             badge: 'Customer Management',
-            icon: Users,
+            icon: UsersIcon,
             color: 'from-teal-600 to-emerald-700',
             content: (
               <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -515,13 +514,13 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="space-y-2 text-xs">
                   <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                    <Users className="w-4 h-4 text-[#0d9488]" />
+                    <UsersIcon className="w-4 h-4 text-[#0d9488]" />
                     <div>
                       <strong className="text-slate-900 dark:text-white">Customer 360 Hub:</strong> Search and inspect accounts by Ghana Card, Name, or Account Number.
                     </div>
                   </div>
                   <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                    <Printer className="w-4 h-4 text-emerald-600" />
+                    <PrinterIcon className="w-4 h-4 text-emerald-600" />
                     <div>
                       <strong className="text-slate-900 dark:text-white">Financial Statements:</strong> Generate official printable PDF statements and WhatsApp statement dispatches.
                     </div>
@@ -534,7 +533,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: 'Branch End of Day (EOD) Operations',
             subtitle: 'Reconciling Teller Tills, Field Collections & Vault Balances',
             badge: 'Branch EOD Close',
-            icon: CalendarCheck2,
+            icon: CalendarDaysIcon,
             color: 'from-[#0a3866] via-[#0d9488] to-[#166534]',
             content: (
               <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -543,7 +542,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
                   <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs">
-                    <Clock className="w-4 h-4 text-[#0d9488]" />
+                    <ClockIcon className="w-4 h-4 text-[#0d9488]" />
                     <span>Consolidated Daily Balancing</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300">
@@ -562,7 +561,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: `Welcome, Auditor ${currentUser.firstName}!`,
             subtitle: 'Immutable Security Trail & General Ledger Compliance Hub',
             badge: 'Internal Audit',
-            icon: ShieldAlert,
+            icon: ShieldExclamationIcon,
             color: 'from-slate-800 via-teal-900 to-emerald-950',
             content: (
               <div className="space-y-3.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -571,7 +570,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
                   <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs">
-                    <ShieldAlert className="w-4 h-4 text-emerald-500" />
+                    <ShieldExclamationIcon className="w-4 h-4 text-emerald-500" />
                     <span>Immutable Audit Trail</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300">
@@ -585,7 +584,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             title: 'Double-Entry General Ledger & Statements',
             subtitle: 'Transaction Verification, Journal Balancing & CSV/PDF Compliance Export',
             badge: 'Ledger Audit',
-            icon: FileSpreadsheet,
+            icon: DocumentChartBarIcon,
             color: 'from-[#0a3866] to-teal-800',
             content: (
               <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -594,13 +593,13 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 </p>
                 <div className="space-y-2 text-xs">
                   <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                    <FileSpreadsheet className="w-4 h-4 text-[#0d9488]" />
+                    <DocumentChartBarIcon className="w-4 h-4 text-[#0d9488]" />
                     <div>
                       <strong className="text-slate-900 dark:text-white">General Ledger Inspection:</strong> Inspect double-entry accounting records across all savings packages and loan desks.
                     </div>
                   </div>
                   <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                    <CalendarCheck2 className="w-4 h-4 text-emerald-600" />
+                    <CalendarDaysIcon className="w-4 h-4 text-emerald-600" />
                     <div>
                       <strong className="text-slate-900 dark:text-white">End of Day (EOD) Audit:</strong> Verify daily till variances and executive clearance stamps.
                     </div>
@@ -669,7 +668,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
             title="Close Walkthrough"
           >
-            <X className="w-4 h-4" />
+            <XMarkIcon className="w-4 h-4" />
           </button>
         </div>
 
@@ -723,7 +722,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
                 : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 cursor-pointer'
             }`}
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
+            <ArrowLeftIcon className="w-3.5 h-3.5" />
             <span>Previous</span>
           </button>
 
@@ -742,7 +741,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
               className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#0d9488] via-[#10b981] to-[#166534] hover:opacity-95 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-teal-900/10 cursor-pointer"
             >
               <span>{isLastStep ? 'Get Started' : 'Next Step'}</span>
-              {isLastStep ? <Check className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+              {isLastStep ? <CheckIcon className="w-4 h-4" /> : <ArrowRightIcon className="w-4 h-4" />}
             </button>
           </div>
         </div>

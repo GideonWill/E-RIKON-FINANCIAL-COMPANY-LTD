@@ -102,7 +102,7 @@ export const GhanaCardInput: React.FC<GhanaCardInputProps> = ({
         />
         {isComplete && (
           <div className="absolute right-0 pointer-events-none text-emerald-600" title="Valid Ghana Card PIN">
-            <CheckCircle2 className="w-3.5 h-3.5" />
+            <CheckCircleIcon className="w-3.5 h-3.5" />
           </div>
         )}
       </div>
@@ -112,7 +112,7 @@ export const GhanaCardInput: React.FC<GhanaCardInputProps> = ({
   return (
     <div className="relative flex items-center w-full">
       <div className="absolute left-3.5 flex items-center pointer-events-none text-slate-400">
-        <CreditCard className="w-4 h-4 text-amber-500" />
+        <CreditCardIcon className="w-4 h-4 text-amber-500" />
       </div>
 
       <input
@@ -134,7 +134,7 @@ export const GhanaCardInput: React.FC<GhanaCardInputProps> = ({
 
       {isComplete && (
         <div className="absolute right-3.5 flex items-center pointer-events-none text-emerald-500" title="Valid Ghana Card PIN">
-          <CheckCircle2 className="w-4 h-4" />
+          <CheckCircleIcon className="w-4 h-4" />
         </div>
       )}
     </div>

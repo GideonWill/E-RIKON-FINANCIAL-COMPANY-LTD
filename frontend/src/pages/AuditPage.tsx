@@ -5,7 +5,17 @@ import { useAuth } from '../contexts/AuthContext';
 import { useRealtimeSync } from '../services/realtimeSync';
 import { AuditLog } from '../types';
 import { StaffInfoPopupModal } from '../components/ui/StaffInfoPopupModal';
-import { ShieldAlert, ShieldCheck, UserCheck, Laptop, Globe, Clock, FileText, Trash2, Search } from 'lucide-react';
+import {
+  ShieldExclamationIcon,
+  ShieldCheckIcon,
+  UserCircleIcon,
+  ComputerDesktopIcon,
+  GlobeAltIcon,
+  ClockIcon,
+  DocumentTextIcon,
+  TrashIcon,
+  MagnifyingGlassIcon
+} from '@heroicons/react/24/outline';
 
 export const AuditPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -67,7 +77,7 @@ export const AuditPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <ShieldAlert className="w-6 h-6 text-amber-500 shrink-0" />
+            <ShieldExclamationIcon className="w-6 h-6 text-amber-500 shrink-0" />
             Immutable System Audit Trail
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -81,19 +91,19 @@ export const AuditPage: React.FC = () => {
               onClick={handleClearAuditLogs}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold transition-all cursor-pointer"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <TrashIcon className="w-3.5 h-3.5" />
               Clear Audit Trail
             </button>
           )}
           <div className="flex items-center space-x-2 bg-slate-900 text-white px-3.5 py-1.5 rounded-xl border border-slate-800 text-xs font-mono w-fit">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" /> Audit Log Lock: IMMUTABLE
+            <ShieldCheckIcon className="w-4 h-4 text-emerald-400" /> Audit Log Lock: IMMUTABLE
           </div>
         </div>
       </div>
 
       {/* Audit Log Search Bar */}
       <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input
           type="text"
           placeholder="Search audit trail by client full name, officer, action, diff..."
@@ -108,7 +118,7 @@ export const AuditPage: React.FC = () => {
         {logs.length === 0 ? (
           <div className="p-12 text-center space-y-3">
             <div className="w-14 h-14 rounded-full bg-slate-800 text-amber-500 flex items-center justify-center mx-auto">
-              <FileText className="w-6 h-6" />
+              <DocumentTextIcon className="w-6 h-6" />
             </div>
             <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
               Immutable Ledger Active & Listening

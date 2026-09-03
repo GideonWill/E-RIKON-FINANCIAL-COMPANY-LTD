@@ -11,22 +11,20 @@ import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSyn
 import { pushLocalToCloud } from '../services/cloudSync';
 import { useAuth } from '../contexts/AuthContext';
 import { addSystemNotification } from '../components/ui/NotificationsModal';
-import { 
-  Smartphone, 
-  Search, 
-  CalendarCheck, 
-  CheckCircle2, 
-  Sparkles, 
-  MapPin, 
-  Target,
-  RotateCcw,
-  Layers,
-  History,
-  Calendar,
-  Zap,
-  Clock,
-  Coins
-} from 'lucide-react';
+import {
+  DevicePhoneMobileIcon,
+  MagnifyingGlassIcon,
+  CalendarDaysIcon,
+  CheckCircleIcon,
+  SparklesIcon,
+  MapPinIcon,
+  ArrowPathIcon,
+  Square3Stack3DIcon,
+  ClockIcon,
+  CalendarIcon,
+  BoltIcon,
+  CurrencyDollarIcon
+} from '@heroicons/react/24/outline';
 
 export const FieldOfficerPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -211,7 +209,7 @@ export const FieldOfficerPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <Smartphone className="w-6 h-6 text-amber-500" />
+            <DevicePhoneMobileIcon className="w-6 h-6 text-amber-500" />
             Field Collections & Multi-Day Splitter (GH₵ 5 - 200 Packages)
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -221,7 +219,7 @@ export const FieldOfficerPage: React.FC = () => {
 
         {/* Target Card */}
         <div className="flex items-center space-x-3 bg-slate-900 text-white p-3 rounded-2xl border border-slate-800">
-          <Target className="w-5 h-5 text-amber-400" />
+          <CheckCircleIcon className="w-5 h-5 text-amber-400" />
           <div className="text-xs font-mono">
             <div className="text-[10px] text-slate-400 uppercase">Today's Route Collections</div>
             <div className="font-bold text-amber-400">
@@ -239,7 +237,7 @@ export const FieldOfficerPage: React.FC = () => {
       {successMessage && (
         <div className="p-4 rounded-2xl bg-emerald-500 text-white font-bold text-xs flex items-center justify-between shadow-xl animate-fade-in">
           <div className="flex items-center space-x-2">
-            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+            <CheckCircleIcon className="w-5 h-5 flex-shrink-0" />
             <span>{successMessage}</span>
           </div>
           <button
@@ -262,7 +260,7 @@ export const FieldOfficerPage: React.FC = () => {
           </div>
 
           <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <MagnifyingGlassIcon className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
               value={searchQuery}
@@ -306,7 +304,7 @@ export const FieldOfficerPage: React.FC = () => {
                     <span className="font-mono font-bold text-slate-900 dark:text-slate-200">GHS {acc.currentBalance.toFixed(2)}</span>
                   </div>
                   <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 truncate">
-                    <MapPin className="w-3 h-3 text-rose-500 flex-shrink-0" /> {acc.customer?.address}
+                    <MapPinIcon className="w-3 h-3 text-rose-500 flex-shrink-0" /> {acc.customer?.address}
                   </div>
                 </div>
               );
@@ -349,7 +347,7 @@ export const FieldOfficerPage: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Coins className="w-4 h-4 text-amber-500" />
+                    <CurrencyDollarIcon className="w-4 h-4 text-amber-500" />
                     <span>Monthly Savings Package (in Ghana Cedis) *</span>
                   </label>
                   <span className="text-[11px] text-amber-500 font-bold font-mono">
@@ -381,7 +379,7 @@ export const FieldOfficerPage: React.FC = () => {
               {/* Mode Switcher: Single Day vs Multi-Day Old Records Splitter */}
               <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
                 <div className="flex items-center space-x-2">
-                  <Layers className="w-4 h-4 text-amber-500" />
+                  <Square3Stack3DIcon className="w-4 h-4 text-amber-500" />
                   <div>
                     <div className="text-xs font-bold text-slate-900 dark:text-white">Multi-Day Automatic Payment Splitter</div>
                     <div className="text-[10px] text-slate-500">Spread bulk payments (e.g. GH₵ 100 on GH₵ 20 package = 5 days) for fast entry & old records</div>
@@ -422,7 +420,7 @@ export const FieldOfficerPage: React.FC = () => {
                   {isBulkSplitMode && (
                     <div>
                       <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-amber-500" />
+                        <CalendarIcon className="w-3.5 h-3.5 text-amber-500" />
                         <span>Starting Date (For Past / Old Records)</span>
                       </label>
                       <input
@@ -440,7 +438,7 @@ export const FieldOfficerPage: React.FC = () => {
                   <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-slate-900 dark:text-white space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-extrabold text-amber-500 flex items-center gap-1.5 text-xs">
-                        <Zap className="w-4 h-4" /> AUTOMATIC SPLIT CALCULATION:
+                        <BoltIcon className="w-4 h-4" /> AUTOMATIC SPLIT CALCULATION:
                       </span>
                       <span className="font-mono font-bold text-xs bg-amber-500 text-slate-950 px-2 py-0.5 rounded">
                         {splitPreview.daysCovered} Day(s) Covered
@@ -485,7 +483,7 @@ export const FieldOfficerPage: React.FC = () => {
                   type="submit"
                   className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-sm flex items-center justify-center space-x-2 transition-all shadow-xl shadow-amber-500/20 cursor-pointer"
                 >
-                  <CheckCircle2 className="w-5 h-5" />
+                  <CheckCircleIcon className="w-5 h-5" />
                   <span>
                     Record GHS {numAmount.toFixed(2)} Payment & Generate Paperless Receipt
                   </span>
@@ -499,7 +497,7 @@ export const FieldOfficerPage: React.FC = () => {
             <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div className="flex items-center space-x-2">
-                  <CalendarCheck className="w-5 h-5 text-amber-500" />
+                  <CalendarDaysIcon className="w-5 h-5 text-amber-500" />
                   <div>
                     <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
                       31-Day Cycle #{targetCycleNo} Collection Tracker

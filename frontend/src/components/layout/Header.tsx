@@ -11,16 +11,15 @@ import { useRealtimeSync } from '../../services/realtimeSync';
 import { pushLocalToCloud, pullCloudToLocal } from '../../services/cloudSync';
 import logoImg from '../../assets/logo.png';
 import { 
-  Building2, 
-  Sun, 
-  Moon, 
-  ShieldCheck, 
-  LogOut,
-  BellRing,
-  Menu,
-  RotateCw,
-  Compass
-} from 'lucide-react';
+  SunIcon, 
+  MoonIcon, 
+  ShieldCheckIcon, 
+  ArrowRightOnRectangleIcon,
+  BellAlertIcon,
+  Bars3Icon,
+  ArrowPathIcon,
+  GlobeAltIcon
+} from '@heroicons/react/24/outline';
 
 interface HeaderProps {
   onToggleMobileMenu?: () => void;
@@ -96,7 +95,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                 title="Open Navigation Drawer"
                 aria-label="Toggle Mobile Menu"
               >
-                <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-slate-700 dark:text-slate-200" />
+                <Bars3Icon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-700 dark:text-slate-200" />
               </button>
             )}
 
@@ -142,7 +141,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               className="hidden lg:flex w-8 h-8 sm:w-9 sm:h-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#0d9488] dark:hover:text-teal-400 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs group shrink-0"
               title="Open System Walkthrough & Interactive Guide"
             >
-              <Compass className="w-4 h-4 text-[#0d9488] group-hover:rotate-45 transition-transform duration-300" />
+              <GlobeAltIcon className="w-4 h-4 text-[#0d9488] group-hover:rotate-45 transition-transform duration-300" />
             </button>
 
             {/* Instant Full System Refresh & Cloud Sync Button */}
@@ -158,7 +157,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#0d9488] dark:hover:text-teal-400 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer group shadow-2xs shrink-0"
               title="Refresh Page & Sync Latest Cloud Data"
             >
-              <RotateCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500 text-[#0d9488]" />
+              <ArrowPathIcon className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500 text-[#0d9488]" />
             </button>
 
             {/* Theme Toggle Button */}
@@ -168,7 +167,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#0d9488] dark:hover:text-teal-400 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs shrink-0"
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
             >
-              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
+              {theme === 'dark' ? <SunIcon className="w-4 h-4 text-amber-400" /> : <MoonIcon className="w-4 h-4 text-slate-700" />}
             </button>
 
             {/* System Notifications Bell Button with Active Pulsating Counter */}
@@ -178,7 +177,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#0d9488] transition-all border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs shrink-0"
               title={unreadCount > 0 ? `${unreadCount} unread notification(s)` : 'No new notifications'}
             >
-              <BellRing className="w-4 h-4" />
+              <BellAlertIcon className="w-4 h-4" />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-emerald-500 text-white text-[9px] font-black font-mono flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-sm animate-pulse">
                   {unreadCount}
@@ -199,7 +198,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                 <div className="hidden md:block text-left">
                   <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1 group-hover:text-[#0d9488] transition-colors leading-tight">
                     {currentUser.firstName} {currentUser.lastName}
-                    <ShieldCheck className="w-3 h-3 text-emerald-500 inline" />
+                    <ShieldCheckIcon className="w-3 h-3 text-emerald-500 inline" />
                   </div>
                   <div className="text-[9px] text-[#0d9488] dark:text-teal-400 font-extrabold tracking-wider uppercase leading-tight">
                     {currentUser.role.replace(/_/g, ' ')}
@@ -214,7 +213,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                 className="w-8 h-8 sm:w-auto sm:px-2.5 sm:py-1.5 flex items-center justify-center gap-1 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 transition-all text-xs font-bold cursor-pointer shadow-2xs shrink-0"
                 title="Logout to Role Login Portal"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <ArrowRightOnRectangleIcon className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Switch Role</span>
               </button>
             </div>

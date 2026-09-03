@@ -16,7 +16,6 @@
     "axios": "^1.7.2",
     "clsx": "^2.1.1",
     "firebase": "^12.18.0",
-    "lucide-react": "^0.400.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.52.0",

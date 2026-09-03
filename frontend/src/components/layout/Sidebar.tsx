@@ -4,20 +4,19 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getStoredApprovals } from '../../services/api';
 import { useRealtimeSync } from '../../services/realtimeSync';
 import { 
-  LayoutDashboard, 
-  Users, 
-  Wallet, 
-  Landmark, 
-  Smartphone, 
-  Calculator, 
-  GitBranch, 
-  FileSpreadsheet, 
-  ShieldAlert,
-  ShieldCheck,
-  PiggyBank,
-  CalendarCheck2,
-  X
-} from 'lucide-react';
+  Squares2X2Icon, 
+  UsersIcon, 
+  WalletIcon, 
+  BuildingLibraryIcon, 
+  DevicePhoneMobileIcon, 
+  CalculatorIcon, 
+  DocumentChartBarIcon, 
+  ShieldExclamationIcon,
+  ShieldCheckIcon,
+  BanknotesIcon,
+  CalendarDaysIcon,
+  XMarkIcon
+} from '@heroicons/react/24/outline';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -66,20 +65,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {
           to: '/',
           label: 'Executive Dashboard',
-          icon: LayoutDashboard,
+          icon: Squares2X2Icon,
           roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
         },
         {
           to: '/approvals',
           label: 'Approvals Hub',
-          icon: ShieldCheck,
+          icon: ShieldCheckIcon,
           badge: activeRole === 'SUPER_ADMIN' && pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined,
           roles: ['SUPER_ADMIN'],
         },
         {
           to: '/company-interest',
           label: 'Company Interest Vault',
-          icon: PiggyBank,
+          icon: BanknotesIcon,
           roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
         },
       ],
@@ -90,25 +89,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {
           to: '/customers',
           label: 'Customer 360',
-          icon: Users,
+          icon: UsersIcon,
           roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
         },
         {
           to: '/accounts',
           label: 'Savings & Packages',
-          icon: Wallet,
+          icon: WalletIcon,
           roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
         },
         {
           to: '/teller',
           label: 'Teller Workstation',
-          icon: Landmark,
+          icon: BuildingLibraryIcon,
           roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER'],
         },
         {
           to: '/field-officer',
           label: 'Field Collections',
-          icon: Smartphone,
+          icon: DevicePhoneMobileIcon,
           roles: ['SUPER_ADMIN', 'ADMIN', 'FIELD_OFFICER'],
         },
       ],
@@ -119,25 +118,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {
           to: '/loans',
           label: 'ER-Fast Loans Desk',
-          icon: Calculator,
+          icon: CalculatorIcon,
           roles: ['SUPER_ADMIN', 'ADMIN', 'LOAN_OFFICER', 'AUDITOR'],
         },
         {
           to: '/reports',
           label: 'Financial Statements',
-          icon: FileSpreadsheet,
+          icon: DocumentChartBarIcon,
           roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
         },
         {
           to: '/end-of-day',
           label: 'End of Day (EOD) Close',
-          icon: CalendarCheck2,
+          icon: CalendarDaysIcon,
           roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
         },
         {
           to: '/audit',
           label: 'Immutable Audit Trail',
-          icon: ShieldAlert,
+          icon: ShieldExclamationIcon,
           roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
         },
       ],
@@ -162,7 +161,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               title="Close Drawer"
             >
-              <X className="w-5 h-5" />
+              <XMarkIcon className="w-5 h-5" />
             </button>
           )}
         </div>

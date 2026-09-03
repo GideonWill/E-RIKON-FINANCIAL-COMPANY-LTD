@@ -16,21 +16,21 @@ import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSyn
 import { pushLocalToCloud } from '../services/cloudSync';
 import { useAuth } from '../contexts/AuthContext';
 import { addSystemNotification } from '../components/ui/NotificationsModal';
-import { 
-  Calculator, 
-  PlusCircle, 
-  CheckCircle2, 
-  Clock, 
-  AlertTriangle, 
-  ShieldCheck, 
-  FileText, 
-  UserCheck, 
-  Sparkles, 
-  ArrowRight, 
-  DollarSign, 
-  Check, 
-  X 
-} from 'lucide-react';
+import {
+  CalculatorIcon,
+  PlusCircleIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  ExclamationTriangleIcon,
+  ShieldCheckIcon,
+  DocumentTextIcon,
+  UserCircleIcon,
+  SparklesIcon,
+  ArrowRightIcon,
+  CurrencyDollarIcon,
+  CheckIcon,
+  XMarkIcon
+} from '@heroicons/react/24/outline';
 
 export const LoansPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -382,7 +382,7 @@ export const LoansPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <Calculator className="w-6 h-6 text-amber-500" />
+            <CalculatorIcon className="w-6 h-6 text-amber-500" />
             ER-Fast Loans Desk
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -394,7 +394,7 @@ export const LoansPage: React.FC = () => {
           onClick={() => setShowApplyModal(true)}
           className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-4 py-2.5 rounded-xl flex items-center justify-center space-x-2 shadow-lg shadow-amber-500/20 transition-all text-xs cursor-pointer"
         >
-          <PlusCircle className="w-4 h-4" />
+          <PlusCircleIcon className="w-4 h-4" />
           <span>New Loan Application</span>
         </button>
       </div>
@@ -454,7 +454,7 @@ export const LoansPage: React.FC = () => {
       {successMessage && (
         <div className="p-4 rounded-2xl bg-emerald-500 text-white font-extrabold text-xs flex items-center justify-between shadow-xl animate-pulse">
           <div className="flex items-center space-x-2">
-            <CheckCircle2 className="w-5 h-5" />
+            <CheckCircleIcon className="w-5 h-5" />
             <span>{successMessage}</span>
           </div>
           <button
@@ -470,7 +470,7 @@ export const LoansPage: React.FC = () => {
       {loans.length === 0 ? (
         <div className="p-12 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-4 shadow-sm my-6">
           <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto border border-amber-500/20 shadow-inner">
-            <Calculator className="w-8 h-8" />
+            <CalculatorIcon className="w-8 h-8" />
           </div>
           <div className="max-w-md mx-auto space-y-1.5">
             <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
@@ -485,7 +485,7 @@ export const LoansPage: React.FC = () => {
             onClick={() => setShowApplyModal(true)}
             className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs inline-flex items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer transition-all"
           >
-            <PlusCircle className="w-4 h-4" />
+            <PlusCircleIcon className="w-4 h-4" />
             <span>Originate First Loan Application</span>
           </button>
         </div>
@@ -586,13 +586,13 @@ export const LoansPage: React.FC = () => {
                       }}
                       className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs shadow-lg transition-all cursor-pointer flex items-center gap-1.5"
                     >
-                      <DollarSign className="w-4 h-4" />
+                      <CurrencyDollarIcon className="w-4 h-4" />
                       <span>Record Loan Repayment</span>
                     </button>
                   )}
                   {selectedLoan.status === 'FULLY_PAID' && (
                     <span className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-black text-xs shadow-lg flex items-center gap-1.5">
-                      <Check className="w-4 h-4 stroke-[3]" />
+                      <CheckIcon className="w-4 h-4 stroke-[3]" />
                       <span>FULLY PAID & CLOSED</span>
                     </span>
                   )}
@@ -678,11 +678,11 @@ export const LoansPage: React.FC = () => {
           >
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-amber-500" />
+                <CurrencyDollarIcon className="w-5 h-5 text-amber-500" />
                 Record Loan Repayment Cash
               </h3>
               <button onClick={() => setShowRepayModal(false)} className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer">
-                <X className="w-5 h-5" />
+                <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
 
@@ -724,7 +724,7 @@ export const LoansPage: React.FC = () => {
                 type="submit"
                 className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-sm flex items-center justify-center space-x-2 transition-all shadow-xl shadow-amber-500/20 cursor-pointer"
               >
-                <Check className="w-5 h-5 stroke-[3]" />
+                <CheckIcon className="w-5 h-5 stroke-[3]" />
                 <span>Confirm Repayment & Update Ledger</span>
               </button>
             </form>
@@ -745,7 +745,7 @@ export const LoansPage: React.FC = () => {
             
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <Calculator className="w-5 h-5 text-amber-500" />
+                <CalculatorIcon className="w-5 h-5 text-amber-500" />
                 Originate ER-Fast Loan Application
               </h3>
               <button onClick={() => setShowApplyModal(false)} className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer">

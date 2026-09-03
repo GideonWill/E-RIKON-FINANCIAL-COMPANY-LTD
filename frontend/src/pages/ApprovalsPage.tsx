@@ -18,34 +18,34 @@ import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSyn
 import { pushLocalToCloud, pullCloudToLocal } from '../services/cloudSync';
 import { ApprovalRequest, ApprovalType, RoleName, RegisteredUserRecord, User } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  ShieldCheck, 
-  CheckCircle2, 
-  XCircle, 
-  Clock, 
-  UserCheck, 
-  PiggyBank, 
-  Calculator, 
-  AlertTriangle, 
-  Search, 
-  Filter, 
-  FileText,
-  Lock,
-  Sparkles,
-  ArrowUpRight,
-  Users,
-  Building2,
-  Mail,
-  Smartphone,
-  CreditCard,
-  BadgeAlert,
-  UserX,
-  UserPlus,
-  Trash2,
-  RotateCw,
-  Ban,
-  ShieldAlert
-} from 'lucide-react';
+import {
+  ShieldCheckIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ClockIcon,
+  UserCircleIcon,
+  BanknotesIcon,
+  CalculatorIcon,
+  ExclamationTriangleIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  DocumentTextIcon,
+  LockClosedIcon,
+  SparklesIcon,
+  ArrowUpRightIcon,
+  UsersIcon,
+  BuildingOffice2Icon,
+  EnvelopeIcon,
+  DevicePhoneMobileIcon,
+  CreditCardIcon,
+  ExclamationCircleIcon,
+  UserMinusIcon,
+  UserPlusIcon,
+  TrashIcon,
+  ArrowPathIcon,
+  NoSymbolIcon,
+  ShieldExclamationIcon
+} from '@heroicons/react/24/outline';
 
 export const ApprovalsPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -542,21 +542,21 @@ export const ApprovalsPage: React.FC = () => {
       case 'ACTIVE':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" />
+            <CheckCircleIcon className="w-3 h-3" />
             <span>Approved / Active</span>
           </span>
         );
       case 'REJECTED':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
-            <XCircle className="w-3 h-3" />
+            <XCircleIcon className="w-3 h-3" />
             <span>Declined</span>
           </span>
         );
       default:
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1 animate-pulse">
-            <Clock className="w-3 h-3" />
+            <ClockIcon className="w-3 h-3" />
             <span>Pending Clearance</span>
           </span>
         );
@@ -616,7 +616,7 @@ export const ApprovalsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-3.5">
           <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800/60 flex items-center justify-center text-[#0d9488] shadow-xs shrink-0">
-            <ShieldCheck className="w-7 h-7" />
+            <ShieldCheckIcon className="w-7 h-7" />
           </div>
           <div>
             <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -639,7 +639,7 @@ export const ApprovalsPage: React.FC = () => {
             className="px-3.5 py-2 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 bg-[#0a3866] hover:bg-[#082d52] text-white shadow-xs border border-[#0e4b85]"
             title="Force instant bi-directional cloud synchronization across phone and desktop"
           >
-            <RotateCw className={`w-3.5 h-3.5 text-teal-400 ${isSyncingLive ? 'animate-spin' : ''}`} />
+            <ArrowPathIcon className={`w-3.5 h-3.5 text-teal-400 ${isSyncingLive ? 'animate-spin' : ''}`} />
             <span>{isSyncingLive ? 'Syncing Cloud...' : 'Sync Cloud'}</span>
           </button>
 
@@ -653,7 +653,7 @@ export const ApprovalsPage: React.FC = () => {
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              <Clock className="w-4 h-4" />
+              <ClockIcon className="w-4 h-4" />
               <span>Clearance Queue ({pendingCount})</span>
             </button>
 
@@ -666,7 +666,7 @@ export const ApprovalsPage: React.FC = () => {
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              <Users className="w-4 h-4" />
+              <UsersIcon className="w-4 h-4" />
               <span>All Signed-Up Users ({registeredUsers.length})</span>
             </button>
           </div>
@@ -677,7 +677,7 @@ export const ApprovalsPage: React.FC = () => {
       {feedbackMsg && (
         <div className="p-4 rounded-2xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-between shadow-xl animate-fade-in">
           <div className="flex items-center space-x-2">
-            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+            <CheckCircleIcon className="w-5 h-5 flex-shrink-0" />
             <span>{feedbackMsg}</span>
           </div>
           <button onClick={() => setFeedbackMsg(null)} className="text-white font-mono cursor-pointer">✕</button>
@@ -716,7 +716,7 @@ export const ApprovalsPage: React.FC = () => {
       {/* Search & Filter Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
@@ -727,7 +727,7 @@ export const ApprovalsPage: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-2">
-          <Filter className="w-4 h-4 text-slate-400 shrink-0" />
+          <FunnelIcon className="w-4 h-4 text-slate-400 shrink-0" />
           <select
             value={selectedFilter}
             onChange={(e) => setSelectedFilter(e.target.value)}
@@ -765,7 +765,7 @@ export const ApprovalsPage: React.FC = () => {
         <div className="space-y-3">
           {filteredApprovals.length === 0 ? (
             <div className="p-12 text-center rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
-              <ShieldCheck className="w-10 h-10 text-emerald-500 mx-auto" />
+              <ShieldCheckIcon className="w-10 h-10 text-emerald-500 mx-auto" />
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white">Clearance Queue Is Clear</h3>
               <p className="text-xs text-slate-500">No approval requests match your search filter.</p>
             </div>
@@ -843,7 +843,7 @@ export const ApprovalsPage: React.FC = () => {
                               onClick={() => handleOpenActionModal(item, 'REJECT')}
                               className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-xs transition-all cursor-pointer flex items-center gap-1"
                             >
-                              <XCircle className="w-3.5 h-3.5" />
+                              <XCircleIcon className="w-3.5 h-3.5" />
                               <span>Decline</span>
                             </button>
 
@@ -852,7 +852,7 @@ export const ApprovalsPage: React.FC = () => {
                               onClick={() => handleOpenActionModal(item, 'APPROVE')}
                               className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-[#0d9488] to-[#166534] hover:opacity-95 text-white font-black text-xs transition-all shadow-md shadow-teal-900/10 cursor-pointer flex items-center gap-1"
                             >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <CheckCircleIcon className="w-3.5 h-3.5" />
                               <span>Approve Request</span>
                             </button>
                           </>
@@ -877,7 +877,7 @@ export const ApprovalsPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <Users className="w-5 h-5 text-[#0d9488]" />
+                <UsersIcon className="w-5 h-5 text-[#0d9488]" />
                 Institutional Staff & Signed-Up Users Directory
               </h3>
               <p className="text-xs text-slate-500">
@@ -919,7 +919,7 @@ export const ApprovalsPage: React.FC = () => {
                             <div>
                               <div className="font-bold text-slate-900 dark:text-white font-sans text-xs flex items-center gap-1">
                                 {staff.firstName} {staff.lastName}
-                                {isSuperAdminRole && <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 inline" />}
+                                {isSuperAdminRole && <ShieldCheckIcon className="w-3.5 h-3.5 text-emerald-600 inline" />}
                               </div>
                               <div className="text-[10px] text-slate-400 font-mono">{staff.employeeId || 'STAFF'}</div>
                             </div>
@@ -955,7 +955,7 @@ export const ApprovalsPage: React.FC = () => {
                         <td className="py-3 px-3">
                           {isUserBlocked(staff) ? (
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/10 text-rose-500 border border-rose-500/30 flex items-center gap-1 w-fit shadow-xs">
-                              <Ban className="w-3 h-3 text-rose-500" />
+                              <NoSymbolIcon className="w-3 h-3 text-rose-500" />
                               BLOCKED
                             </span>
                           ) : (
@@ -979,7 +979,7 @@ export const ApprovalsPage: React.FC = () => {
                                     className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
                                     title="Unblock user and restore workstation access"
                                   >
-                                    <ShieldCheck className="w-3 h-3" />
+                                    <ShieldCheckIcon className="w-3 h-3" />
                                     <span>Unblock</span>
                                   </button>
                                 ) : (
@@ -992,7 +992,7 @@ export const ApprovalsPage: React.FC = () => {
                                     className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
                                     title="Block user from accessing any workstation page"
                                   >
-                                    <Ban className="w-3 h-3" />
+                                    <NoSymbolIcon className="w-3 h-3" />
                                     <span>Block</span>
                                   </button>
                                 )}
@@ -1005,7 +1005,7 @@ export const ApprovalsPage: React.FC = () => {
                                       className="px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-bold text-[10px] transition-all cursor-pointer inline-flex items-center gap-1"
                                       title="Revoke access clearance"
                                     >
-                                      <UserX className="w-3 h-3" />
+                                      <UserMinusIcon className="w-3 h-3" />
                                       <span>Revoke</span>
                                     </button>
                                   ) : (
@@ -1015,7 +1015,7 @@ export const ApprovalsPage: React.FC = () => {
                                       className="px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold text-[10px] transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
                                       title="Grant immediate clearance"
                                     >
-                                      <UserCheck className="w-3 h-3" />
+                                      <UserCircleIcon className="w-3 h-3" />
                                       <span>Approve</span>
                                     </button>
                                   )
@@ -1027,7 +1027,7 @@ export const ApprovalsPage: React.FC = () => {
                                   className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 text-rose-600 border border-slate-200 dark:border-slate-700 font-bold text-[10px] transition-all cursor-pointer inline-flex items-center gap-1"
                                   title="Permanently delete user from system"
                                 >
-                                  <Trash2 className="w-3 h-3" />
+                                  <TrashIcon className="w-3 h-3" />
                                   <span>Delete</span>
                                 </button>
                               </div>
@@ -1057,7 +1057,7 @@ export const ApprovalsPage: React.FC = () => {
             
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-2 text-rose-400">
-                <ShieldCheck className="w-5 h-5" />
+                <ShieldCheckIcon className="w-5 h-5" />
                 <h3 className="font-extrabold text-base text-white">
                   Super Admin Executive Decision
                 </h3>
@@ -1109,7 +1109,7 @@ export const ApprovalsPage: React.FC = () => {
                     : 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-500/20'
                 } ${isProcessingAction ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                <CheckCircle2 className="w-4 h-4" />
+                <CheckCircleIcon className="w-4 h-4" />
                 <span>{isProcessingAction ? 'Processing...' : (actionType === 'APPROVE' ? 'Confirm Approval' : 'Confirm Rejection')}</span>
               </button>
             </div>
@@ -1125,7 +1125,7 @@ export const ApprovalsPage: React.FC = () => {
             
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-2 text-rose-500">
-                <Trash2 className="w-5 h-5" />
+                <TrashIcon className="w-5 h-5" />
                 <h3 className="font-extrabold text-base text-white">
                   Permanently Delete User Account
                 </h3>
@@ -1173,7 +1173,7 @@ export const ApprovalsPage: React.FC = () => {
                 disabled={isDeleting}
                 className="w-1/2 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-lg shadow-rose-600/30 cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <Trash2 className="w-4 h-4" />
+                <TrashIcon className="w-4 h-4" />
                 <span>{isDeleting ? 'Deleting...' : 'Delete Permanently'}</span>
               </button>
             </div>
@@ -1189,7 +1189,7 @@ export const ApprovalsPage: React.FC = () => {
             
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-2 text-rose-500">
-                <Ban className="w-5 h-5 stroke-[2.5]" />
+                <NoSymbolIcon className="w-5 h-5 stroke-[2.5]" />
                 <h3 className="font-extrabold text-base text-white">
                   Block Personnel Workstation Access
                 </h3>
@@ -1205,7 +1205,7 @@ export const ApprovalsPage: React.FC = () => {
             <div className="space-y-3 text-xs">
               <div className="p-3.5 rounded-2xl bg-rose-950/40 border border-rose-900/50 space-y-1">
                 <div className="text-rose-300 font-bold flex items-center gap-1.5">
-                  <ShieldAlert className="w-4 h-4 text-rose-400" />
+                  <ShieldExclamationIcon className="w-4 h-4 text-rose-400" />
                   <span>Executive Workstation Lockout</span>
                 </div>
                 <div className="text-slate-300 text-[11px]">
@@ -1253,7 +1253,7 @@ export const ApprovalsPage: React.FC = () => {
                 disabled={isBlocking}
                 className="w-1/2 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-lg shadow-rose-600/30 cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <Ban className="w-4 h-4" />
+                <NoSymbolIcon className="w-4 h-4" />
                 <span>{isBlocking ? 'Blocking...' : 'Block Workstation'}</span>
               </button>
             </div>

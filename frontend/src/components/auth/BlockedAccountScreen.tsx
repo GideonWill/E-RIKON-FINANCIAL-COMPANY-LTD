@@ -2,16 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import logoImg from '../../assets/logo.png';
 import { 
-  Ban, 
-  LogOut, 
-  RefreshCw, 
-  ShieldAlert, 
-  Lock, 
-  AlertOctagon,
-  Sparkles,
-  ChevronRight,
-  ShieldCheck
-} from 'lucide-react';
+  NoSymbolIcon, 
+  ArrowRightOnRectangleIcon, 
+  ArrowPathIcon, 
+  ExclamationCircleIcon 
+} from '@heroicons/react/24/outline';
 import { getRegisteredUsers, isUserBlocked } from '../../services/api';
 import { useRealtimeSync } from '../../services/realtimeSync';
 import { pullCloudToLocal } from '../../services/cloudSync';
@@ -116,7 +111,7 @@ export const BlockedAccountScreen: React.FC<BlockedAccountScreenProps> = ({ user
           onClick={logout}
           className="px-3 sm:px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-rose-400 hover:text-rose-300 font-bold text-xs flex items-center space-x-1.5 border border-rose-900/40 transition-all cursor-pointer shadow-sm"
         >
-          <LogOut className="w-3.5 h-3.5" />
+          <ArrowRightOnRectangleIcon className="w-3.5 h-3.5" />
           <span>Exit Session</span>
         </button>
       </header>
@@ -129,13 +124,13 @@ export const BlockedAccountScreen: React.FC<BlockedAccountScreenProps> = ({ user
           <div className="relative mx-auto w-20 h-20 flex items-center justify-center">
             <div className="absolute inset-0 rounded-3xl bg-rose-600/20 animate-ping opacity-50" />
             <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-tr from-rose-700 to-rose-500 flex items-center justify-center text-white shadow-xl shadow-rose-900/50 border border-rose-400/40">
-              <Ban className="w-10 h-10 stroke-[2.5]" />
+              <NoSymbolIcon className="w-10 h-10 stroke-[2.5]" />
             </div>
           </div>
 
           <div className="space-y-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[10px] font-mono font-black uppercase tracking-wider">
-              <AlertOctagon className="w-3.5 h-3.5" />
+              <ExclamationCircleIcon className="w-3.5 h-3.5" />
               <span>Access Blocked by Super Admin</span>
             </div>
             
@@ -188,7 +183,7 @@ export const BlockedAccountScreen: React.FC<BlockedAccountScreenProps> = ({ user
           {/* Real-time sync indicator */}
           <div className="p-3 rounded-2xl bg-rose-950/40 border border-rose-900/40 flex items-center justify-between text-left text-[11px]">
             <div className="flex items-center space-x-2">
-              <RefreshCw className={`w-4 h-4 text-rose-400 ${isChecking ? 'animate-spin' : ''}`} />
+              <ArrowPathIcon className={`w-4 h-4 text-rose-400 ${isChecking ? 'animate-spin' : ''}`} />
               <span className="text-slate-300">
                 {statusNote || 'Real-time security sync listening for Super Admin clearance...'}
               </span>
@@ -210,7 +205,7 @@ export const BlockedAccountScreen: React.FC<BlockedAccountScreenProps> = ({ user
               onClick={logout}
               className="w-full py-3 rounded-2xl bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 text-slate-200 font-extrabold text-xs flex items-center justify-center space-x-2 border border-slate-700 transition-all cursor-pointer shadow-lg"
             >
-              <LogOut className="w-4 h-4 text-rose-400" />
+              <ArrowRightOnRectangleIcon className="w-4 h-4 text-rose-400" />
               <span>Switch Account or Return to Login</span>
             </button>
           </div>

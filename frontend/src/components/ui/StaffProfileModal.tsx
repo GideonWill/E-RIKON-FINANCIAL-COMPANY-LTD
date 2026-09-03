@@ -3,21 +3,18 @@ import { User } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { deleteRegisteredUser } from '../../services/api';
 import { 
-  UserCheck, 
-  ShieldCheck, 
-  Building2, 
-  Mail, 
-  Phone, 
-  CreditCard, 
-  X, 
-  CheckCircle2, 
-  Clock, 
-  KeyRound,
-  Shield,
-  Trash2,
-  AlertTriangle,
-  LogOut
-} from 'lucide-react';
+  UserCircleIcon, 
+  XMarkIcon, 
+  CreditCardIcon, 
+  EnvelopeIcon, 
+  PhoneIcon, 
+  ClockIcon, 
+  CheckCircleIcon, 
+  KeyIcon, 
+  ShieldCheckIcon, 
+  TrashIcon, 
+  ExclamationTriangleIcon 
+} from '@heroicons/react/24/outline';
 
 interface StaffProfileModalProps {
   isOpen: boolean;
@@ -98,7 +95,7 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="flex items-center space-x-3">
             <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
-              <UserCheck className="w-5 h-5" />
+              <UserCircleIcon className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
@@ -118,7 +115,7 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
             onClick={onClose}
             className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
 
@@ -131,7 +128,7 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
 
             <div>
               <div className="text-[11px] font-mono text-amber-400 font-extrabold flex items-center gap-1">
-                <CreditCard className="w-3.5 h-3.5" /> ID: {user.employeeId || 'EMP-ADMIN'}
+                <CreditCardIcon className="w-3.5 h-3.5" /> ID: {user.employeeId || 'EMP-ADMIN'}
               </div>
               <h4 className="text-xl font-extrabold tracking-tight text-white mt-0.5">
                 {user.firstName} {user.lastName}
@@ -147,7 +144,7 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
         <div className="grid grid-cols-2 gap-3 text-xs">
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 space-y-1">
             <span className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
-              <Mail className="w-3 h-3 text-amber-500" /> Staff Email
+              <EnvelopeIcon className="w-3 h-3 text-amber-500" /> Staff Email
             </span>
             <div className="font-mono font-bold text-slate-800 dark:text-slate-200 truncate">
               {user.email}
@@ -156,7 +153,7 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
 
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 space-y-1">
             <span className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
-              <Phone className="w-3 h-3 text-blue-500" /> Phone Line
+              <PhoneIcon className="w-3 h-3 text-blue-500" /> Phone Line
             </span>
             <div className="font-mono font-bold text-slate-800 dark:text-slate-200">
               {user.phone || '—'}
@@ -165,10 +162,10 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
 
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 space-y-1">
             <span className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
-              <Clock className="w-3 h-3 text-emerald-500" /> Session Status
+              <ClockIcon className="w-3 h-3 text-emerald-500" /> Session Status
             </span>
             <div className="font-bold text-emerald-500 flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Authenticated
+              <CheckCircleIcon className="w-3.5 h-3.5" /> Authenticated
             </div>
           </div>
         </div>
@@ -177,15 +174,15 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
         <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 text-xs space-y-2 text-white">
           <div className="flex items-center justify-between text-[11px] font-bold uppercase text-amber-400 tracking-wider">
             <span className="flex items-center gap-1">
-              <KeyRound className="w-3.5 h-3.5" /> Role Privileges & Workstation Scope
+              <KeyIcon className="w-3.5 h-3.5" /> Role Privileges & Workstation Scope
             </span>
-            <Shield className="w-3.5 h-3.5 text-emerald-400" />
+            <ShieldCheckIcon className="w-3.5 h-3.5 text-emerald-400" />
           </div>
 
           <ul className="space-y-1.5 pt-1 text-slate-300">
             {privileges.map((priv, idx) => (
               <li key={idx} className="flex items-start gap-2 text-[11px]">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <CheckCircleIcon className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
                 <span>{priv}</span>
               </li>
             ))}
@@ -199,7 +196,7 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="space-y-0.5">
                   <div className="text-xs font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
-                    <Trash2 className="w-4 h-4" />
+                    <TrashIcon className="w-4 h-4" />
                     <span>Delete Super Admin Account</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400">
@@ -212,14 +209,14 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
                   onClick={() => setShowDeleteConfirm(true)}
                   className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-rose-600/20 cursor-pointer w-fit shrink-0"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <TrashIcon className="w-3.5 h-3.5" />
                   <span>Delete Account</span>
                 </button>
               </div>
             ) : (
               <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-rose-300 dark:border-rose-800 animate-fade-in">
                 <div className="flex items-start space-x-2 text-rose-600 dark:text-rose-400 font-bold text-xs">
-                  <AlertTriangle className="w-5 h-5 shrink-0" />
+                  <ExclamationTriangleIcon className="w-5 h-5 shrink-0" />
                   <div>
                     <span className="block text-sm">Confirm Super Admin Account Deletion</span>
                     <span className="text-[11px] text-slate-600 dark:text-slate-300 font-normal">
@@ -248,7 +245,7 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
                     disabled={isDeleting}
                     className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-md shadow-rose-600/30 cursor-pointer flex items-center gap-1.5"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <TrashIcon className="w-3.5 h-3.5" />
                     <span>{isDeleting ? 'Deleting...' : 'Yes, Delete Permanently'}</span>
                   </button>
                 </div>

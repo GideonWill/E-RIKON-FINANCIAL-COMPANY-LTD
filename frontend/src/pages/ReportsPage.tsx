@@ -13,33 +13,33 @@ import { useRealtimeSync } from '../services/realtimeSync';
 import { Transaction, Account, DailySplitEntry, DailyCollectionCycle } from '../types';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
 import logoImg from '../assets/logo.png';
-import { 
-  Building2, 
-  Wallet, 
-  Calendar, 
-  Download, 
-  FileSpreadsheet, 
-  Send, 
-  Mail, 
-  Printer, 
-  FileText, 
-  X, 
-  CheckCircle2, 
-  Clock, 
-  Smartphone, 
-  Users, 
-  Receipt,
-  MessageCircle,
-  ExternalLink,
-  Copy,
-  Check,
-  Trash2,
-  Table,
-  ShieldCheck,
-  AlertCircle,
-  User,
-  Search
-} from 'lucide-react';
+import {
+  BuildingOffice2Icon,
+  WalletIcon,
+  CalendarIcon,
+  ArrowDownTrayIcon,
+  DocumentChartBarIcon,
+  PaperAirplaneIcon,
+  EnvelopeIcon,
+  PrinterIcon,
+  DocumentTextIcon,
+  XMarkIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  DevicePhoneMobileIcon,
+  UsersIcon,
+  ReceiptPercentIcon,
+  ChatBubbleLeftEllipsisIcon,
+  ArrowTopRightOnSquareIcon,
+  DocumentDuplicateIcon,
+  CheckIcon,
+  TrashIcon,
+  TableCellsIcon,
+  ShieldCheckIcon,
+  ExclamationCircleIcon,
+  UserIcon,
+  MagnifyingGlassIcon
+} from '@heroicons/react/24/outline';
 
 export const ReportsPage: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(getStoredTransactions());
@@ -559,7 +559,7 @@ export const ReportsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <FileSpreadsheet className="w-6 h-6 text-[#0d9488]" />
+            <DocumentChartBarIcon className="w-6 h-6 text-[#0d9488]" />
             Financial Statements, Reports & Client Dispatch
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -573,7 +573,7 @@ export const ReportsPage: React.FC = () => {
           className="px-4 py-2 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer w-fit"
           title="Clear all transactions, receipts, and splits from system"
         >
-          <Trash2 className="w-4 h-4" />
+          <TrashIcon className="w-4 h-4" />
           <span>Clear All Financial Receipts</span>
         </button>
       </div>
@@ -582,7 +582,7 @@ export const ReportsPage: React.FC = () => {
       {dispatchStatus && (
         <div className="p-4 rounded-2xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-between shadow-xl animate-fade-in">
           <div className="flex items-center space-x-2">
-            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+            <CheckCircleIcon className="w-5 h-5 flex-shrink-0" />
             <span>{dispatchStatus}</span>
           </div>
           <button onClick={() => setDispatchStatus(null)} className="text-white font-mono cursor-pointer">✕</button>
@@ -594,7 +594,7 @@ export const ReportsPage: React.FC = () => {
         
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
           <div className="flex items-center space-x-3 text-[#0d9488]">
-            <FileSpreadsheet className="w-5 h-5" />
+            <DocumentChartBarIcon className="w-5 h-5" />
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">Transactions Ledger</h3>
           </div>
           <p className="text-xs text-slate-500">
@@ -604,14 +604,14 @@ export const ReportsPage: React.FC = () => {
             onClick={handleExportTransactions}
             className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#0d9488] to-[#166534] hover:opacity-95 text-white font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-md shadow-teal-900/10 cursor-pointer"
           >
-            <Download className="w-4 h-4" />
+            <ArrowDownTrayIcon className="w-4 h-4" />
             <span>Export Transactions (CSV)</span>
           </button>
         </div>
 
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
           <div className="flex items-center space-x-3 text-emerald-600">
-            <Table className="w-5 h-5" />
+            <TableCellsIcon className="w-5 h-5" />
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">Loan Portfolio Report</h3>
           </div>
           <p className="text-xs text-slate-500">
@@ -621,14 +621,14 @@ export const ReportsPage: React.FC = () => {
             onClick={handleExportLoans}
             className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
           >
-            <Download className="w-4 h-4" />
+            <ArrowDownTrayIcon className="w-4 h-4" />
             <span>Export Loans (CSV)</span>
           </button>
         </div>
 
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
           <div className="flex items-center space-x-3 text-blue-600">
-            <FileText className="w-5 h-5" />
+            <DocumentTextIcon className="w-5 h-5" />
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">Month-to-Month Statement</h3>
           </div>
           <p className="text-xs text-slate-500">
@@ -638,7 +638,7 @@ export const ReportsPage: React.FC = () => {
             onClick={() => setIsStatementPdfModalOpen(true)}
             className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-md shadow-blue-500/20 cursor-pointer"
           >
-            <Printer className="w-4 h-4" />
+            <PrinterIcon className="w-4 h-4" />
             <span>Open PDF Statement View</span>
           </button>
         </div>
@@ -651,7 +651,7 @@ export const ReportsPage: React.FC = () => {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
           <div>
             <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-[#0d9488]" />
+              <CalendarIcon className="w-5 h-5 text-[#0d9488]" />
               Month-to-Month Customer Statement & Dispatch Center
             </h3>
             <p className="text-xs text-slate-500">
@@ -663,7 +663,7 @@ export const ReportsPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Quick Client Search Input */}
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <MagnifyingGlassIcon className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search client (Rolland, Francis...)"
@@ -734,7 +734,7 @@ export const ReportsPage: React.FC = () => {
               className="py-2 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer"
               title="Download/Print PDF statement for this selected month"
             >
-              <Printer className="w-4 h-4" />
+              <PrinterIcon className="w-4 h-4" />
               <span>Download PDF</span>
             </button>
 
@@ -742,7 +742,7 @@ export const ReportsPage: React.FC = () => {
               onClick={handleSendWhatsApp}
               className="py-2 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer"
             >
-              <Smartphone className="w-4 h-4" />
+              <DevicePhoneMobileIcon className="w-4 h-4" />
               <span>WhatsApp Client</span>
             </button>
 
@@ -752,7 +752,7 @@ export const ReportsPage: React.FC = () => {
               className="py-2 px-3.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
               title="Open email composer to send verified statement to client"
             >
-              <Mail className="w-4 h-4 text-blue-500" />
+              <EnvelopeIcon className="w-4 h-4 text-blue-500" />
               <span>Email Statement</span>
             </button>
 
@@ -760,7 +760,7 @@ export const ReportsPage: React.FC = () => {
               onClick={handleExportCustomerStatement}
               className="py-2 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer"
             >
-              <Download className="w-4 h-4" />
+              <ArrowDownTrayIcon className="w-4 h-4" />
               <span>CSV</span>
             </button>
           </div>
@@ -795,7 +795,7 @@ export const ReportsPage: React.FC = () => {
         <div className="overflow-x-auto">
           <div className="flex items-center justify-between pb-2 text-xs font-bold text-slate-700 dark:text-slate-300">
             <span className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-[#0d9488]" />
+              <CalendarIcon className="w-4 h-4 text-[#0d9488]" />
               <span>Records for: <b className="text-[#0d9488] font-mono">{getMonthTitle(selectedMonth)}</b></span>
             </span>
             <span className="text-[11px] text-slate-400 font-mono">
@@ -848,7 +848,7 @@ export const ReportsPage: React.FC = () => {
                     <tr key={tx.id} id={`statement-row-${tx.id}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                       <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">{idx + 1}</td>
                       <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 font-bold flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
+                        <ClockIcon className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
                         <span>{formattedDateTime}</span>
                       </td>
                       <td className="py-2.5 px-3 font-sans">
@@ -875,7 +875,7 @@ export const ReportsPage: React.FC = () => {
                       <td className="py-2.5 px-3 font-sans">
                         <div className="flex flex-col min-w-[130px]">
                           <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1">
-                            <User className="w-3 h-3 text-[#0d9488]" />
+                            <UserIcon className="w-3 h-3 text-[#0d9488]" />
                             <span>{staffName}</span>
                           </span>
                           <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-0.5">
@@ -909,7 +909,7 @@ export const ReportsPage: React.FC = () => {
                           onClick={() => setSelectedTxForReceipt(tx)}
                           className="px-2 py-0.5 rounded bg-teal-50 hover:bg-[#0d9488] text-[#0d9488] hover:text-white font-bold text-[11px] transition-all cursor-pointer inline-flex items-center gap-1"
                         >
-                          <Printer className="w-3 h-3" />
+                          <PrinterIcon className="w-3 h-3" />
                           <span>Receipt</span>
                         </button>
                       </td>
@@ -921,7 +921,7 @@ export const ReportsPage: React.FC = () => {
                   <tr key={split.dayNumber} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                     <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">Day {split.dayNumber}</td>
                     <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 font-bold flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
+                      <ClockIcon className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
                       <span>{split.date} 09:00:00</span>
                     </td>
                     <td className="py-2.5 px-3 font-bold text-[#0d9488]">{split.receiptNo}</td>
@@ -984,7 +984,7 @@ export const ReportsPage: React.FC = () => {
               }}
               className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all self-start sm:self-auto"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <TrashIcon className="w-3.5 h-3.5" />
               <span>Clear Receipts Archive</span>
             </button>
           )}
@@ -1021,7 +1021,7 @@ export const ReportsPage: React.FC = () => {
                     <td className="py-2.5 px-3 font-sans">
                       <div className="flex flex-col min-w-[120px]">
                         <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1">
-                          <User className="w-3 h-3 text-[#0d9488]" />
+                          <UserIcon className="w-3 h-3 text-[#0d9488]" />
                           <span>{tx.recordedBy ? `${tx.recordedBy.firstName || ''} ${tx.recordedBy.lastName || ''}`.trim() || 'Staff Officer' : 'Staff Officer'}</span>
                         </span>
                         <span className="text-[10px] font-mono text-slate-400">
@@ -1038,7 +1038,7 @@ export const ReportsPage: React.FC = () => {
                         onClick={() => setSelectedTxForReceipt(tx)}
                         className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-[#0d9488] text-[#0d9488] hover:text-white font-bold transition-all cursor-pointer inline-flex items-center gap-1"
                       >
-                        <Printer className="w-3.5 h-3.5" />
+                        <PrinterIcon className="w-3.5 h-3.5" />
                         <span>Receipt</span>
                       </button>
                     </td>
@@ -1193,7 +1193,7 @@ export const ReportsPage: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t-2 border-slate-900 text-xs">
               <div className="space-y-1">
                 <div className="font-black text-slate-900 flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <ShieldCheckIcon className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>E-RiKON OFFICIAL STATEMENT RECORD</span>
                 </div>
                 <p className="text-[10px] text-slate-500 font-mono">
@@ -1207,7 +1207,7 @@ export const ReportsPage: React.FC = () => {
                   onClick={() => window.print()}
                   className="px-5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg cursor-pointer"
                 >
-                  <Printer className="w-4 h-4" />
+                  <PrinterIcon className="w-4 h-4" />
                   <span>Download / Print Official PDF</span>
                 </button>
                 <button
@@ -1233,7 +1233,7 @@ export const ReportsPage: React.FC = () => {
             <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
               <div className="flex items-center space-x-3">
                 <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-500 shadow-sm">
-                  <Mail className="w-6 h-6" />
+                  <EnvelopeIcon className="w-6 h-6" />
                 </div>
                 <div>
                   <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
@@ -1250,7 +1250,7 @@ export const ReportsPage: React.FC = () => {
                 onClick={() => setIsEmailModalOpen(false)}
                 className="p-1.5 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
 
@@ -1292,7 +1292,7 @@ export const ReportsPage: React.FC = () => {
                   onClick={handleCopyEmailStatement}
                   className="text-xs text-blue-500 hover:text-blue-600 font-bold flex items-center gap-1 cursor-pointer"
                 >
-                  {isEmailCopied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  {isEmailCopied ? <CheckIcon className="w-3.5 h-3.5 text-emerald-500" /> : <DocumentDuplicateIcon className="w-3.5 h-3.5" />}
                   <span>{isEmailCopied ? 'Copied!' : 'Copy Text'}</span>
                 </button>
               </div>
@@ -1311,7 +1311,7 @@ export const ReportsPage: React.FC = () => {
                 onClick={handleLaunchMailto}
                 className="py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer transition-all"
               >
-                <Mail className="w-4 h-4" />
+                <EnvelopeIcon className="w-4 h-4" />
                 <span>Open Mail App</span>
               </button>
 
@@ -1320,7 +1320,7 @@ export const ReportsPage: React.FC = () => {
                 onClick={handleLaunchGmailWeb}
                 className="py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-rose-500/20 cursor-pointer transition-all"
               >
-                <ExternalLink className="w-4 h-4" />
+                <ArrowTopRightOnSquareIcon className="w-4 h-4" />
                 <span>Open in Gmail</span>
               </button>
 
@@ -1329,7 +1329,7 @@ export const ReportsPage: React.FC = () => {
                 onClick={handleCopyEmailStatement}
                 className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
               >
-                {isEmailCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                {isEmailCopied ? <CheckIcon className="w-4 h-4 text-emerald-400" /> : <DocumentDuplicateIcon className="w-4 h-4" />}
                 <span>{isEmailCopied ? 'Copied' : 'Copy Statement'}</span>
               </button>
             </div>

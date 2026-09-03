@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calculator, Sparkles } from 'lucide-react';
+import { CalculatorIcon, SparklesIcon } from '@heroicons/react/24/outline';
 
 export const LoanCalculatorWidget: React.FC = () => {
   const [amount, setAmount] = useState<number>(100);
@@ -30,7 +30,7 @@ export const LoanCalculatorWidget: React.FC = () => {
       <div className="flex items-center justify-between border-b border-slate-800 pb-3.5">
         <div className="flex items-center space-x-2.5">
           <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
-            <Calculator className="w-4 h-4" />
+            <CalculatorIcon className="w-4 h-4" />
           </div>
           <div>
             <h3 className="font-extrabold text-sm sm:text-base tracking-tight text-white flex items-center gap-1.5 flex-wrap">
@@ -39,12 +39,11 @@ export const LoanCalculatorWidget: React.FC = () => {
                 POLICY
               </span>
             </h3>
-            <p className="text-[11px] text-slate-400">
-              Tenor Tiered Simulation (Min GH₵ 100 • Interval GH₵ 50)
-            </p>
+            <p className="text-[11px] text-slate-400">Calculate instant loan interests</p>
           </div>
         </div>
-        <Sparkles className="w-4 h-4 text-amber-500 animate-pulse shrink-0" />
+
+        <SparklesIcon className="w-4 h-4 text-amber-500 animate-pulse shrink-0" />
       </div>
 
       {/* Input Controls Stacked to prevent container squeezing */}

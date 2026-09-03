@@ -18,29 +18,27 @@ import { pushLocalToCloud } from '../services/cloudSync';
 import { Account, Transaction, PaymentMode, SavingsPackage, SAVINGS_PACKAGES, User, TransactorInfo } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
-import { GhanaCardInput, isValidGhanaCard } from '../components/ui/GhanaCardInput';
 import { GhanaPhoneInput, isValidGhanaPhone } from '../components/ui/GhanaPhoneInput';
 import { addSystemNotification } from '../components/ui/NotificationsModal';
-import { 
-  Landmark, 
-  Search, 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  CreditCard, 
-  DollarSign, 
-  FileText, 
-  CheckCircle2, 
-  ShieldAlert,
-  CalendarCheck,
-  Sparkles,
-  Check,
-  RotateCcw,
-  Coins,
-  ShieldCheck,
-  UserPlus,
-  Users,
-  UserCheck
-} from 'lucide-react';
+import {
+  BuildingLibraryIcon,
+  MagnifyingGlassIcon,
+  ArrowUpRightIcon,
+  ArrowDownLeftIcon,
+  CreditCardIcon,
+  CurrencyDollarIcon,
+  DocumentTextIcon,
+  CheckCircleIcon,
+  ShieldExclamationIcon,
+  CalendarDaysIcon,
+  SparklesIcon,
+  CheckIcon,
+  ArrowPathIcon,
+  ShieldCheckIcon,
+  UserPlusIcon,
+  UsersIcon,
+  UserCircleIcon
+} from '@heroicons/react/24/outline';
 
 export const TellerPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -202,17 +200,14 @@ export const TellerPage: React.FC = () => {
         setTransactorError('Please enter a valid 10-digit Ghana phone number for the representative (e.g. 0241234567).');
         return;
       }
-      if (transactorGhanaCard && !isValidGhanaCard(transactorGhanaCard)) {
-        setTransactorError('Representative Ghana Card PIN must follow the official format: GHA-XXXXXXXXX-X.');
-        return;
-      }
+      
     }
 
     const transactorInfo: TransactorInfo = {
       isThirdParty,
       fullName: isThirdParty ? transactorName.trim() : `${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}`,
       phone: isThirdParty ? transactorPhone.trim() : (selectedAccount.customer?.phone || ''),
-      ghanaCard: isThirdParty ? (transactorGhanaCard.trim() || undefined) : selectedAccount.customer?.ghanaCardNumber,
+      ghanaCard: isThirdParty ? undefined : selectedAccount.customer?.ghanaCardNumber,
       relationship: isThirdParty ? transactorRelationship : 'Self / Account Holder',
     };
 
@@ -396,7 +391,7 @@ export const TellerPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div className="space-y-1">
           <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <Landmark className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 shrink-0" />
+            <BuildingLibraryIcon className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 shrink-0" />
             <span>Teller Workstation & Cash Desk</span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
@@ -407,12 +402,12 @@ export const TellerPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2 sm:ml-auto justify-start sm:justify-end shrink-0">
           {currentUser && (
             <div className="flex items-center space-x-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-3 py-1.5 rounded-xl border border-amber-500/30 text-xs font-bold">
-              <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0" />
+              <ShieldCheckIcon className="w-4 h-4 text-amber-500 shrink-0" />
               <span>Officer: <b>{currentUser.firstName} {currentUser.lastName}</b> ({currentUser.role.replace(/_/g, ' ')})</span>
             </div>
           )}
           <div className="flex items-center space-x-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-xl border border-emerald-500/20 text-xs font-mono font-bold w-fit shrink-0 shadow-xs">
-            <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" /> 
+            <ShieldCheckIcon className="w-4 h-4 text-emerald-500 shrink-0" /> 
             <span>Vault Cash Position: GHS {totalVaultLiquidity.toFixed(2)}</span>
           </div>
         </div>
@@ -422,7 +417,7 @@ export const TellerPage: React.FC = () => {
       {successMessage && (
         <div className="p-4 rounded-2xl bg-emerald-500 text-white font-extrabold text-xs flex items-center justify-between shadow-xl animate-pulse">
           <div className="flex items-center space-x-2">
-            <CheckCircle2 className="w-5 h-5" />
+            <CheckCircleIcon className="w-5 h-5" />
             <span>{successMessage}</span>
           </div>
           <button
@@ -440,7 +435,7 @@ export const TellerPage: React.FC = () => {
         {/* Left Column: Customer Account Selector */}
         <div className="space-y-4">
           <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center space-x-2">
-            <Search className="w-4 h-4 text-slate-400" />
+            <MagnifyingGlassIcon className="w-4 h-4 text-slate-400" />
             <input
               type="text"
               placeholder="Search account by Name, Acc # or Ghana Card..."
@@ -454,7 +449,7 @@ export const TellerPage: React.FC = () => {
             {filteredAccounts.length === 0 ? (
               <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-3 shadow-xs">
                 <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
-                  <Users className="w-6 h-6" />
+                  <UsersIcon className="w-6 h-6" />
                 </div>
                 <div>
                   <div className="font-extrabold text-xs text-slate-900 dark:text-white">
@@ -471,7 +466,7 @@ export const TellerPage: React.FC = () => {
                   onClick={() => navigate('/customers')}
                   className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
                 >
-                  <UserPlus className="w-4 h-4" />
+                  <UserPlusIcon className="w-4 h-4" />
                   <span>Register Customer</span>
                 </button>
               </div>
@@ -506,7 +501,7 @@ export const TellerPage: React.FC = () => {
 
                     <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px]">
                       <span className="text-slate-500 dark:text-slate-400 font-mono flex items-center gap-1">
-                        <CreditCard className="w-3 h-3 text-slate-500" /> {acc.customer?.ghanaCardNumber}
+                        <CreditCardIcon className="w-3 h-3 text-slate-500" /> {acc.customer?.ghanaCardNumber}
                       </span>
                       <span className="font-mono font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md">
                         Cycle #{accCycleNo} • Day {accDay} / 31
@@ -587,7 +582,7 @@ export const TellerPage: React.FC = () => {
                       : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >
-                  <ArrowUpRight className="w-4 h-4" />
+                  <ArrowUpRightIcon className="w-4 h-4" />
                   <span>PHYSICAL DEPOSIT</span>
                 </button>
 
@@ -605,7 +600,7 @@ export const TellerPage: React.FC = () => {
                       : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >
-                  <ArrowDownLeft className="w-4 h-4" />
+                  <ArrowDownLeftIcon className="w-4 h-4" />
                   <span>PHYSICAL WITHDRAWAL</span>
                 </button>
               </div>
@@ -616,7 +611,7 @@ export const TellerPage: React.FC = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <h4 className="font-extrabold text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 uppercase tracking-wider">
-                        <Coins className="w-4 h-4 text-amber-500" />
+                        <CurrencyDollarIcon className="w-4 h-4 text-amber-500" />
                         Choose / Switch Daily Savings Package (Ghana Cedis) *
                       </h4>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
@@ -682,7 +677,7 @@ export const TellerPage: React.FC = () => {
                     <div className="p-3 rounded-xl bg-slate-900 text-white border border-amber-500/40 space-y-1.5 text-xs shadow-inner">
                       <div className="flex items-center justify-between text-amber-400 font-bold">
                         <span className="flex items-center gap-1.5">
-                          <Sparkles className="w-4 h-4 text-amber-500" />
+                          <SparklesIcon className="w-4 h-4 text-amber-500" />
                           Multi-Day Automatic Spread
                         </span>
                         <span className="font-mono text-[11px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded">
@@ -708,7 +703,7 @@ export const TellerPage: React.FC = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <h4 className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wider">
-                        <ArrowDownLeft className="w-4 h-4 text-amber-500" />
+                        <ArrowDownLeftIcon className="w-4 h-4 text-amber-500" />
                         Withdrawal as Savings-Backed Loan (30-Day Cycle)
                       </h4>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
@@ -763,7 +758,7 @@ export const TellerPage: React.FC = () => {
 
                   {/* Fee Settlement Assurance */}
                   <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] flex items-start gap-2.5 text-slate-600 dark:text-slate-300 shadow-2xs">
-                    <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <ShieldCheckIcon className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     <div className="leading-relaxed">
                       <b className="text-slate-900 dark:text-white">Retention Protection Rule:</b> When a client withdraws early as a loan against their savings, the 1-day retention fee (<b>GH₵ {loanInfo.protectedRetentionFee.toFixed(2)}</b>) is never eaten into and remains safely reserved in the vault.
                     </div>
@@ -779,7 +774,7 @@ export const TellerPage: React.FC = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2.5">
                     <div>
                       <h4 className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wider">
-                        <UserCheck className="w-4 h-4 text-amber-500" />
+                        <UserCircleIcon className="w-4 h-4 text-amber-500" />
                         {operationType === 'DEPOSIT' ? 'Depositor Information' : 'Withdrawer / Recipient Information'} *
                       </h4>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
@@ -898,25 +893,8 @@ export const TellerPage: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                            Representative Ghana Card PIN (Optional / Recommended)
-                          </label>
-                          <div className="mt-1">
-                            <GhanaCardInput
-                              value={transactorGhanaCard}
-                              onChange={(val) => {
-                                setTransactorGhanaCard(val);
-                                setTransactorError(null);
-                              }}
-                              placeholder="GHA-000000000-0"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="font-bold text-slate-700 dark:text-slate-300">
+                      <div>
+                        <label className="font-bold text-slate-700 dark:text-slate-300">
                             Relationship to Account Holder *
                           </label>
                           <select
@@ -934,7 +912,6 @@ export const TellerPage: React.FC = () => {
                             <option value="Friend">Friend / Acquaintance</option>
                             <option value="Other Representative">Other Representative</option>
                           </select>
-                        </div>
                       </div>
                     </div>
                   )}
@@ -990,7 +967,7 @@ export const TellerPage: React.FC = () => {
                       : 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/20'
                   }`}
                 >
-                  <CheckCircle2 className="w-5 h-5" />
+                  <CheckCircleIcon className="w-5 h-5" />
                   <span>
                     {operationType === 'DEPOSIT'
                       ? `Confirm & Record Deposit (GH₵ ${amount} • Spread ${splitPreview?.daysCovered || 1} Days)`
@@ -1009,7 +986,7 @@ export const TellerPage: React.FC = () => {
         {!selectedAccount && (
           <div className="lg:col-span-2 p-8 sm:p-14 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm text-center space-y-5 my-auto">
             <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-transparent text-amber-500 border border-amber-500/30 flex items-center justify-center mx-auto shadow-md">
-              <Landmark className="w-10 h-10" />
+              <BuildingLibraryIcon className="w-10 h-10" />
             </div>
             <div className="max-w-md mx-auto space-y-2">
               <h3 className="text-xl font-black text-slate-900 dark:text-white">
@@ -1027,7 +1004,7 @@ export const TellerPage: React.FC = () => {
                 onClick={() => navigate('/customers')}
                 className="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs inline-flex items-center gap-2 shadow-xl shadow-amber-500/20 cursor-pointer transition-all hover:scale-[1.02]"
               >
-                <UserPlus className="w-4 h-4" />
+                <UserPlusIcon className="w-4 h-4" />
                 <span>Onboard / Register Client Account</span>
               </button>
             </div>
