@@ -528,6 +528,34 @@ export const ApprovalsPage: React.FC = () => {
     }
   };
 
+  const getFieldWeight = (key: string): number => {
+    const k = key.toLowerCase().replace(/[^a-z]/g, '');
+    if (k === 'role' || k === 'position' || k === 'workstation') return 1;
+    if (k.includes('ghana') || k.includes('card') || k.includes('pin') || k.includes('nin')) return 2;
+    if (k.includes('phone') || k.includes('contact') || k.includes('tel') || k.includes('mobile')) return 3;
+    if (k.includes('email') || k.includes('mail')) return 4;
+    if (k.includes('branch') || k.includes('office') || k.includes('location')) return 5;
+    if (k.includes('amount') || k.includes('principal') || k.includes('balance') || k.includes('ghc')) return 6;
+    if (k.includes('customer') || k.includes('client') || k.includes('borrower')) return 7;
+    if (k.includes('purpose') || k.includes('reason') || k.includes('desc')) return 8;
+    if (k.includes('duration') || k.includes('term') || k.includes('months')) return 9;
+    return 50;
+  };
+
+  const formatFieldLabel = (key: string): string => {
+    const k = key.toLowerCase().replace(/[^a-z]/g, '');
+    if (k === 'role' || k === 'position') return 'ROLE';
+    if (k.includes('ghana') || k.includes('card')) return 'GHANA CARD';
+    if (k.includes('phone') || k.includes('contact') || k.includes('tel')) return 'PHONE';
+    if (k.includes('email') || k.includes('mail')) return 'EMAIL';
+    if (k.includes('branch')) return 'BRANCH';
+    if (k.includes('amount')) return 'AMOUNT';
+    if (k.includes('customer') || k.includes('client')) return 'CUSTOMER';
+    if (k.includes('purpose') || k.includes('reason')) return 'PURPOSE';
+    if (k.includes('duration') || k.includes('term')) return 'DURATION';
+    return key.replace(/([A-Z])/g, ' $1').toUpperCase();
+  };
+
   const handleManualCloudSync = async () => {
     setIsSyncingLive(true);
     try {
@@ -735,15 +763,27 @@ export const ApprovalsPage: React.FC = () => {
                     {item.description}
                   </p>
 
-                  {/* Details Card */}
+                  {/* Details Card with Fixed Deterministic Column Positions */}
                   {item.details && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 font-mono text-xs border border-slate-100 dark:border-slate-800">
-                      {Object.entries(item.details).map(([k, v]) => (
-                        <div key={k}>
-                          <span className="text-[10px] uppercase text-slate-400 block">{k}</span>
-                          <span className="font-bold truncate block">{String(v)}</span>
-                        </div>
-                      ))}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 font-mono text-xs border border-slate-100 dark:border-slate-800">
+                      {Object.entries(item.details)
+                        .filter(([_, v]) => v !== undefined && v !== null && String(v).trim() !== '')
+                        .sort(([keyA], [keyB]) => {
+                          const wA = getFieldWeight(keyA);
+                          const wB = getFieldWeight(keyB);
+                          if (wA !== wB) return wA - wB;
+                          return keyA.localeCompare(keyB);
+                        })
+                        .map(([k, v]) => (
+                          <div key={k} className="space-y-0.5">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                              {formatFieldLabel(k)}
+                            </span>
+                            <span className="font-extrabold text-slate-800 dark:text-slate-200 truncate block">
+                              {String(v)}
+                            </span>
+                          </div>
+                        ))}
                     </div>
                   )}
 
