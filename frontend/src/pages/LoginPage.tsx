@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { resetToCleanLiveState, getRegisteredUsers } from '../services/api';
 import { pullCloudToLocal } from '../services/cloudSync';
-import { RoleName } from '../types';
+import { RoleName, getRoleHomePath } from '../types';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
 import { GhanaCardInput, formatGhanaCardNumber, isValidGhanaCard } from '../components/ui/GhanaCardInput';
 import { GhanaPhoneInput, isValidGhanaPhone } from '../components/ui/GhanaPhoneInput';
@@ -25,8 +25,15 @@ import {
 } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
-  const { login, signupRole } = useAuth();
+  const { currentUser, isAuthenticated, login, signupRole } = useAuth();
   const navigate = useNavigate();
+
+  // If user is already signed into a role, prevent accessing login page unless Switch Role was clicked
+  useEffect(() => {
+    if (isAuthenticated && currentUser) {
+      navigate(getRoleHomePath(currentUser.role), { replace: true });
+    }
+  }, [isAuthenticated, currentUser, navigate]);
 
   // Tab State: 'signin' | 'signup'
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
@@ -111,26 +118,7 @@ export const LoginPage: React.FC = () => {
         }
       } catch {}
 
-      switch (targetRole) {
-        case 'SUPER_ADMIN':
-        case 'ADMIN':
-          navigate('/dashboard');
-          break;
-        case 'TELLER':
-          navigate('/teller');
-          break;
-        case 'FIELD_OFFICER':
-          navigate('/field-officer');
-          break;
-        case 'LOAN_OFFICER':
-          navigate('/loans');
-          break;
-        case 'AUDITOR':
-          navigate('/audit');
-          break;
-        default:
-          navigate('/dashboard');
-      }
+      navigate(getRoleHomePath(targetRole), { replace: true });
     } else {
       setErrorMsg(result.error || 'Invalid email or password. Please check your credentials and try again.');
     }

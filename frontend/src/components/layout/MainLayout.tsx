@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { getRoleHomePath } from '../../types';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 
@@ -11,6 +13,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
 
   const edgeTouchRef = useRef<{ startX: number; startY: number; isEdge: boolean }>({
     startX: 0,
@@ -39,10 +42,21 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     const deltaX = touch.clientX - edgeTouchRef.current.startX;
     const deltaY = Math.abs(touch.clientY - edgeTouchRef.current.startY);
 
-    // If dragged right >= 65px with horizontal dominance, navigate back!
+    // If dragged right >= 65px with horizontal dominance, navigate back within role workstation!
     if (deltaX >= 65 && deltaX > deltaY * 1.3) {
-      if (location.pathname !== '/' && location.pathname !== '/dashboard') {
-        navigate(-1);
+      const roleHome = getRoleHomePath(currentUser?.role);
+      const isAtRoleRoot = 
+        location.pathname === roleHome || 
+        location.pathname === '/' || 
+        location.pathname === '/dashboard';
+
+      // Prevent slide back gesture from leaving the role workstation to the signin page
+      if (!isAtRoleRoot) {
+        if (window.history.state && window.history.state.idx > 0) {
+          navigate(-1);
+        } else {
+          navigate(roleHome);
+        }
       }
     }
     edgeTouchRef.current.isEdge = false;

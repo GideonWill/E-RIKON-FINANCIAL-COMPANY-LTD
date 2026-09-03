@@ -50,6 +50,37 @@ export const saveStoredReadNotificationIds = (ids: string[]) => {
   window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
 };
 
+export const getStoredDynamicNotifications = (): NotificationItem[] => {
+  try {
+    const data = localStorage.getItem('erikon_dynamic_notifications');
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveStoredDynamicNotifications = (notifications: NotificationItem[]) => {
+  localStorage.setItem('erikon_dynamic_notifications', JSON.stringify(notifications.slice(0, 50)));
+  window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
+};
+
+export const addSystemNotification = (item: {
+  title: string;
+  message: string;
+  type: 'LOAN' | 'DEPOSIT' | 'CYCLE' | 'SYSTEM' | 'FIELD' | 'AUDIT';
+  targetRoute: string;
+  roles: RoleName[];
+}) => {
+  const current = getStoredDynamicNotifications();
+  const newItem: NotificationItem = {
+    id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    ...item,
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    isRead: false,
+  };
+  saveStoredDynamicNotifications([newItem, ...current]);
+};
+
 export const getSystemNotifications = (role: RoleName): NotificationItem[] => {
   const readIds = getStoredReadNotificationIds();
   const approvals = getStoredApprovals();
@@ -69,20 +100,15 @@ export const getSystemNotifications = (role: RoleName): NotificationItem[] => {
       }))
     : [];
 
-  const staticSystemNotifications: NotificationItem[] = [
-    {
-      id: 'sys-policy-01',
-      title: 'Daily Collection Policy Active',
-      message: 'Day-31 management fee retention policy and 30-day package interest system is running.',
-      time: 'Live',
-      type: 'SYSTEM',
-      targetRoute: '/company-interest',
-      roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
-      isRead: readIds.includes('sys-policy-01'),
-    }
-  ];
+  // Dynamic system update notifications for specific roles
+  const dynamicNotifications: NotificationItem[] = getStoredDynamicNotifications()
+    .filter((n) => n.roles.includes(role))
+    .map((n) => ({
+      ...n,
+      isRead: readIds.includes(n.id) || n.isRead,
+    }));
 
-  return [...approvalNotifications, ...staticSystemNotifications];
+  return [...approvalNotifications, ...dynamicNotifications];
 };
 
 export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose, onNotificationsUpdated }) => {

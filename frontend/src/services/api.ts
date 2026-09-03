@@ -13,7 +13,8 @@ import {
   DailySplitEntry,
   CompanyInterestRecord,
   CompanyInterestWithdrawal,
-  ApprovalRequest
+  ApprovalRequest,
+  TransactorInfo
 } from '../types';
 import { broadcastRealtimeEvent } from './realtimeSync';
 
@@ -1662,7 +1663,8 @@ export const recordPackageDeposit = (
   officerUser: User,
   remarks?: string,
   customStartDate?: string,
-  packageOverride?: number
+  packageOverride?: number,
+  transactor?: TransactorInfo
 ): { updatedAccount: Account; transaction: Transaction; splitResult: PaymentSplitResult } => {
   const accounts = getStoredAccounts();
   const accIndex = accounts.findIndex((a) => a.id === accountId);
@@ -1837,6 +1839,7 @@ export const recordPackageDeposit = (
     recordedBy: officerUser,
     remarks: remarks || `Package GHS ${packageRate.toFixed(2)} deposit covering ${splitResult.daysCovered} day(s) (Days ${splitResult.startDay}-${splitResult.endDay})${feeDeductedThisTx ? ` [1-time fee of GHS ${packageFee.toFixed(2)} deducted once]` : ''}`,
     createdAt: new Date().toISOString(),
+    transactor,
   };
 
   accounts[accIndex] = acc;
@@ -1859,8 +1862,9 @@ export const recordPackageDeposit = (
       previousBal: toDecimal(acc.availableBalance),
       newBal: toDecimal(acc.availableBalance),
       recordedBy: officerUser,
-      remarks: `1-Day package fee (GHS ${packageFee.toFixed(2)}) deducted once for GHS ${packageRate}/day cycle #${activeCycle.cycleNumber}`,
+      remarks: `Automated Day-31 company management fee deduction for Cycle #${activeCycle.cycleNumber} on customer ${acc.customer?.firstName} ${acc.customer?.lastName} (Acc: ${acc.accountNumber})`,
       createdAt: new Date().toISOString(),
+      transactor,
     };
     txListToAdd.push(feeTx);
   }

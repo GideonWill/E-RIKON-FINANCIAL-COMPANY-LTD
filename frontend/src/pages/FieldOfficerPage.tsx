@@ -5,7 +5,7 @@ import {
   recordPackageDeposit,
   splitPaymentIntoDays
 } from '../services/api';
-import { Account, Transaction, SavingsPackage, SAVINGS_PACKAGES } from '../types';
+import { Account, Transaction, SavingsPackage, SAVINGS_PACKAGES, TransactorInfo } from '../types';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
 import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
 import { pushLocalToCloud } from '../services/cloudSync';
@@ -152,13 +152,22 @@ export const FieldOfficerPage: React.FC = () => {
     };
 
     try {
+      const transactorInfo: TransactorInfo = {
+        isThirdParty: false,
+        fullName: `${selectedAccount.customer?.firstName || ''} ${selectedAccount.customer?.lastName || ''}`.trim() || 'Account Holder',
+        phone: selectedAccount.customer?.phone || '',
+        ghanaCard: selectedAccount.customer?.ghanaCardNumber,
+        relationship: 'Self / Account Holder',
+      };
+
       const { updatedAccount, transaction, splitResult } = recordPackageDeposit(
         selectedAccount.id,
         numAmount,
         officer,
         fieldRemarks || (isBulkSplitMode ? 'Backlog / Old records multi-day entry' : undefined),
         backlogStartDate,
-        currentPackage
+        currentPackage,
+        transactorInfo
       );
 
       const refreshedAccounts = getStoredAccounts();

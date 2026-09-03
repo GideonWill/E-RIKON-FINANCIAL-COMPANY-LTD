@@ -6,6 +6,24 @@ export type RoleName =
   | 'LOAN_OFFICER'
   | 'AUDITOR';
 
+export const getRoleHomePath = (role?: RoleName): string => {
+  switch (role) {
+    case 'SUPER_ADMIN':
+    case 'ADMIN':
+      return '/dashboard';
+    case 'TELLER':
+      return '/teller';
+    case 'FIELD_OFFICER':
+      return '/field-officer';
+    case 'LOAN_OFFICER':
+      return '/loans';
+    case 'AUDITOR':
+      return '/audit';
+    default:
+      return '/dashboard';
+  }
+};
+
 export type CustomerStatus = 'PENDING' | 'VERIFIED' | 'ACTIVE' | 'DORMANT' | 'SUSPENDED' | 'CLOSED';
 
 export type AccountType = 'SAVINGS' | 'CURRENT' | 'EDUCATION_FUND' | 'RETIREMENT_FUND' | 'LOAN_ACCOUNT';
@@ -278,6 +296,15 @@ export interface LoanSchedule {
   isPaid: boolean;
 }
 
+export interface TransactorInfo {
+  isThirdParty: boolean;
+  fullName: string;
+  phone: string;
+  ghanaCard?: string;
+  relationship?: string;
+  notes?: string;
+}
+
 export interface Transaction {
   id: string;
   referenceNo: string;
@@ -292,6 +319,7 @@ export interface Transaction {
   recordedBy?: User;
   remarks?: string;
   createdAt: string;
+  transactor?: TransactorInfo;
 }
 
 export interface AuditLog {

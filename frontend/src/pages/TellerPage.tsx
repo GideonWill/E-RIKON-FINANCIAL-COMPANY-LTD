@@ -15,9 +15,12 @@ import {
 } from '../services/api';
 import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
 import { pushLocalToCloud } from '../services/cloudSync';
-import { Account, Transaction, PaymentMode, SavingsPackage, SAVINGS_PACKAGES, User } from '../types';
+import { Account, Transaction, PaymentMode, SavingsPackage, SAVINGS_PACKAGES, User, TransactorInfo } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
+import { GhanaCardInput, isValidGhanaCard } from '../components/ui/GhanaCardInput';
+import { GhanaPhoneInput, isValidGhanaPhone } from '../components/ui/GhanaPhoneInput';
+import { addSystemNotification } from '../components/ui/NotificationsModal';
 import { 
   Landmark, 
   Search, 
@@ -35,7 +38,8 @@ import {
   Coins,
   ShieldCheck,
   UserPlus,
-  Users
+  Users,
+  UserCheck
 } from 'lucide-react';
 
 export const TellerPage: React.FC = () => {
@@ -57,6 +61,24 @@ export const TellerPage: React.FC = () => {
   const [isDailyPolicyTick, setIsDailyPolicyTick] = useState<boolean>(true);
   const [printedTx, setPrintedTx] = useState<Transaction | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Transactor Information State (Person Depositing or Withdrawing)
+  const [isThirdParty, setIsThirdParty] = useState<boolean>(false);
+  const [transactorName, setTransactorName] = useState<string>('');
+  const [transactorPhone, setTransactorPhone] = useState<string>('');
+  const [transactorGhanaCard, setTransactorGhanaCard] = useState<string>('');
+  const [transactorRelationship, setTransactorRelationship] = useState<string>('Self / Account Holder');
+  const [transactorError, setTransactorError] = useState<string | null>(null);
+
+  // Auto-fill transactor info when account changes if in Self mode
+  useEffect(() => {
+    if (!isThirdParty && selectedAccount?.customer) {
+      setTransactorName(`${selectedAccount.customer.firstName} ${selectedAccount.customer.lastName}`);
+      setTransactorPhone(selectedAccount.customer.phone || '');
+      setTransactorGhanaCard(selectedAccount.customer.ghanaCardNumber || '');
+      setTransactorRelationship('Self / Account Holder');
+    }
+  }, [selectedAccount, isThirdParty]);
 
   const handleSelectAccount = (acc: Account) => {
     setSelectedAccount(acc);
@@ -170,6 +192,30 @@ export const TellerPage: React.FC = () => {
     e.preventDefault();
     if (!numAmount || numAmount <= 0 || !selectedAccount) return;
 
+    setTransactorError(null);
+    if (isThirdParty) {
+      if (!transactorName.trim()) {
+        setTransactorError('Please enter the full name of the representative depositing/withdrawing on behalf of the customer.');
+        return;
+      }
+      if (!isValidGhanaPhone(transactorPhone)) {
+        setTransactorError('Please enter a valid 10-digit Ghana phone number for the representative (e.g. 0241234567).');
+        return;
+      }
+      if (transactorGhanaCard && !isValidGhanaCard(transactorGhanaCard)) {
+        setTransactorError('Representative Ghana Card PIN must follow the official format: GHA-XXXXXXXXX-X.');
+        return;
+      }
+    }
+
+    const transactorInfo: TransactorInfo = {
+      isThirdParty,
+      fullName: isThirdParty ? transactorName.trim() : `${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}`,
+      phone: isThirdParty ? transactorPhone.trim() : (selectedAccount.customer?.phone || ''),
+      ghanaCard: isThirdParty ? (transactorGhanaCard.trim() || undefined) : selectedAccount.customer?.ghanaCardNumber,
+      relationship: isThirdParty ? transactorRelationship : 'Self / Account Holder',
+    };
+
     const tellerUser: User = currentUser || {
       id: 'staff-active',
       employeeId: 'EMP-OFFICER',
@@ -206,7 +252,8 @@ export const TellerPage: React.FC = () => {
         tellerUser,
         remarks || `Teller deposit on GH₵ ${chosenPackage}/day package`,
         undefined,
-        chosenPackage
+        chosenPackage,
+        transactorInfo
       );
 
       setSelectedAccount(updatedAccount);
@@ -214,6 +261,14 @@ export const TellerPage: React.FC = () => {
       setPrintedTx(transaction);
       broadcastRealtimeEvent('PACKAGE_DEPOSIT_RECORDED', { accountId: selectedAccount.id, amount: numAmount });
       pushLocalToCloud().catch(() => {});
+
+      addSystemNotification({
+        title: `Deposit Recorded: GH₵ ${numAmount.toFixed(2)}`,
+        message: `GH₵ ${numAmount.toFixed(2)} deposited for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship}).`,
+        type: 'DEPOSIT',
+        targetRoute: '/customers',
+        roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
+      });
 
       setSuccessMessage(
         `🎉 Deposit of GHS ${numAmount.toFixed(2)} recorded! Covered ${splitResult.daysCovered} days (Days ${splitResult.startDay} to ${splitResult.endDay}) on GH₵ ${chosenPackage}/day package.`
@@ -254,6 +309,7 @@ export const TellerPage: React.FC = () => {
         recordedBy: tellerUser,
         remarks: remarks || `Withdrawal loan against savings (Protected fee: GH₵ ${loanInfo.protectedRetentionFee.toFixed(2)})`,
         createdAt: new Date().toISOString(),
+        transactor: transactorInfo,
       };
 
       const freshAccs = getStoredAccounts();
@@ -271,6 +327,14 @@ export const TellerPage: React.FC = () => {
       setPrintedTx(newTx);
       broadcastRealtimeEvent('WITHDRAWAL_RECORDED', newTx);
       pushLocalToCloud().catch(() => {});
+
+      addSystemNotification({
+        title: `Withdrawal Executed: GH₵ ${numAmount.toFixed(2)}`,
+        message: `GH₵ ${numAmount.toFixed(2)} withdrawn for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship}).`,
+        type: 'DEPOSIT',
+        targetRoute: '/customers',
+        roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
+      });
 
       setSuccessMessage(`✅ Savings-backed withdrawal loan of GHS ${numAmount.toFixed(2)} completed successfully!`);
     }
@@ -689,6 +753,172 @@ export const TellerPage: React.FC = () => {
 
               {/* Form Inputs */}
               <form onSubmit={handleProcessTransaction} className="space-y-4 text-xs">
+                
+                {/* Depositor / Withdrawer Identity & Verification Card */}
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2.5">
+                    <div>
+                      <h4 className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wider">
+                        <UserCheck className="w-4 h-4 text-amber-500" />
+                        {operationType === 'DEPOSIT' ? 'Depositor Information' : 'Withdrawer / Recipient Information'} *
+                      </h4>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Specify whether the client is transacting in person or through a designated representative.
+                      </p>
+                    </div>
+
+                    {/* Self vs Third-Party Switcher */}
+                    <div className="flex items-center p-1 rounded-xl bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsThirdParty(false);
+                          setTransactorError(null);
+                          if (selectedAccount?.customer) {
+                            setTransactorName(`${selectedAccount.customer.firstName} ${selectedAccount.customer.lastName}`);
+                            setTransactorPhone(selectedAccount.customer.phone || '');
+                            setTransactorGhanaCard(selectedAccount.customer.ghanaCardNumber || '');
+                            setTransactorRelationship('Self / Account Holder');
+                          }
+                        }}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          !isThirdParty
+                            ? 'bg-amber-500 text-slate-950 shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                        }`}
+                      >
+                        Account Holder (Self)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsThirdParty(true);
+                          setTransactorError(null);
+                          setTransactorName('');
+                          setTransactorPhone('');
+                          setTransactorGhanaCard('');
+                          setTransactorRelationship('Spouse');
+                        }}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          isThirdParty
+                            ? 'bg-amber-500 text-slate-950 shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                        }`}
+                      >
+                        Third Party / Representative
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Transactor Error Message */}
+                  {transactorError && (
+                    <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs font-medium flex items-center justify-between">
+                      <span>{transactorError}</span>
+                      <button type="button" onClick={() => setTransactorError(null)} className="font-mono text-xs cursor-pointer">✕</button>
+                    </div>
+                  )}
+
+                  {!isThirdParty ? (
+                    /* Verified Account Holder Mode */
+                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center space-x-2.5">
+                        <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-black text-xs shrink-0">
+                          ✓
+                        </div>
+                        <div>
+                          <span className="font-extrabold text-slate-900 dark:text-white block">
+                            {selectedAccount.customer?.firstName} {selectedAccount.customer?.lastName}
+                          </span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                            Account Holder • Phone: {selectedAccount.customer?.phone || '—'} • Card: {selectedAccount.customer?.ghanaCardNumber || '—'}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/20 px-2.5 py-1 rounded-md w-fit">
+                        Identity Pre-Verified
+                      </span>
+                    </div>
+                  ) : (
+                    /* Third Party Input Grid */
+                    <div className="space-y-3 pt-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                            Representative Full Name *
+                          </label>
+                          <input
+                            required
+                            type="text"
+                            value={transactorName}
+                            onChange={(e) => {
+                              setTransactorName(e.target.value);
+                              setTransactorError(null);
+                            }}
+                            placeholder="e.g. Kwame Mensah"
+                            className="w-full mt-1 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white font-medium text-xs focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                            Representative Phone Number *
+                          </label>
+                          <div className="mt-1">
+                            <GhanaPhoneInput
+                              required
+                              value={transactorPhone}
+                              onChange={(val) => {
+                                setTransactorPhone(val);
+                                setTransactorError(null);
+                              }}
+                              placeholder="0241234567"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                            Representative Ghana Card PIN (Optional / Recommended)
+                          </label>
+                          <div className="mt-1">
+                            <GhanaCardInput
+                              value={transactorGhanaCard}
+                              onChange={(val) => {
+                                setTransactorGhanaCard(val);
+                                setTransactorError(null);
+                              }}
+                              placeholder="GHA-000000000-0"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="font-bold text-slate-700 dark:text-slate-300">
+                            Relationship to Account Holder *
+                          </label>
+                          <select
+                            value={transactorRelationship}
+                            onChange={(e) => setTransactorRelationship(e.target.value)}
+                            className="w-full mt-1 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white font-semibold text-xs focus:outline-none focus:border-amber-500"
+                          >
+                            <option value="Spouse">Spouse (Husband / Wife)</option>
+                            <option value="Child / Son / Daughter">Child (Son / Daughter)</option>
+                            <option value="Sibling">Sibling (Brother / Sister)</option>
+                            <option value="Parent">Parent (Father / Mother)</option>
+                            <option value="Business Associate">Business Associate / Partner</option>
+                            <option value="Courier / Dispatch Agent">Courier / Dispatch Messenger</option>
+                            <option value="Employee / Assistant">Employee / Assistant</option>
+                            <option value="Friend">Friend / Acquaintance</option>
+                            <option value="Other Representative">Other Representative</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>

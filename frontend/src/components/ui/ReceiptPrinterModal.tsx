@@ -123,6 +123,36 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
               <span className="text-slate-400">Payment Mode:</span>
               <span>{transaction.paymentMode.replace('_', ' ')}</span>
             </div>
+
+            {/* Deposited / Withdrawn By Transactor Details */}
+            {transaction.transactor && (
+              <div className="pt-2 pb-1 border-t border-dashed border-slate-300 dark:border-slate-800 space-y-1 bg-amber-500/5 dark:bg-amber-500/10 p-2 rounded-xl text-[10px]">
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-bold uppercase tracking-wider">
+                    {transaction.type === 'WITHDRAWAL' ? 'Withdrawn By:' : 'Deposited By:'}
+                  </span>
+                  <span className="font-extrabold text-amber-600 dark:text-amber-400">
+                    {transaction.transactor.fullName}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                  <span>Relationship:</span>
+                  <span className="font-semibold">{transaction.transactor.relationship || 'Account Holder'}</span>
+                </div>
+                {transaction.transactor.phone && (
+                  <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                    <span>Contact Line:</span>
+                    <span>{transaction.transactor.phone}</span>
+                  </div>
+                )}
+                {transaction.transactor.ghanaCard && (
+                  <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                    <span>Ghana Card PIN:</span>
+                    <span>{transaction.transactor.ghanaCard}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Amount Box */}
