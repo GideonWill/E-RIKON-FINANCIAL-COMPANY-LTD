@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   getStoredCustomers,
   saveStoredCustomers,
@@ -87,6 +87,36 @@ export const CustomersPage: React.FC = () => {
     const pkg = searchParams.get('package');
     setSelectedPackageFilter(pkg ? Number(pkg) : null);
   }, [searchParams]);
+
+  const location = useLocation();
+
+  // Listen for direct navigation from Workstation Alerts / Notifications
+  useEffect(() => {
+    if (location.state) {
+      const stateObj = location.state as { customerId?: string; search?: string; openDrawer?: boolean };
+      if (stateObj.customerId) {
+        const found = customers.find((c) => c.id === stateObj.customerId);
+        if (found) {
+          if (stateObj.openDrawer !== false) {
+            setSelectedDetailCustomer(found);
+          }
+          setTimeout(() => {
+            const el = document.getElementById(`customer-card-${found.id}`);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              el.classList.add('ring-4', 'ring-amber-500', 'transition-all');
+              setTimeout(() => {
+                el.classList.remove('ring-4', 'ring-amber-500');
+              }, 3500);
+            }
+          }, 150);
+        }
+      }
+      if (stateObj.search) {
+        setSearchTerm(stateObj.search);
+      }
+    }
+  }, [location.state, customers]);
 
   // Subscribe to multi-device real-time sync
   useRealtimeSync(() => {
@@ -465,6 +495,8 @@ export const CustomersPage: React.FC = () => {
         message: `${newCust.firstName} ${newCust.lastName} (${newCust.customerNumber}) registered on GH₵ ${chosenPackage}/day package. Opening deposit: GH₵ ${effectiveDeposit.toFixed(2)}.`,
         type: 'AUDIT',
         targetRoute: '/customers',
+        targetState: { customerId: newCust.id, openDrawer: true },
+        targetSectionId: `customer-card-${newCust.id}`,
         roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'AUDITOR'],
       });
 
@@ -757,6 +789,7 @@ export const CustomersPage: React.FC = () => {
             return (
               <div
                 key={cust.id}
+                id={`customer-card-${cust.id}`}
                 onClick={() => setSelectedDetailCustomer(cust)}
                 className={`p-6 rounded-3xl bg-white dark:bg-slate-900 border transition-all space-y-4 relative overflow-hidden cursor-pointer group hover:border-amber-500 hover:shadow-xl hover:scale-[1.01] ${isJustAdded
                     ? 'border-amber-500 ring-2 ring-amber-500/50 shadow-2xl shadow-amber-500/20'

@@ -27,6 +27,8 @@ export interface NotificationItem {
   time: string;
   type: 'LOAN' | 'DEPOSIT' | 'CYCLE' | 'SYSTEM' | 'FIELD' | 'AUDIT';
   targetRoute: string;
+  targetState?: any;
+  targetSectionId?: string;
   roles: RoleName[];
   isRead: boolean;
 }
@@ -76,6 +78,8 @@ export const addSystemNotification = (item: {
   message: string;
   type: 'LOAN' | 'DEPOSIT' | 'CYCLE' | 'SYSTEM' | 'FIELD' | 'AUDIT';
   targetRoute: string;
+  targetState?: any;
+  targetSectionId?: string;
   roles: RoleName[];
 }) => {
   const current = getStoredDynamicNotifications();
@@ -102,6 +106,8 @@ export const getSystemNotifications = (role: RoleName): NotificationItem[] => {
         time: a.createdAt ? new Date(a.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
         type: a.type === 'STAFF_ROLE_SIGNUP' ? 'AUDIT' : a.type === 'LOAN_APPROVAL' ? 'LOAN' : 'CYCLE',
         targetRoute: '/approvals',
+        targetState: { approvalId: a.id, viewMode: 'CLEARANCE_QUEUE' },
+        targetSectionId: `approval-ticket-${a.id}`,
         roles: ['SUPER_ADMIN'] as RoleName[],
         isRead: readIds.includes(`appr-${a.id}`),
       }))
@@ -152,7 +158,23 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
     loadNotifications();
     if (onNotificationsUpdated) onNotificationsUpdated();
     onClose();
-    navigate(item.targetRoute);
+
+    // Direct targeted navigation with state
+    navigate(item.targetRoute, { state: item.targetState });
+
+    // Smooth scroll and focus highlight on target element
+    if (item.targetSectionId) {
+      setTimeout(() => {
+        const el = document.getElementById(item.targetSectionId!);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('ring-4', 'ring-teal-500', 'transition-all');
+          setTimeout(() => {
+            el.classList.remove('ring-4', 'ring-teal-500');
+          }, 3500);
+        }
+      }, 150);
+    }
   };
 
   const markAllAsRead = () => {

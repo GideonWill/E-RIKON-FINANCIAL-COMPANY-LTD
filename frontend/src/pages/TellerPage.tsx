@@ -262,11 +262,14 @@ export const TellerPage: React.FC = () => {
       broadcastRealtimeEvent('PACKAGE_DEPOSIT_RECORDED', { accountId: selectedAccount.id, amount: numAmount });
       pushLocalToCloud().catch(() => {});
 
+      const custId = selectedAccount.customerId || selectedAccount.customer?.id;
       addSystemNotification({
         title: `Deposit Recorded: GH₵ ${numAmount.toFixed(2)}`,
         message: `GH₵ ${numAmount.toFixed(2)} deposited for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship}).`,
         type: 'DEPOSIT',
         targetRoute: '/customers',
+        targetState: { customerId: custId, openDrawer: true },
+        targetSectionId: custId ? `customer-card-${custId}` : undefined,
         roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
       });
 
@@ -328,11 +331,14 @@ export const TellerPage: React.FC = () => {
       broadcastRealtimeEvent('WITHDRAWAL_RECORDED', newTx);
       pushLocalToCloud().catch(() => {});
 
+      const custId = selectedAccount.customerId || selectedAccount.customer?.id;
       addSystemNotification({
         title: `Withdrawal Executed: GH₵ ${numAmount.toFixed(2)}`,
         message: `GH₵ ${numAmount.toFixed(2)} withdrawn for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship}).`,
         type: 'DEPOSIT',
         targetRoute: '/customers',
+        targetState: { customerId: custId, openDrawer: true },
+        targetSectionId: custId ? `customer-card-${custId}` : undefined,
         roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
       });
 
