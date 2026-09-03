@@ -273,13 +273,8 @@ export const getStoredAccounts = (): Account[] => {
                     acc.customerId.includes('kwame');
 
     if (isKwame) {
-      acc.savingsPackage = 50;
-
-      // Check if Cycle 1 (completed 31 days) and Cycle 2 (active with 12 days on 50 GH package) are present
-      const cycle1 = (acc.dailyCycles || []).find((c) => c.cycleNumber === 1);
-      const cycle2 = (acc.dailyCycles || []).find((c) => c.cycleNumber === 2);
-
-      if (!cycle1 || cycle1.currentDayCount < 31 || !cycle2 || cycle2.currentDayCount < 12 || cycle2.dailyTargetAmount !== 50) {
+      if (!acc.dailyCycles || acc.dailyCycles.length === 0) {
+        acc.savingsPackage = 50;
         const completedCycle1: DailyCollectionCycle = {
           id: `cyc-${acc.id}-1`,
           cycleNumber: 1,
@@ -330,8 +325,8 @@ export const getStoredAccounts = (): Account[] => {
     }
 
     if (isGladys) {
-      acc.savingsPackage = 50;
       if (!acc.dailyCycles || acc.dailyCycles.length === 0) {
+        acc.savingsPackage = 50;
         acc.dailyCycles = [
           {
             id: `cyc-${acc.id}`,
@@ -343,118 +338,60 @@ export const getStoredAccounts = (): Account[] => {
             companyFeeAmount: 0,
             isCompleted: false,
             startDate: '2026-08-28',
-            dailySplits: [],
+            dailySplits: Array.from({ length: 16 }, (_, i) => ({
+              dayNumber: i + 1,
+              date: '2026-08-28',
+              amount: 50.00,
+              receiptNo: `RCP-SPLIT-800-${i + 1}`,
+              isCompanyFee: false,
+              recordedBy: 'Eric Annor (SUPER ADMIN)',
+              recordedAt: '2026-08-28T08:00:00.000Z',
+              batchTxRef: 'TX-DEP-GLADYS-800',
+            })),
           },
         ];
         splitsUpdated = true;
       }
-      const c = acc.dailyCycles[0];
-      c.dailyTargetAmount = 50;
-      c.totalDeposited = 800.00;
-      c.currentDayCount = 16;
-      if (!c.dailySplits || c.dailySplits.length < 16) {
-        c.dailySplits = Array.from({ length: 16 }, (_, i) => ({
-          dayNumber: i + 1,
-          date: '2026-08-28',
-          amount: 50.00,
-          receiptNo: `RCP-SPLIT-800-${i + 1}`,
-          isCompanyFee: false,
-          recordedBy: 'Eric Annor (SUPER ADMIN)',
-          recordedAt: '2026-08-28T08:00:00.000Z',
-          batchTxRef: 'TX-DEP-GLADYS-800',
-        }));
-        splitsUpdated = true;
-      }
     }
 
-    // Reconcile and auto-hydrate deposits recorded in transactions if account cycle is missing splits or package
+    // Authoritative Transaction-driven Balance and Cycle Reconciliation
     const customerDepositTxs = rawTxs.filter(
       (t) => (t.accountId === acc.id || t.account?.customerId === acc.customerId || (t.account?.id && t.account.id === acc.id)) && t.type === 'DEPOSIT'
     );
     const totalDepositTxSum = customerDepositTxs.reduce((sum, t) => sum + t.amount, 0);
 
-    if (totalDepositTxSum > 0 && (!acc.dailyCycles?.[0]?.dailySplits || acc.dailyCycles[0].dailySplits.length === 0 || acc.dailyCycles[0].totalDeposited === 0)) {
-      // Determine package rate from deposit tx remarks or savingsPackage
-      let detectedPackage: SavingsPackage = acc.savingsPackage || 20;
-      const initialTx = customerDepositTxs[0];
-      if (initialTx?.remarks) {
-        const match = initialTx.remarks.match(/GH[₵|\s]*(\d+)\/day/i);
-        if (match && match[1]) {
-          detectedPackage = Number(match[1]) as SavingsPackage;
-        }
-      }
-      if (!detectedPackage || detectedPackage <= 0) detectedPackage = 20;
+    const customerWithdrawalTxs = rawTxs.filter(
+      (t) => (t.accountId === acc.id || t.account?.customerId === acc.customerId || (t.account?.id && t.account.id === acc.id)) && t.type === 'WITHDRAWAL'
+    );
+    const totalWithdrawn = customerWithdrawalTxs.reduce((sum, t) => sum + t.amount, 0);
 
-      const daysCovered = Math.floor(totalDepositTxSum / detectedPackage);
-      acc.savingsPackage = detectedPackage;
+    let cycleDeposits = (acc.dailyCycles || []).reduce((sum, c) => sum + (c.totalDeposited || 0), 0);
 
-      if (!acc.dailyCycles || acc.dailyCycles.length === 0) {
-        acc.dailyCycles = [{
-          id: `cyc-${acc.id}-1`,
-          cycleNumber: 1,
-          currentDayCount: daysCovered,
-          dailyTargetAmount: detectedPackage,
-          totalDeposited: totalDepositTxSum,
-          feeDeducted: daysCovered >= 31,
-          companyFeeAmount: daysCovered >= 31 ? detectedPackage : 0,
-          isCompleted: daysCovered >= 31,
-          startDate: initialTx?.createdAt ? initialTx.createdAt.split('T')[0] : '2026-08-28',
-          dailySplits: Array.from({ length: daysCovered }, (_, i) => ({
-            dayNumber: i + 1,
-            date: initialTx?.createdAt ? initialTx.createdAt.split('T')[0] : '2026-08-28',
-            amount: detectedPackage,
-            receiptNo: initialTx?.receiptNo || `RCP-SPLIT-${i + 1}`,
-            isCompanyFee: i + 1 === 31,
-            recordedBy: initialTx?.recordedBy ? `${initialTx.recordedBy.firstName} ${initialTx.recordedBy.lastName} (${(initialTx.recordedBy.role || 'SUPER_ADMIN').replace(/_/g, ' ')})` : 'Gideon Ogunu (SUPER ADMIN)',
-            recordedAt: initialTx?.createdAt || new Date().toISOString(),
-            batchTxRef: initialTx?.referenceNo,
-          })),
-        }];
-      } else {
-        const c = acc.dailyCycles[0];
-        c.dailyTargetAmount = detectedPackage;
-        c.totalDeposited = totalDepositTxSum;
-        c.currentDayCount = daysCovered;
-        c.feeDeducted = daysCovered >= 31;
-        c.companyFeeAmount = daysCovered >= 31 ? detectedPackage : 0;
-        c.isCompleted = daysCovered >= 31;
-        c.dailySplits = Array.from({ length: daysCovered }, (_, i) => ({
-          dayNumber: i + 1,
-          date: initialTx?.createdAt ? initialTx.createdAt.split('T')[0] : '2026-08-28',
-          amount: detectedPackage,
-          receiptNo: initialTx?.receiptNo || `RCP-SPLIT-${i + 1}`,
-          isCompanyFee: i + 1 === 31,
-          recordedBy: initialTx?.recordedBy ? `${initialTx.recordedBy.firstName} ${initialTx.recordedBy.lastName} (${(initialTx.recordedBy.role || 'SUPER_ADMIN').replace(/_/g, ' ')})` : 'Gideon Ogunu (SUPER ADMIN)',
-          recordedAt: initialTx?.createdAt || new Date().toISOString(),
-          batchTxRef: initialTx?.referenceNo,
-        }));
-      }
-
-      acc.currentBalance = totalDepositTxSum;
-      acc.availableBalance = daysCovered >= 31 ? Math.max(0, totalDepositTxSum - detectedPackage) : totalDepositTxSum;
+    // If transactions have more deposits than cycle totalDeposited, sync active cycle
+    if (totalDepositTxSum > cycleDeposits && acc.dailyCycles && acc.dailyCycles.length > 0) {
+      const activeC = acc.dailyCycles[0];
+      const pkg = activeC.dailyTargetAmount || acc.savingsPackage || 20;
+      const diff = totalDepositTxSum - cycleDeposits;
+      activeC.totalDeposited = toDecimal(activeC.totalDeposited + diff);
+      activeC.currentDayCount = Math.floor(activeC.totalDeposited / pkg);
+      cycleDeposits = totalDepositTxSum;
       splitsUpdated = true;
     }
 
-    // Compute live accurate running balance subtracting all recorded withdrawals dynamically
-    const totalWithdrawn = rawTxs
-      .filter((t: Transaction) => (t.accountId === acc.id || t.account?.customerId === acc.customerId) && t.type === 'WITHDRAWAL')
-      .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
+    const totalDepositedAll = Math.max(cycleDeposits, totalDepositTxSum, acc.currentBalance ? (acc.currentBalance + totalWithdrawn) : 0);
 
-    const cycleDeposits = (acc.dailyCycles || []).reduce((sum, c) => sum + (c.totalDeposited || 0), 0);
     const feeDeductions = (acc.dailyCycles || []).reduce(
       (sum, c) => sum + (c.feeDeducted ? (c.companyFeeAmount || c.dailyTargetAmount || 0) : 0),
       0
     );
 
-    if (cycleDeposits > 0) {
-      const calculatedCurrent = Math.max(0, toDecimal(cycleDeposits - totalWithdrawn));
-      const calculatedAvailable = Math.max(0, toDecimal(cycleDeposits - feeDeductions - totalWithdrawn));
-      
-      if (acc.currentBalance !== calculatedCurrent || acc.availableBalance !== calculatedAvailable) {
-        acc.currentBalance = calculatedCurrent;
-        acc.availableBalance = calculatedAvailable;
-        splitsUpdated = true;
-      }
+    const calculatedCurrent = Math.max(0, toDecimal(totalDepositedAll - totalWithdrawn));
+    const calculatedAvailable = Math.max(0, toDecimal(totalDepositedAll - feeDeductions - totalWithdrawn));
+
+    if (acc.currentBalance !== calculatedCurrent || acc.availableBalance !== calculatedAvailable) {
+      acc.currentBalance = calculatedCurrent;
+      acc.availableBalance = calculatedAvailable;
+      splitsUpdated = true;
     }
 
     (acc.dailyCycles || []).forEach((c) => {
