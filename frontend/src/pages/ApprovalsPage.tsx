@@ -236,7 +236,7 @@ export const ApprovalsPage: React.FC = () => {
         }, 150);
       }
       if (stateObj.search) {
-        setSearchTerm(stateObj.search);
+        setSearchQuery(stateObj.search);
       }
     }
   }, [location.state]);
