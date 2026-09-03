@@ -36,7 +36,8 @@ import {
   Trash2,
   Table,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  User
 } from 'lucide-react';
 
 export const ReportsPage: React.FC = () => {
@@ -340,6 +341,9 @@ export const ReportsPage: React.FC = () => {
           Amount: tx.amount,
           PreviousBalance: tx.previousBal || 0,
           NewBalance: tx.newBal || 0,
+          RecordedBy: tx.recordedBy ? `${tx.recordedBy.firstName || ''} ${tx.recordedBy.lastName || ''}`.trim() || 'Staff Officer' : 'Staff Officer',
+          StaffRole: tx.recordedBy?.role ? tx.recordedBy.role.replace(/_/g, ' ') : 'OFFICER',
+          Transactor: tx.transactor?.fullName || 'Self (Client)',
           Customer: custName,
           AccountNo: selectedAccount.accountNumber || '—',
           GhanaCard: selectedAccount.customer?.ghanaCardNumber || '—',
@@ -704,6 +708,7 @@ export const ReportsPage: React.FC = () => {
                 <th className="py-2.5 px-3">Receipt No</th>
                 <th className="py-2.5 px-3">Reference No</th>
                 <th className="py-2.5 px-3">Classification</th>
+                <th className="py-2.5 px-3">Recorded By (Staff)</th>
                 <th className="py-2.5 px-3">Payment Channel</th>
                 <th className="py-2.5 px-3 text-right">Amount (GHS)</th>
                 <th className="py-2.5 px-3 text-right">Running Balance</th>
@@ -723,6 +728,10 @@ export const ReportsPage: React.FC = () => {
                     second: '2-digit',
                   });
 
+                  const staffName = tx.recordedBy
+                    ? `${tx.recordedBy.firstName || ''} ${tx.recordedBy.lastName || ''}`.trim() || 'Staff Officer'
+                    : 'Staff Officer';
+
                   return (
                     <tr key={tx.id} id={`statement-row-${tx.id}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                       <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">{idx + 1}</td>
@@ -736,6 +745,24 @@ export const ReportsPage: React.FC = () => {
                         <span className="font-medium text-slate-800 dark:text-slate-200">
                           {tx.type === 'COMPANY_FEE_DEDUCTION' ? 'Day 31 Company Fee Retained' : tx.type?.replace('_', ' ') || 'Transaction'}
                         </span>
+                      </td>
+                      <td className="py-2.5 px-3 font-sans">
+                        <div className="flex flex-col min-w-[130px]">
+                          <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                            <User className="w-3 h-3 text-[#0d9488]" />
+                            <span>{staffName}</span>
+                          </span>
+                          <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-0.5">
+                            <span className="font-mono uppercase bg-teal-50 dark:bg-teal-950/60 text-[#0d9488] font-bold px-1.5 py-0.2 rounded border border-teal-200 dark:border-teal-800">
+                              {tx.recordedBy?.role ? tx.recordedBy.role.replace(/_/g, ' ') : 'OFFICER'}
+                            </span>
+                            {tx.transactor?.fullName && (
+                              <span className="text-amber-600 dark:text-amber-400 font-medium truncate max-w-[110px]" title={`Transactor/Rep: ${tx.transactor.fullName} (${tx.transactor.relationship || 'Rep'})`}>
+                                • Rep: {tx.transactor.fullName}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td className="py-2.5 px-3 font-sans text-slate-500">
                         {tx.paymentMode ? tx.paymentMode.replace('_', ' ') : 'Cash'}
@@ -772,6 +799,9 @@ export const ReportsPage: React.FC = () => {
                     <td className="py-2.5 px-3 font-sans">
                       {split.isCompanyFee ? 'Day 31 Company Fee Retained' : 'Daily Collection Deposit'}
                     </td>
+                    <td className="py-2.5 px-3 font-sans">
+                      <span className="font-medium text-slate-600 dark:text-slate-400 text-[11px]">System Field Split</span>
+                    </td>
                     <td className="py-2.5 px-3 font-sans text-slate-500">Physical Cash</td>
                     <td className="py-2.5 px-3 text-right font-black text-slate-900 dark:text-white">
                       GHS {split.amount.toFixed(2)}
@@ -786,7 +816,7 @@ export const ReportsPage: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-400 font-sans">
+                  <td colSpan={10} className="py-8 text-center text-slate-400 font-sans">
                     <div className="space-y-1">
                       <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
                         {selectedAccount 
@@ -838,6 +868,7 @@ export const ReportsPage: React.FC = () => {
                 <th className="py-2.5 px-3">Reference No</th>
                 <th className="py-2.5 px-3">Customer</th>
                 <th className="py-2.5 px-3">Type</th>
+                <th className="py-2.5 px-3">Recorded By (Staff)</th>
                 <th className="py-2.5 px-3 text-right">Amount (GHS)</th>
                 <th className="py-2.5 px-3">Date & Time</th>
                 <th className="py-2.5 px-3 text-center">Action</th>
@@ -857,6 +888,17 @@ export const ReportsPage: React.FC = () => {
                         {tx.type}
                       </span>
                     </td>
+                    <td className="py-2.5 px-3 font-sans">
+                      <div className="flex flex-col min-w-[120px]">
+                        <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                          <User className="w-3 h-3 text-[#0d9488]" />
+                          <span>{tx.recordedBy ? `${tx.recordedBy.firstName || ''} ${tx.recordedBy.lastName || ''}`.trim() || 'Staff Officer' : 'Staff Officer'}</span>
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-400">
+                          {tx.recordedBy?.role ? tx.recordedBy.role.replace(/_/g, ' ') : 'OFFICER'}
+                        </span>
+                      </div>
+                    </td>
                     <td className="py-2.5 px-3 text-right font-black text-slate-900 dark:text-white">
                       GHS {tx.amount.toFixed(2)}
                     </td>
@@ -874,7 +916,7 @@ export const ReportsPage: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-slate-400 font-sans">
+                  <td colSpan={8} className="py-6 text-center text-slate-400 font-sans">
                     No transactions recorded yet in the ledger.
                   </td>
                 </tr>
