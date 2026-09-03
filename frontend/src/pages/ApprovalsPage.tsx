@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   getStoredApprovals, 
   saveStoredApprovals, 
@@ -215,11 +215,15 @@ export const ApprovalsPage: React.FC = () => {
   }, []);
 
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Listen for direct navigation from Workstation Alerts / Notifications
+  const processedLocationKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (location.state) {
-      const stateObj = location.state as { approvalId?: string; viewMode?: 'CLEARANCE_QUEUE' | 'STAFF_DIRECTORY'; search?: string };
+    const stateObj = location.state as { approvalId?: string; viewMode?: 'CLEARANCE_QUEUE' | 'STAFF_DIRECTORY'; search?: string } | null;
+    if (stateObj && processedLocationKeyRef.current !== location.key) {
+      processedLocationKeyRef.current = location.key;
       if (stateObj.viewMode) {
         setViewMode(stateObj.viewMode);
       }
@@ -238,8 +242,11 @@ export const ApprovalsPage: React.FC = () => {
       if (stateObj.search) {
         setSearchQuery(stateObj.search);
       }
+
+      window.history.replaceState({}, document.title);
+      navigate(location.pathname + location.search, { replace: true, state: null });
     }
-  }, [location.state]);
+  }, [location.key, location.state, navigate, location.pathname, location.search]);
 
   // Real-time multi-device subscription
   useRealtimeSync(() => {

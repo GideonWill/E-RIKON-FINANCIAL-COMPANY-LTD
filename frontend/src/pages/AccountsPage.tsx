@@ -43,12 +43,16 @@ export const AccountsPage: React.FC = () => {
   };
 
   // Listen for direct navigation from Workstation Alerts / Notifications
+  const processedLocationKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (location.state) {
-      const stateObj = location.state as { accountId?: string; customerId?: string; search?: string };
+    const stateObj = location.state as { accountId?: string; customerId?: string; search?: string } | null;
+    if (stateObj && processedLocationKeyRef.current !== location.key) {
       if (stateObj.accountId || stateObj.customerId) {
-        const found = accounts.find((a) => a.id === stateObj.accountId || a.customerId === stateObj.customerId);
+        const freshAccs = accounts.length > 0 ? accounts : getStoredAccounts();
+        const found = freshAccs.find((a) => a.id === stateObj.accountId || a.customerId === stateObj.customerId);
         if (found) {
+          processedLocationKeyRef.current = location.key;
           setSelectedAccount(found);
           setTimeout(() => {
             const el = document.getElementById(`account-card-${found.id}`);
@@ -60,13 +64,24 @@ export const AccountsPage: React.FC = () => {
               }, 3500);
             }
           }, 150);
+
+          if (stateObj.search) {
+            setSearchTerm(stateObj.search);
+          }
+
+          window.history.replaceState({}, document.title);
+          navigate(location.pathname + location.search, { replace: true, state: null });
         }
-      }
-      if (stateObj.search) {
-        setSearchTerm(stateObj.search);
+      } else {
+        processedLocationKeyRef.current = location.key;
+        if (stateObj.search) {
+          setSearchTerm(stateObj.search);
+        }
+        window.history.replaceState({}, document.title);
+        navigate(location.pathname + location.search, { replace: true, state: null });
       }
     }
-  }, [location.state, accounts]);
+  }, [location.key, location.state, accounts, navigate, location.pathname, location.search]);
 
   // Real-time multi-device subscription
   useRealtimeSync(() => {

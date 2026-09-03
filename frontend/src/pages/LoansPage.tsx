@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   getStoredLoans, 
   saveStoredLoans, 
@@ -33,6 +33,7 @@ import {
 
 export const LoansPage: React.FC = () => {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
   const [loans, setLoans] = useState<LoanApplication[]>(getStoredLoans());
   const [selectedLoan, setSelectedLoan] = useState<LoanApplication | null>(loans[0] || null);
@@ -46,12 +47,16 @@ export const LoansPage: React.FC = () => {
   const [accounts, setAccounts] = useState(getStoredAccounts());
 
   // Listen for direct navigation from Workstation Alerts / Notifications
+  const processedLocationKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (location.state) {
-      const stateObj = location.state as { loanId?: string; customerId?: string };
+    const stateObj = location.state as { loanId?: string; customerId?: string } | null;
+    if (stateObj && processedLocationKeyRef.current !== location.key) {
       if (stateObj.loanId || stateObj.customerId) {
-        const found = loans.find((l) => l.id === stateObj.loanId || l.customerId === stateObj.customerId);
+        const freshLoans = loans.length > 0 ? loans : getStoredLoans();
+        const found = freshLoans.find((l) => l.id === stateObj.loanId || l.customerId === stateObj.customerId);
         if (found) {
+          processedLocationKeyRef.current = location.key;
           setSelectedLoan(found);
           setTimeout(() => {
             const el = document.getElementById(`loan-card-${found.id}`);
@@ -63,10 +68,13 @@ export const LoansPage: React.FC = () => {
               }, 3500);
             }
           }, 150);
+
+          window.history.replaceState({}, document.title);
+          navigate(location.pathname + location.search, { replace: true, state: null });
         }
       }
     }
-  }, [location.state, loans]);
+  }, [location.key, location.state, loans, navigate, location.pathname, location.search]);
 
   // Real-time multi-device subscription
   useRealtimeSync(() => {

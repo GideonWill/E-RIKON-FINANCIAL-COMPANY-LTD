@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   getStoredCustomers,
@@ -92,12 +92,15 @@ export const CustomersPage: React.FC = () => {
   const location = useLocation();
 
   // Listen for direct navigation from Workstation Alerts / Notifications
+  const processedLocationKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (location.state) {
-      const stateObj = location.state as { customerId?: string; search?: string; openDrawer?: boolean };
+    const stateObj = location.state as { customerId?: string; search?: string; openDrawer?: boolean } | null;
+    if (stateObj && processedLocationKeyRef.current !== location.key) {
       if (stateObj.customerId) {
-        const found = customers.find((c) => c.id === stateObj.customerId);
+        const found = customers.find((c) => c.id === stateObj.customerId) || getStoredCustomers().find((c) => c.id === stateObj.customerId);
         if (found) {
+          processedLocationKeyRef.current = location.key;
           if (stateObj.openDrawer !== false) {
             setSelectedDetailCustomer(found);
           }
@@ -111,13 +114,25 @@ export const CustomersPage: React.FC = () => {
               }, 3500);
             }
           }, 150);
+
+          if (stateObj.search) {
+            setSearchTerm(stateObj.search);
+          }
+
+          // Clear location state from history and router so closing the window never automatically reopens it
+          window.history.replaceState({}, document.title);
+          navigate(location.pathname + location.search, { replace: true, state: null });
         }
-      }
-      if (stateObj.search) {
-        setSearchTerm(stateObj.search);
+      } else {
+        processedLocationKeyRef.current = location.key;
+        if (stateObj.search) {
+          setSearchTerm(stateObj.search);
+        }
+        window.history.replaceState({}, document.title);
+        navigate(location.pathname + location.search, { replace: true, state: null });
       }
     }
-  }, [location.state, customers]);
+  }, [location.key, location.state, customers, navigate, location.pathname, location.search]);
 
   // Subscribe to multi-device real-time sync
   useRealtimeSync(() => {
@@ -127,10 +142,10 @@ export const CustomersPage: React.FC = () => {
     setCustomers(freshCusts);
     setAccounts(freshAccs);
     setTransactions(freshTxs);
-    if (selectedDetailCustomer) {
-      const refreshed = freshCusts.find((c) => c.id === selectedDetailCustomer.id);
-      if (refreshed) setSelectedDetailCustomer(refreshed);
-    }
+    setSelectedDetailCustomer((prev) => {
+      if (!prev) return null;
+      return freshCusts.find((c) => c.id === prev.id) || prev;
+    });
   });
 
   // Helper to calculate comprehensive financial summary for any customer (and specific cycle)
