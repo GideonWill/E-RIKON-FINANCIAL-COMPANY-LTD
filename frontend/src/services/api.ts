@@ -196,7 +196,7 @@ export const getStoredAccounts = (): Account[] => {
       splitsUpdated = true;
     }
 
-    const totalDepositedAll = Math.max(cycleDeposits, totalDepositTxSum, acc.currentBalance ? (acc.currentBalance + totalWithdrawn) : 0);
+    const totalDepositedAll = Math.max(cycleDeposits, totalDepositTxSum);
 
     const feeDeductions = (acc.dailyCycles || []).reduce(
       (sum, c) => sum + (c.feeDeducted ? (c.companyFeeAmount || c.dailyTargetAmount || 0) : 0),
@@ -241,11 +241,13 @@ export const clearStoredAccounts = () => {
 };
 
 export const getStoredLoans = (): LoanApplication[] => {
-  const data = localStorage.getItem('erikon_loans');
-  if (!data) return [];
   try {
-    const parsed = JSON.parse(data);
-    if (!Array.isArray(parsed)) return [];
+    const data = localStorage.getItem('erikon_loans');
+    let parsed: LoanApplication[] = [];
+    if (data) {
+      const raw = JSON.parse(data);
+      if (Array.isArray(raw)) parsed = raw;
+    }
     const deletedIds = getDeletedCustomerIds();
     const currentCustomers = getStoredCustomers();
     if (currentCustomers.length === 0) return [];
@@ -280,14 +282,11 @@ export const getStoredTransactions = (): Transaction[] => {
     } catch {}
   }
   const deletedIds = getDeletedCustomerIds();
-  const currentCustomers = getStoredCustomers();
-  if (currentCustomers.length === 0) return [];
-  const currentCustomerIds = new Set(currentCustomers.map((c) => c.id));
 
   return parsed.filter((t) => {
-    const custId = t.accountId || t.account?.customerId || t.account?.customer?.id;
-    if (custId && (deletedIds.includes(custId) || !currentCustomerIds.has(custId))) return false;
     if (deletedIds.includes(t.id) || (t.receiptNo && deletedIds.includes(t.receiptNo))) return false;
+    const txCustId = t.account?.customerId || t.account?.customer?.id;
+    if (txCustId && deletedIds.includes(txCustId)) return false;
     return true;
   });
 };
@@ -315,13 +314,11 @@ export const clearClientAndFinancialDatabase = () => {
 
 export const saveStoredTransactions = (txs: Transaction[]) => {
   const deletedIds = getDeletedCustomerIds();
-  const currentCustomers = getStoredCustomers();
-  const currentCustomerIds = new Set(currentCustomers.map((c) => c.id));
   const sanitized = txs
     .filter((t) => {
-      const custId = t.account?.customerId || t.account?.customer?.id;
-      if (custId && (deletedIds.includes(custId) || !currentCustomerIds.has(custId))) return false;
       if (deletedIds.includes(t.id) || (t.receiptNo && deletedIds.includes(t.receiptNo))) return false;
+      const txCustId = t.account?.customerId || t.account?.customer?.id;
+      if (txCustId && deletedIds.includes(txCustId)) return false;
       return true;
     })
     .map((t) => {
