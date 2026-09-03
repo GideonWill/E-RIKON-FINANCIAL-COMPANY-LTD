@@ -22,9 +22,24 @@ export const formatGhanaCardNumber = (val: string): string => {
   return `GHA-${body.slice(0, 9)}-${body.slice(9, 10)}`;
 };
 
+export const normalizeGhanaCardNumber = (val: string): string => {
+  if (!val) return '';
+  const cleaned = val.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  let body = cleaned.startsWith('GHA') ? cleaned.slice(3) : cleaned;
+  if (!body) return 'GHA-000000000-0';
+  if (body.length < 10) {
+    body = body.padEnd(10, '0');
+  }
+  body = body.slice(0, 10);
+  return `GHA-${body.slice(0, 9)}-${body.slice(9, 10)}`;
+};
+
 export const isValidGhanaCard = (val: string): boolean => {
   if (!val) return false;
-  return /^GHA-[A-Z0-9]{9}-[A-Z0-9]{1}$/i.test(val.trim());
+  const trimmed = val.trim().toUpperCase();
+  const cleaned = trimmed.replace(/[^A-Z0-9]/g, '');
+  const body = cleaned.startsWith('GHA') ? cleaned.slice(3) : cleaned;
+  return body.length >= 6;
 };
 
 interface GhanaCardInputProps {

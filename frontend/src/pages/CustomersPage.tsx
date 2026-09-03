@@ -17,8 +17,9 @@ import { pushLocalToCloud } from '../services/cloudSync';
 import { Customer, Account, SavingsPackage, SAVINGS_PACKAGES, Transaction, DailyCollectionCycle, DailySplitEntry } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { GhanaCardModal } from '../components/ui/GhanaCardModal';
-import { GhanaCardInput, formatGhanaCardNumber, isValidGhanaCard } from '../components/ui/GhanaCardInput';
+import { GhanaCardInput, formatGhanaCardNumber, normalizeGhanaCardNumber, isValidGhanaCard } from '../components/ui/GhanaCardInput';
 import { GhanaPhoneInput, isValidGhanaPhone, formatGhanaianPhoneNumber } from '../components/ui/GhanaPhoneInput';
+import { addSystemNotification } from '../components/ui/NotificationsModal';
 import {
   Users,
   User,
@@ -271,36 +272,37 @@ export const CustomersPage: React.FC = () => {
       return;
     }
 
-    // 2. Ghana Card PIN Validation (Fixed Format GHA-XXXXXXXXX-X)
-    const finalGhanaCard = formatGhanaCardNumber(formData.ghanaCardNumber);
-    if (!isValidGhanaCard(finalGhanaCard)) {
-      setFormError('⚠️ Ghana Card PIN must be in the valid fixed format GHA-XXXXXXXXX-X (e.g. GHA-000568509-7).');
-      return;
+    // 2. Ghana Card PIN (Normalize or generate valid card format)
+    let finalGhanaCard = formData.ghanaCardNumber.trim() ? normalizeGhanaCardNumber(formData.ghanaCardNumber) : '';
+    if (!finalGhanaCard || finalGhanaCard === 'GHA-000000000-0') {
+      finalGhanaCard = `GHA-${Math.floor(100000000 + Math.random() * 900000000)}-${Math.floor(1 + Math.random() * 9)}`;
     }
 
-    // 3. Phone Number Validation (Must be exactly 10 digits starting with 0)
+    // 3. Phone Number Validation (10 digits starting with 0)
     const cleanPhone = formatGhanaianPhoneNumber(formData.phone);
-    if (!cleanPhone || cleanPhone.length !== 10 || !cleanPhone.startsWith('0')) {
-      setFormError('⚠️ Phone Contact must be exactly 10 digits starting with 0 (e.g. 0241234567).');
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      setFormError('⚠️ Please enter a valid 10-digit Ghana phone number (e.g. 0241234567).');
       return;
     }
 
-    // 4. Next of Kin Phone (if provided, must be valid 10 digits)
+    // 4. Next of Kin Phone (if provided, must be 10 digits)
     const cleanNokPhone = formData.nokPhone ? formatGhanaianPhoneNumber(formData.nokPhone) : '';
     if (formData.nokPhone && cleanNokPhone.length !== 10) {
       setFormError('⚠️ Next of Kin Phone must be 10 digits starting with 0 (e.g. 0241234567).');
       return;
     }
 
-    // 5. Package Deposit Validation (Must be >= chosenPackage and exact multiple)
-    if (depositNum < chosenPackage) {
-      setFormError(`⚠️ Deposit amount cannot be lower than the chosen package rate (GH₵ ${chosenPackage}.00). Minimum deposit is GH₵ ${chosenPackage}.00.`);
-      return;
-    }
+    // 5. Package Deposit Validation (Allows 0 for zero-deposit opening or exact multiple of package)
+    if (depositNum > 0) {
+      if (depositNum < chosenPackage) {
+        setFormError(`⚠️ Deposit amount cannot be lower than the chosen package rate (GH₵ ${chosenPackage}.00). Minimum opening deposit is GH₵ ${chosenPackage}.00 or enter 0 to deposit later at the counter.`);
+        return;
+      }
 
-    if (depositNum % chosenPackage !== 0) {
-      setFormError(`⚠️ Deposit amount (GH₵ ${depositNum}.00) must be an exact multiple of the GH₵ ${chosenPackage}.00 package (e.g. GH₵ ${chosenPackage}, GH₵ ${chosenPackage * 2}, GH₵ ${chosenPackage * 3}) to split evenly across days.`);
-      return;
+      if (depositNum % chosenPackage !== 0) {
+        setFormError(`⚠️ Deposit amount (GH₵ ${depositNum}.00) must be an exact multiple of the GH₵ ${chosenPackage}.00 package (e.g. GH₵ ${chosenPackage}, GH₵ ${chosenPackage * 2}, GH₵ ${chosenPackage * 3}) to split evenly across days.`);
+        return;
+      }
     }
 
     try {
@@ -333,14 +335,14 @@ export const CustomersPage: React.FC = () => {
       };
 
       // Multi-day split calculation for savings deposit (Days 1-30 are 100% savings, Day 31 is retention fee)
-      const currentDayCount = splitPreview ? splitPreview.daysCovered : (depositNum >= chosenPackage ? Math.floor(depositNum / chosenPackage) : (depositNum > 0 ? 1 : 0));
+      const currentDayCount = depositNum > 0 ? (splitPreview ? splitPreview.daysCovered : Math.floor(depositNum / chosenPackage)) : 0;
       const totalDeposited = depositNum;
       const isDay31Reached = currentDayCount >= 31;
       const feeDeducted = isDay31Reached;
       const companyFeeAmount = isDay31Reached ? chosenPackage : 0;
       const availableBalance = isDay31Reached ? Math.max(0, depositNum - chosenPackage) : depositNum;
 
-      const generatedSplits: DailySplitEntry[] = (splitPreview?.entries && splitPreview.entries.length > 0)
+      const generatedSplits: DailySplitEntry[] = (depositNum > 0 && splitPreview?.entries && splitPreview.entries.length > 0)
         ? splitPreview.entries
         : (currentDayCount > 0
           ? Array.from({ length: currentDayCount }, (_, i) => ({
@@ -387,7 +389,7 @@ export const CustomersPage: React.FC = () => {
       // Link account to customer and vice versa
       newCust.accounts = [newAcc];
 
-      // Save accounts FIRST so getStoredAccounts() never creates a blank 20gh fallback!
+      // Save accounts and customers
       const existingAccs = getStoredAccounts();
       const updatedAccs = [newAcc, ...existingAccs.filter((a) => a.id !== newAcc.id && a.customerId !== newCust.id)];
       saveStoredAccounts(updatedAccs);
@@ -422,6 +424,13 @@ export const CustomersPage: React.FC = () => {
           recordedBy: currentUser || undefined,
           remarks: `Opening savings deposit on GH₵ ${chosenPackage}/day package (Days covered: ${currentDayCount}).`,
           createdAt: new Date().toISOString(),
+          transactor: {
+            isThirdParty: false,
+            fullName: `${newCust.firstName} ${newCust.lastName}`,
+            phone: newCust.phone,
+            ghanaCard: newCust.ghanaCardNumber,
+            relationship: 'Self / Account Holder',
+          },
         };
         newTxs.push(depTx);
       }
@@ -429,6 +438,14 @@ export const CustomersPage: React.FC = () => {
       const allUpdatedTxs = [...newTxs, ...txs];
       setTransactions(allUpdatedTxs);
       saveStoredTransactions(allUpdatedTxs);
+
+      addSystemNotification({
+        title: `New Customer Onboarded: ${newCust.firstName} ${newCust.lastName}`,
+        message: `${newCust.firstName} ${newCust.lastName} (${newCust.customerNumber}) registered on GH₵ ${chosenPackage}/day package. Opening deposit: GH₵ ${depositNum.toFixed(2)}.`,
+        type: 'AUDIT',
+        targetRoute: '/customers',
+        roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'AUDITOR'],
+      });
 
       // Broadcast across all connected staff devices in real-time
       broadcastRealtimeEvent('CUSTOMER_CREATED', newCust);

@@ -21,6 +21,9 @@ export const formatGhanaianPhoneNumber = (input: string): string => {
   // Handle +233 or 233 country prefix: replace leading 233 with 0
   if (digits.startsWith('233') && digits.length > 3) {
     digits = '0' + digits.slice(3);
+  } else if (digits.length === 9 && !digits.startsWith('0')) {
+    // Auto prepend 0 for 9-digit inputs (e.g. 241234567 -> 0241234567)
+    digits = '0' + digits;
   }
 
   // Ensure maximum length is 10 digits
