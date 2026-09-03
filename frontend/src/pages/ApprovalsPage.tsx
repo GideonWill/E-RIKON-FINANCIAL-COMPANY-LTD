@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   getStoredApprovals, 
   saveStoredApprovals, 
@@ -212,6 +213,33 @@ export const ApprovalsPage: React.FC = () => {
   useEffect(() => {
     syncPendingFromBackend();
   }, []);
+
+  const location = useLocation();
+
+  // Listen for direct navigation from Workstation Alerts / Notifications
+  useEffect(() => {
+    if (location.state) {
+      const stateObj = location.state as { approvalId?: string; viewMode?: 'CLEARANCE_QUEUE' | 'STAFF_DIRECTORY'; search?: string };
+      if (stateObj.viewMode) {
+        setViewMode(stateObj.viewMode);
+      }
+      if (stateObj.approvalId) {
+        setTimeout(() => {
+          const el = document.getElementById(`approval-ticket-${stateObj.approvalId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('ring-4', 'ring-teal-500', 'transition-all');
+            setTimeout(() => {
+              el.classList.remove('ring-4', 'ring-teal-500');
+            }, 3500);
+          }
+        }, 150);
+      }
+      if (stateObj.search) {
+        setSearchTerm(stateObj.search);
+      }
+    }
+  }, [location.state]);
 
   // Real-time multi-device subscription
   useRealtimeSync(() => {
@@ -740,6 +768,7 @@ export const ApprovalsPage: React.FC = () => {
               return (
                 <div 
                   key={item.id}
+                  id={`approval-ticket-${item.id}`}
                   className={`p-5 rounded-3xl border transition-all space-y-3.5 shadow-2xs ${
                     isPending 
                       ? 'bg-white dark:bg-slate-900 border-amber-300 dark:border-amber-900/50 hover:border-amber-400' 

@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   getStoredLoans, 
   saveStoredLoans, 
   getStoredCustomers, 
   getStoredAccounts, 
-  saveStoredAccounts,
-  getStoredTransactions,
-  saveStoredTransactions
+  saveStoredAccounts, 
+  getStoredTransactions, 
+  saveStoredTransactions 
 } from '../services/api';
 import { LoanApplication, LoanStatus, Transaction } from '../types';
 import { LoanCalculatorWidget } from '../components/ui/LoanCalculatorWidget';
@@ -32,6 +33,7 @@ import {
 
 export const LoansPage: React.FC = () => {
   const { currentUser } = useAuth();
+  const location = useLocation();
   const [loans, setLoans] = useState<LoanApplication[]>(getStoredLoans());
   const [selectedLoan, setSelectedLoan] = useState<LoanApplication | null>(loans[0] || null);
   const [showApplyModal, setShowApplyModal] = useState(false);
@@ -42,6 +44,29 @@ export const LoansPage: React.FC = () => {
 
   const [customers, setCustomers] = useState(getStoredCustomers());
   const [accounts, setAccounts] = useState(getStoredAccounts());
+
+  // Listen for direct navigation from Workstation Alerts / Notifications
+  useEffect(() => {
+    if (location.state) {
+      const stateObj = location.state as { loanId?: string; customerId?: string };
+      if (stateObj.loanId || stateObj.customerId) {
+        const found = loans.find((l) => l.id === stateObj.loanId || l.customerId === stateObj.customerId);
+        if (found) {
+          setSelectedLoan(found);
+          setTimeout(() => {
+            const el = document.getElementById(`loan-card-${found.id}`);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              el.classList.add('ring-4', 'ring-amber-500', 'transition-all');
+              setTimeout(() => {
+                el.classList.remove('ring-4', 'ring-amber-500');
+              }, 3500);
+            }
+          }, 150);
+        }
+      }
+    }
+  }, [location.state, loans]);
 
   // Real-time multi-device subscription
   useRealtimeSync(() => {

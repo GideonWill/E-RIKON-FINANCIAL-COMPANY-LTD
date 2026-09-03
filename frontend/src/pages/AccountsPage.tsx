@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { getStoredAccounts, getStoredTransactions, deleteCustomerRecord, startNewCycleForAccount } from '../services/api';
 import { useRealtimeSync } from '../services/realtimeSync';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,6 +26,7 @@ import {
 
 export const AccountsPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser } = useAuth();
   const [accounts, setAccounts] = useState<Account[]>(getStoredAccounts());
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(accounts[0] || null);
@@ -40,6 +41,32 @@ export const AccountsPage: React.FC = () => {
       matrixRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
   };
+
+  // Listen for direct navigation from Workstation Alerts / Notifications
+  useEffect(() => {
+    if (location.state) {
+      const stateObj = location.state as { accountId?: string; customerId?: string; search?: string };
+      if (stateObj.accountId || stateObj.customerId) {
+        const found = accounts.find((a) => a.id === stateObj.accountId || a.customerId === stateObj.customerId);
+        if (found) {
+          setSelectedAccount(found);
+          setTimeout(() => {
+            const el = document.getElementById(`account-card-${found.id}`);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              el.classList.add('ring-4', 'ring-teal-500', 'transition-all');
+              setTimeout(() => {
+                el.classList.remove('ring-4', 'ring-teal-500');
+              }, 3500);
+            }
+          }, 150);
+        }
+      }
+      if (stateObj.search) {
+        setSearchTerm(stateObj.search);
+      }
+    }
+  }, [location.state, accounts]);
 
   // Real-time multi-device subscription
   useRealtimeSync(() => {
@@ -167,6 +194,7 @@ export const AccountsPage: React.FC = () => {
               return (
                 <div
                   key={acc.id}
+                  id={`account-card-${acc.id}`}
                   onClick={() => handleSelectAccount(acc)}
                   className={`p-4 rounded-3xl border transition-all cursor-pointer ${
                     isSelected
