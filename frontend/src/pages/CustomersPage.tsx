@@ -10,7 +10,8 @@ import {
   getStoredTransactions,
   saveStoredTransactions,
   accumulateCompanyInterest,
-  startNewCycleForAccount
+  startNewCycleForAccount,
+  clearClientAndFinancialDatabase
 } from '../services/api';
 import { subscribeRealtimeEvents, broadcastRealtimeEvent, useRealtimeSync } from '../services/realtimeSync';
 import { pushLocalToCloud } from '../services/cloudSync';
@@ -212,6 +213,25 @@ export const CustomersPage: React.FC = () => {
   const totalPayable = depositNum;
   const netCreditedSavings = Math.max(0, depositNum - packageFee);
   const splitPreview = depositNum > 0 ? splitPaymentIntoDays(chosenPackage, depositNum, 0) : null;
+
+  const handleClearDatabaseToFreshSlate = () => {
+    const ok = window.confirm(
+      '⚠️ ARE YOU SURE YOU WANT TO START FROM A FRESH SLATE?\n\n' +
+      'This will clear all demo customers, accounts, and transactions across all devices and sync a clean, empty database.'
+    );
+    if (!ok) return;
+
+    clearClientAndFinancialDatabase();
+    setCustomers([]);
+    setAccounts([]);
+    setTransactions([]);
+    setSelectedDetailCustomer(null);
+    setSelectedGhanaCardCustomer(null);
+    setJustAddedId(null);
+    handleSelectPackageFilter(null);
+    setSearchTerm('');
+    alert('✅ Database successfully cleared to a fresh slate! You can now register real customers.');
+  };
 
   const filteredCustomers = customers.filter((c) => {
     const rawSearch = searchTerm.trim().toLowerCase();
@@ -570,13 +590,26 @@ export const CustomersPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowRegisterModal(true)}
-          className="px-5 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs flex items-center justify-center space-x-2 transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>Register New Customer</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {currentUser?.role === 'SUPER_ADMIN' && (
+            <button
+              onClick={handleClearDatabaseToFreshSlate}
+              className="px-4 py-2.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-extrabold text-xs flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+              title="Clear all old/demo client records and start from a fresh slate"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Clear to Fresh Slate</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setShowRegisterModal(true)}
+            className="px-5 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs flex items-center justify-center space-x-2 transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Register New Customer</span>
+          </button>
+        </div>
       </div>
 
       {/* Ghana Cedis Savings Package Category Filter Bar */}

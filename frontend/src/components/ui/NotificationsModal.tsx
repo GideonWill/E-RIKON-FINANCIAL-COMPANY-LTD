@@ -16,7 +16,8 @@ import {
   Filter, 
   Smartphone, 
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  Trash2
 } from 'lucide-react';
 
 export interface NotificationItem {
@@ -61,6 +62,12 @@ export const getStoredDynamicNotifications = (): NotificationItem[] => {
 
 export const saveStoredDynamicNotifications = (notifications: NotificationItem[]) => {
   localStorage.setItem('erikon_dynamic_notifications', JSON.stringify(notifications.slice(0, 50)));
+  window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
+};
+
+export const clearAllNotifications = () => {
+  localStorage.setItem('erikon_dynamic_notifications', JSON.stringify([]));
+  localStorage.setItem('erikon_read_notifications', JSON.stringify([]));
   window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
 };
 
@@ -288,6 +295,19 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
 
         {/* Footer Actions */}
         <div className="flex space-x-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => {
+              clearAllNotifications();
+              loadNotifications();
+              if (onNotificationsUpdated) onNotificationsUpdated();
+            }}
+            className="px-3 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 border border-rose-200 dark:border-rose-900/50 font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1"
+            title="Clear all alerts"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Clear All</span>
+          </button>
           <button
             type="button"
             onClick={markAllAsRead}
