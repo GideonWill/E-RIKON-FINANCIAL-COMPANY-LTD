@@ -7,7 +7,6 @@ import {
   saveStoredTransactions,
   accumulateCompanyInterest,
   recordPackageDeposit,
-  recordWithdrawal,
   splitPaymentIntoDays,
   getMaxWithdrawableLoan,
   getStoredCompanyInterest,
@@ -40,30 +39,8 @@ import {
   ShieldCheck,
   UserPlus,
   Users,
-  UserCheck,
-  Printer,
-  X,
-  Wallet
+  UserCheck
 } from 'lucide-react';
-
-export interface TransactionSuccessDetails {
-  type: 'DEPOSIT' | 'WITHDRAWAL';
-  customerName: string;
-  accountNumber: string;
-  amount: number;
-  previousBalance: number;
-  newBalance: number;
-  newAvailableBalance: number;
-  transactor: TransactorInfo;
-  referenceNo: string;
-  receiptNo: string;
-  daysCovered?: number;
-  startDay?: number;
-  endDay?: number;
-  cycleNumber?: number;
-  packageRate?: number;
-  transaction: Transaction;
-}
 
 export const TellerPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -77,15 +54,13 @@ export const TellerPage: React.FC = () => {
     return accs.length > 0 ? accs[0] : null;
   });
   const [operationType, setOperationType] = useState<'DEPOSIT' | 'WITHDRAWAL'>('DEPOSIT');
-  const [amount, setAmount] = useState<string>('');
+  const [amount, setAmount] = useState<string>('100');
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('PHYSICAL_CASH');
   const [remarks, setRemarks] = useState('');
   const [chosenPackage, setChosenPackage] = useState<SavingsPackage>(selectedAccount?.savingsPackage || 20);
   const [isDailyPolicyTick, setIsDailyPolicyTick] = useState<boolean>(true);
   const [printedTx, setPrintedTx] = useState<Transaction | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [transactionSuccess, setTransactionSuccess] = useState<TransactionSuccessDetails | null>(null);
-  const successTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Transactor Information State (Person Depositing or Withdrawing)
   const [isThirdParty, setIsThirdParty] = useState<boolean>(false);
@@ -295,28 +270,8 @@ export const TellerPage: React.FC = () => {
         roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
       });
 
-      const successInfo: TransactionSuccessDetails = {
-        type: 'DEPOSIT',
-        customerName: `${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}`,
-        accountNumber: selectedAccount.accountNumber,
-        amount: numAmount,
-        previousBalance: selectedAccount.currentBalance,
-        newBalance: updatedAccount.currentBalance,
-        newAvailableBalance: updatedAccount.availableBalance,
-        transactor: transactorInfo,
-        referenceNo: transaction.referenceNo,
-        receiptNo: transaction.receiptNo || `RCP-${Date.now()}`,
-        daysCovered: splitResult.daysCovered,
-        startDay: splitResult.startDay,
-        endDay: splitResult.endDay,
-        cycleNumber: updatedAccount.dailyCycles?.[0]?.cycleNumber || 1,
-        packageRate: chosenPackage,
-        transaction,
-      };
-      setTransactionSuccess(successInfo);
-
       setSuccessMessage(
-        `🎉 Deposit of GHS ${numAmount.toFixed(2)} recorded for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship})!`
+        `🎉 Deposit of GHS ${numAmount.toFixed(2)} recorded! Covered ${splitResult.daysCovered} days (Days ${splitResult.startDay} to ${splitResult.endDay}) on GH₵ ${chosenPackage}/day package.`
       );
     } else {
       // Withdrawal as Savings-Backed Loan (Safeguards the 1-day retention fee)
@@ -331,78 +286,68 @@ export const TellerPage: React.FC = () => {
         return;
       }
 
-      try {
-        const previousCurrent = selectedAccount.currentBalance;
-        const { updatedAccount, transaction } = recordWithdrawal(
-          selectedAccount.id,
-          numAmount,
-          tellerUser,
-          paymentMode,
-          remarks || `Withdrawal loan against savings (Protected fee: GH₵ ${loanInfo.protectedRetentionFee.toFixed(2)})`,
-          transactorInfo
-        );
+      const previousBal = selectedAccount.availableBalance;
+      const newBal = toDecimal(previousBal - numAmount);
 
-        setSelectedAccount(updatedAccount);
-        setAccounts(getStoredAccounts());
-        setPrintedTx(transaction);
+      const updatedAcc = {
+        ...selectedAccount,
+        availableBalance: newBal,
+        currentBalance: toDecimal(selectedAccount.currentBalance - numAmount),
+      };
 
-        addSystemNotification({
-          title: `Withdrawal Executed: GH₵ ${numAmount.toFixed(2)}`,
-          message: `GH₵ ${numAmount.toFixed(2)} withdrawn for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship}).`,
-          type: 'DEPOSIT',
-          targetRoute: '/customers',
-          roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
-        });
+      const newTx: Transaction = {
+        id: `tx-with-${Date.now()}`,
+        referenceNo: `TX-WITH-${Date.now().toString().slice(-8)}`,
+        receiptNo: `RCP-WITH-${Date.now().toString().slice(-8)}`,
+        accountId: selectedAccount.id,
+        account: updatedAcc,
+        type: 'WITHDRAWAL',
+        paymentMode,
+        amount: numAmount,
+        previousBal,
+        newBal,
+        recordedBy: tellerUser,
+        remarks: remarks || `Withdrawal loan against savings (Protected fee: GH₵ ${loanInfo.protectedRetentionFee.toFixed(2)})`,
+        createdAt: new Date().toISOString(),
+        transactor: transactorInfo,
+      };
 
-        const successInfo: TransactionSuccessDetails = {
-          type: 'WITHDRAWAL',
-          customerName: `${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}`,
-          accountNumber: selectedAccount.accountNumber,
-          amount: numAmount,
-          previousBalance: previousCurrent,
-          newBalance: updatedAccount.currentBalance,
-          newAvailableBalance: updatedAccount.availableBalance,
-          transactor: transactorInfo,
-          referenceNo: transaction.referenceNo,
-          receiptNo: transaction.receiptNo || `RCP-${Date.now()}`,
-          packageRate: selectedAccount.savingsPackage || 20,
-          transaction,
-        };
-        setTransactionSuccess(successInfo);
-
-        setSuccessMessage(
-          `✅ Withdrawal of GHS ${numAmount.toFixed(2)} completed for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship})!`
-        );
-      } catch (err: any) {
-        alert(err.message || 'Error processing withdrawal');
-        return;
+      const freshAccs = getStoredAccounts();
+      const idx = freshAccs.findIndex((a) => a.id === selectedAccount.id);
+      if (idx !== -1) {
+        freshAccs[idx] = updatedAcc;
+        saveStoredAccounts(freshAccs);
       }
+
+      const txs = getStoredTransactions();
+      saveStoredTransactions([newTx, ...txs]);
+
+      setSelectedAccount(updatedAcc);
+      setAccounts(freshAccs);
+      setPrintedTx(newTx);
+      broadcastRealtimeEvent('WITHDRAWAL_RECORDED', newTx);
+      pushLocalToCloud().catch(() => {});
+
+      addSystemNotification({
+        title: `Withdrawal Executed: GH₵ ${numAmount.toFixed(2)}`,
+        message: `GH₵ ${numAmount.toFixed(2)} withdrawn for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship}).`,
+        type: 'DEPOSIT',
+        targetRoute: '/customers',
+        roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
+      });
+
+      setSuccessMessage(`✅ Savings-backed withdrawal loan of GHS ${numAmount.toFixed(2)} completed successfully!`);
     }
 
-    // Immediately clear all form fields so fields go back to empty for new inputs
-    setAmount('');
+    setAmount('100');
     setRemarks('');
-    setIsThirdParty(false);
-    setTransactorName('');
-    setTransactorPhone('');
-    setTransactorGhanaCard('');
-    setTransactorRelationship('Self / Account Holder');
-    setTransactorError(null);
-
-    // Automatically dismiss the popup banner after exactly 3 seconds
-    if (successTimerRef.current) clearTimeout(successTimerRef.current);
-    successTimerRef.current = setTimeout(() => {
-      setTransactionSuccess(null);
-      setSuccessMessage(null);
-    }, 3000);
   };
 
   const handleConfirmPaid = (tx: Transaction) => {
     setSuccessMessage(
       `✅ Money Paid Successfully! GHS ${tx.amount.toFixed(2)} recorded for ${tx.account?.customer?.firstName} ${tx.account?.customer?.lastName}.`
     );
-    if (successTimerRef.current) clearTimeout(successTimerRef.current);
-    successTimerRef.current = setTimeout(() => {
+    setTimeout(() => {
       setSuccessMessage(null);
     }, 3000);
   };
@@ -425,67 +370,7 @@ export const TellerPage: React.FC = () => {
   const totalVaultLiquidity = totalClientSavings + Math.max(0, totalCompanyInterest - totalApprovedInterestWithdrawals);
 
   return (
-    <div className="space-y-6 pb-12 relative">
-
-      {/* Floating 3-Second Pop-up Success Banner */}
-      {transactionSuccess && (
-        <div className="fixed top-4 sm:top-6 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-xl animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className="relative overflow-hidden rounded-3xl bg-slate-900/95 backdrop-blur-xl border-2 border-emerald-500/80 shadow-2xl p-4 sm:p-5 text-white">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start space-x-3.5">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center font-black shadow-lg shadow-emerald-500/30 shrink-0 mt-0.5 animate-bounce">
-                  <CheckCircle2 className="w-6 h-6" />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
-                      transactionSuccess.type === 'DEPOSIT' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
-                    }`}>
-                      {transactionSuccess.type === 'DEPOSIT' ? 'Deposit Successful' : 'Withdrawal Executed'}
-                    </span>
-                    <span className="font-mono text-xs font-bold text-amber-400">
-                      Receipt: {transactionSuccess.receiptNo}
-                    </span>
-                  </div>
-                  <h4 className="font-extrabold text-sm sm:text-base text-white">
-                    GH₵ {transactionSuccess.amount.toFixed(2)} processed for {transactionSuccess.customerName}
-                  </h4>
-                  <p className="text-xs text-slate-300">
-                    Transactor: <b className="text-white">{transactionSuccess.transactor.fullName}</b> ({transactionSuccess.transactor.relationship}) • New Available: <b className="text-emerald-400 font-mono">GH₵ {transactionSuccess.newAvailableBalance.toFixed(2)}</b>
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setPrintedTx(transactionSuccess.transaction)}
-                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-1 shadow-md transition-all cursor-pointer"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Slip</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (successTimerRef.current) clearTimeout(successTimerRef.current);
-                    setTransactionSuccess(null);
-                    setSuccessMessage(null);
-                  }}
-                  className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* 3-Second Visual Countdown Progress Bar */}
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-800 overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-300 animate-shrink-width" />
-            </div>
-          </div>
-        </div>
-      )}
+    <div className="space-y-6 pb-12">
       
       {/* Header - Fully Responsive on iPhone & Desktop */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
@@ -513,91 +398,19 @@ export const TellerPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Transaction Success & Live Update Card */}
-      {transactionSuccess && (
-        <div className="p-5 rounded-3xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-amber-500/10 border-2 border-emerald-500/40 dark:border-emerald-500/30 shadow-xl space-y-3.5 animate-in fade-in slide-in-from-top-3 duration-300">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-500/20 pb-3">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center font-black shadow-md shrink-0">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
-                    transactionSuccess.type === 'DEPOSIT' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
-                  }`}>
-                    {transactionSuccess.type === 'DEPOSIT' ? 'Deposit Confirmed' : 'Withdrawal Executed'}
-                  </span>
-                  <span className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400">{transactionSuccess.receiptNo}</span>
-                </div>
-                <h4 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white mt-0.5">
-                  GH₵ {transactionSuccess.amount.toFixed(2)} processed for {transactionSuccess.customerName}
-                </h4>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setPrintedTx(transactionSuccess.transaction)}
-                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Print Official Slip</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTransactionSuccess(null)}
-                className="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white cursor-pointer transition-all"
-                title="Dismiss"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {/* Success Notification Banner (Auto-dismisses in 3 seconds) */}
+      {successMessage && (
+        <div className="p-4 rounded-2xl bg-emerald-500 text-white font-extrabold text-xs flex items-center justify-between shadow-xl animate-pulse">
+          <div className="flex items-center space-x-2">
+            <CheckCircle2 className="w-5 h-5" />
+            <span>{successMessage}</span>
           </div>
-
-          {/* Details Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
-            <div className="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 block uppercase">Transactor Proof</span>
-              <div className="font-extrabold text-slate-900 dark:text-white truncate">
-                {transactionSuccess.transactor.fullName}
-              </div>
-              <div className="text-[10px] text-amber-600 dark:text-amber-400">
-                {transactionSuccess.transactor.isThirdParty
-                  ? `Representative (${transactionSuccess.transactor.relationship}) • ${transactionSuccess.transactor.phone}`
-                  : 'Account Holder (In-Person)'}
-              </div>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 block uppercase">Balance Update</span>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-400">Previous:</span>
-                <span className="font-bold text-slate-600 dark:text-slate-300">GH₵ {transactionSuccess.previousBalance.toFixed(2)}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-emerald-500 font-bold">New Balance:</span>
-                <span className="font-black text-emerald-600 dark:text-emerald-400">GH₵ {transactionSuccess.newBalance.toFixed(2)}</span>
-              </div>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 block uppercase">
-                {transactionSuccess.type === 'DEPOSIT' ? 'Package & Days Covered' : 'Vault Liquidity'}
-              </span>
-              <div className="font-extrabold text-slate-900 dark:text-white truncate">
-                {transactionSuccess.type === 'DEPOSIT'
-                  ? `Cycle #${transactionSuccess.cycleNumber} • Spread ${transactionSuccess.daysCovered} Days`
-                  : 'Available in Vault'}
-              </div>
-              <div className="text-[10px] text-blue-600 dark:text-blue-400">
-                {transactionSuccess.type === 'DEPOSIT'
-                  ? `Days ${transactionSuccess.startDay} to ${transactionSuccess.endDay} (GH₵ ${transactionSuccess.packageRate}/day)`
-                  : `Net Available: GH₵ ${transactionSuccess.newAvailableBalance.toFixed(2)}`}
-              </div>
-            </div>
-          </div>
+          <button
+            onClick={() => setSuccessMessage(null)}
+            className="text-white hover:text-slate-200 font-mono text-sm px-2 cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
       )}
 

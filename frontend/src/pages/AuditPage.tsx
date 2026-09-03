@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { getStoredAuditLogs, clearStoredAuditLogs, clearAllSystemData } from '../services/api';
+import { getStoredAuditLogs, clearStoredAuditLogs } from '../services/api';
 import { pushLocalToCloud } from '../services/cloudSync';
 import { useAuth } from '../contexts/AuthContext';
 import { useRealtimeSync } from '../services/realtimeSync';
 import { AuditLog } from '../types';
 import { StaffInfoPopupModal } from '../components/ui/StaffInfoPopupModal';
-import { ShieldAlert, ShieldCheck, UserCheck, Laptop, Globe, Clock, FileText, Trash2, Search, RefreshCcw } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, UserCheck, Laptop, Globe, Clock, FileText, Trash2, Search } from 'lucide-react';
 
 export const AuditPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -53,18 +53,10 @@ export const AuditPage: React.FC = () => {
   });
 
   const handleClearAuditLogs = () => {
-    if (window.confirm('Are you sure you want to permanently clear all audit logs from the system?')) {
+    if (window.confirm('Are you sure you want to permanently clear all immutable audit logs from the system?')) {
       clearStoredAuditLogs();
       setLogs([]);
       pushLocalToCloud().catch(() => {});
-    }
-  };
-
-  const handleClearAllAcrossRoles = () => {
-    if (window.confirm('⚠️ FACTORY RESET: Are you sure you want to clear ALL data across all role pages (Customers, Accounts, Deposits, Withdrawals, Loans, and Audit Trail)?')) {
-      clearAllSystemData();
-      setLogs([]);
-      alert('System has been completely cleared across all roles.');
     }
   };
 
@@ -83,32 +75,15 @@ export const AuditPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'AUDITOR' || currentUser?.role === 'ADMIN') && (
-            <>
-              {currentUser?.role === 'SUPER_ADMIN' && (
-                <button
-                  type="button"
-                  onClick={handleClearAllAcrossRoles}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-600 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-xs transition-all cursor-pointer"
-                  title="Wipe all dummy/test records across Super Admin, Field Officer, Teller, Auditor, and Admin"
-                >
-                  <RefreshCcw className="w-3.5 h-3.5" />
-                  Clear All Across Roles
-                </button>
-              )}
-              {logs.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleClearAuditLogs}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/40 bg-rose-500/15 hover:bg-rose-500/30 text-rose-500 text-xs font-black transition-all cursor-pointer"
-                  title="Clear all immutable audit trail logs"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Clear Audit Trail
-                </button>
-              )}
-            </>
+        <div className="flex items-center gap-3">
+          {currentUser?.role === 'SUPER_ADMIN' && logs.length > 0 && (
+            <button
+              onClick={handleClearAuditLogs}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold transition-all cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Clear Audit Trail
+            </button>
           )}
           <div className="flex items-center space-x-2 bg-slate-900 text-white px-3.5 py-1.5 rounded-xl border border-slate-800 text-xs font-mono w-fit">
             <ShieldCheck className="w-4 h-4 text-emerald-400" /> Audit Log Lock: IMMUTABLE

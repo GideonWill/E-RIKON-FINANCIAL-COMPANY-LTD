@@ -44,7 +44,6 @@ export interface CloudVaultPayload {
   auditLogs?: any[];
   deletedCustomerIds?: string[];
   deletedUserEmails?: string[];
-  isReset?: boolean;
   updatedAt?: string;
 }
 
@@ -60,18 +59,15 @@ export const getLastSyncTime = () => lastSyncTimestamp;
 const getSyncEndpoints = (): string[] => {
   const endpoints: string[] = [];
 
-  // 1. Authoritative Production Vercel Serverless Relay
-  endpoints.push('https://e-rikon-financial-company-ltd.vercel.app/api/sync');
-
-  // 2. Authoritative Production Backend Endpoint
+  // 1. Authoritative Production Backend Endpoint
   endpoints.push('https://e-rikon-ecfms-backend.onrender.com/api/sync');
 
-  // 3. Same-Origin / Vercel Serverless Function Endpoint (Primary)
+  // 2. Same-Origin / Vercel Serverless Function Endpoint (Primary)
   if (typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes('localhost')) {
     endpoints.push(`${window.location.origin}/api/sync`);
   }
 
-  // 4. Relative Endpoint (proxied via Vite on local or direct on Vercel)
+  // 3. Relative Endpoint
   endpoints.push('/api/sync');
 
   // 4. Localhost Dev Backend (if running locally)
@@ -93,7 +89,7 @@ const getSyncEndpoints = (): string[] => {
 /**
  * Pushes all local storage state to all reachable central cloud sync endpoints
  */
-export const pushLocalToCloud = async (options?: { isReset?: boolean }): Promise<boolean> => {
+export const pushLocalToCloud = async (): Promise<boolean> => {
   if (isPushing) {
     pushPending = true;
     return false;
@@ -113,7 +109,6 @@ export const pushLocalToCloud = async (options?: { isReset?: boolean }): Promise
     auditLogs: getStoredAuditLogs(),
     deletedCustomerIds: getDeletedCustomerIds(),
     deletedUserEmails: getDeletedUserEmails(),
-    isReset: options?.isReset || false,
     updatedAt: new Date().toISOString(),
   };
 
@@ -238,7 +233,7 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     }
   }
 
-  // 3. Merged Authoritative Customers Sync (Union merge by ID & customerNumber, strictly excluding deleted tombstones)
+  // 3. Merged Authoritative Customers Sync (Strictly purge deleted customers across devices)
   if (Array.isArray(cloudData.customers)) {
     const cleanCloudCust = cloudData.customers.filter(
       (c) => !deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)
@@ -247,26 +242,28 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       (c) => !deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)
     );
 
-    const custMap = new Map<string, any>();
-    localCust.forEach((c) => {
-      if (c.id) custMap.set(c.id, c);
-      if (c.customerNumber) custMap.set(c.customerNumber, c);
-    });
-    cleanCloudCust.forEach((c) => {
-      const existing = custMap.get(c.id) || (c.customerNumber ? custMap.get(c.customerNumber) : null);
-      custMap.set(c.id, { ...existing, ...c });
-    });
-
-    const mergedCust = Array.from(new Set(Array.from(custMap.values()).map((c) => c.id)))
-      .map((id) => custMap.get(id)!);
-
-    if (mergedCust.length !== localCust.length || JSON.stringify(mergedCust) !== JSON.stringify(localCust)) {
-      saveStoredCustomers(mergedCust);
+    if (JSON.stringify(cleanCloudCust) !== JSON.stringify(localCust)) {
+      saveStoredCustomers(cleanCloudCust);
       hasUpdates = true;
     }
   }
 
-  // 4. Merged Authoritative Transactions Sync (Merged FIRST so account balance calculations see all new deposits & withdrawals)
+  // 4. Merged Authoritative Accounts Sync
+  if (Array.isArray(cloudData.accounts)) {
+    const cleanCloudAcc = cloudData.accounts.filter(
+      (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
+    );
+    const localAcc = getStoredAccounts().filter(
+      (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
+    );
+
+    if (JSON.stringify(cleanCloudAcc) !== JSON.stringify(localAcc)) {
+      saveStoredAccounts(cleanCloudAcc);
+      hasUpdates = true;
+    }
+  }
+
+  // 5. Merged Authoritative Transactions Sync
   if (Array.isArray(cloudData.transactions)) {
     const localTx = getStoredTransactions();
     const txMap = new Map<string, any>();
@@ -288,39 +285,6 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     }
   }
 
-  // 5. Merged Authoritative Accounts Sync (Union merge by ID & accountNumber, computed after transactions)
-  if (Array.isArray(cloudData.accounts)) {
-    const cleanCloudAcc = cloudData.accounts.filter(
-      (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
-    );
-    const localAcc = getStoredAccounts().filter(
-      (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
-    );
-
-    const accMap = new Map<string, any>();
-    localAcc.forEach((a) => {
-      if (a.id) accMap.set(a.id, a);
-      if (a.accountNumber) accMap.set(a.accountNumber, a);
-    });
-    cleanCloudAcc.forEach((a) => {
-      const existing = accMap.get(a.id) || (a.accountNumber ? accMap.get(a.accountNumber) : null);
-      accMap.set(a.id, { ...existing, ...a });
-    });
-
-    const mergedAcc = Array.from(new Set(Array.from(accMap.values()).map((a) => a.id)))
-      .map((id) => accMap.get(id)!);
-
-    if (mergedAcc.length !== localAcc.length || JSON.stringify(mergedAcc) !== JSON.stringify(localAcc)) {
-      saveStoredAccounts(mergedAcc);
-      hasUpdates = true;
-    }
-  }
-
-  // Authoritatively re-reconcile all account figures from the ledger
-  try {
-    getStoredAccounts();
-  } catch {}
-
   // 6. Merged Authoritative Loans Sync
   if (Array.isArray(cloudData.loans)) {
     const cleanLoans = cloudData.loans.filter(
@@ -330,16 +294,8 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       (l) => !deletedCustIds.includes(l.customerId) && !deletedCustIds.includes(l.id)
     );
 
-    const loanMap = new Map<string, any>();
-    localLoans.forEach((l) => { if (l.id) loanMap.set(l.id, l); });
-    cleanLoans.forEach((l) => {
-      const existing = loanMap.get(l.id);
-      loanMap.set(l.id, { ...existing, ...l });
-    });
-
-    const mergedLoans = Array.from(loanMap.values());
-    if (mergedLoans.length !== localLoans.length || JSON.stringify(mergedLoans) !== JSON.stringify(localLoans)) {
-      saveStoredLoans(mergedLoans);
+    if (JSON.stringify(cleanLoans) !== JSON.stringify(localLoans)) {
+      saveStoredLoans(cleanLoans);
       hasUpdates = true;
     }
   }
@@ -391,7 +347,7 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
   // 9. Authoritative Audit Logs Sync
   if (Array.isArray(cloudData.auditLogs)) {
     const localLogs = getStoredAuditLogs();
-    if (JSON.stringify(cloudData.auditLogs) !== JSON.stringify(localLogs)) {
+    if (cloudData.auditLogs.length !== localLogs.length || JSON.stringify(cloudData.auditLogs) !== JSON.stringify(localLogs)) {
       saveStoredAuditLogs(cloudData.auditLogs);
       hasUpdates = true;
     }

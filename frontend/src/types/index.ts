@@ -1,4 +1,4 @@
-export type RoleName = 
+export type RoleName =
   | 'SUPER_ADMIN'
   | 'ADMIN'
   | 'TELLER'
@@ -34,7 +34,7 @@ export type SavingsPackage = 5 | 10 | 20 | 30 | 40 | 50 | 60 | 70 | 80 | 90 | 10
 
 export const SAVINGS_PACKAGES: SavingsPackage[] = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200];
 
-export type TransactionType = 
+export type TransactionType =
   | 'DEPOSIT'
   | 'WITHDRAWAL'
   | 'LOAN_DISBURSEMENT'
@@ -46,7 +46,7 @@ export type TransactionType =
 
 export type PaymentMode = 'PHYSICAL_CASH' | 'MTN_MOBILE_MONEY' | 'BANK_TRANSFER';
 
-export type LoanStatus = 
+export type LoanStatus =
   | 'PENDING_REVIEW'
   | 'UNDER_EVALUATION'
   | 'APPROVED'
@@ -225,7 +225,7 @@ export interface CompanyInterestWithdrawal {
   approvedAt?: string;
 }
 
-export type ApprovalType = 
+export type ApprovalType =
   | 'STAFF_ROLE_SIGNUP'
   | 'COMPANY_INTEREST_WITHDRAWAL'
   | 'LOAN_APPROVAL'

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { 
   getStoredAccounts, 
   saveStoredAccounts, 
@@ -24,8 +24,7 @@ import {
   Calendar,
   Zap,
   Clock,
-  Coins,
-  Printer
+  Coins
 } from 'lucide-react';
 
 export const FieldOfficerPage: React.FC = () => {
@@ -56,7 +55,6 @@ export const FieldOfficerPage: React.FC = () => {
   // Modals & Feedback
   const [printedTx, setPrintedTx] = useState<Transaction | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const successTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Active Cycle State
   const activeCycle = selectedAccount?.dailyCycles?.[0];
@@ -175,7 +173,6 @@ export const FieldOfficerPage: React.FC = () => {
       const refreshedAccounts = getStoredAccounts();
       setAccounts(refreshedAccounts);
       setPrintedTx(transaction);
-      setAmountPaid('');
       setFieldRemarks('');
       broadcastRealtimeEvent('PACKAGE_DEPOSIT_RECORDED', { accountId: selectedAccount.id, amount: numAmount });
       pushLocalToCloud().catch(() => {});
@@ -183,74 +180,61 @@ export const FieldOfficerPage: React.FC = () => {
       setSuccessMessage(
         `✅ Recorded GHS ${numAmount.toFixed(2)} for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}! Automatically spread across ${splitResult.daysCovered} day(s) (Days ${splitResult.startDay} to ${splitResult.endDay}) on the GH₵ ${currentPackage} Package.${splitResult.isDay31Included ? ' 🌟 Day 31 company management fee retained & added to Company Interest Vault!' : ''}`
       );
-
-      if (successTimerRef.current) clearTimeout(successTimerRef.current);
-      successTimerRef.current = setTimeout(() => {
-        setSuccessMessage(null);
-      }, 3000);
     } catch (err: any) {
       alert(err.message || 'Error recording deposit');
     }
   };
 
   const handleConfirmPaid = (tx: Transaction) => {
-    if (successTimerRef.current) clearTimeout(successTimerRef.current);
-    successTimerRef.current = setTimeout(() => {
+    setTimeout(() => {
       setSuccessMessage(null);
-    }, 3000);
+    }, 4000);
   };
 
   return (
-    <div className="space-y-6 pb-12 relative">
+    <div className="space-y-6 pb-12">
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <Smartphone className="w-6 h-6 text-amber-500" />
+            Field Collections & Multi-Day Splitter (GH₵ 5 - 200 Packages)
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Mobile Onsite Daily Savings Collections, Historical Records Back-filling, and 30-Day Cycle Rollovers
+          </p>
+        </div>
 
-      {/* Floating 3-Second Pop-up Success Banner */}
-      {successMessage && (
-        <div className="fixed top-4 sm:top-6 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-xl animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className="relative overflow-hidden rounded-3xl bg-slate-900/95 backdrop-blur-xl border-2 border-emerald-500/80 shadow-2xl p-4 sm:p-5 text-white">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center font-black shadow-lg shadow-emerald-500/30 shrink-0 mt-0.5 animate-bounce">
-                  <CheckCircle2 className="w-6 h-6" />
-                </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-500 text-white">
-                    Collection Recorded
-                  </span>
-                  <p className="text-xs sm:text-sm font-semibold text-slate-100 leading-snug">
-                    {successMessage}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-1.5 shrink-0">
-                {printedTx && (
-                  <button
-                    type="button"
-                    onClick={() => setPrintedTx(printedTx)}
-                    className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-1 shadow-md transition-all cursor-pointer"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Slip</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (successTimerRef.current) clearTimeout(successTimerRef.current);
-                    setSuccessMessage(null);
-                  }}
-                  className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            {/* 3-Second Visual Countdown Progress Bar */}
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-800 overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-300 animate-shrink-width" />
+        {/* Target Card */}
+        <div className="flex items-center space-x-3 bg-slate-900 text-white p-3 rounded-2xl border border-slate-800">
+          <Target className="w-5 h-5 text-amber-400" />
+          <div className="text-xs font-mono">
+            <div className="text-[10px] text-slate-400 uppercase">Today's Route Collections</div>
+            <div className="font-bold text-amber-400">
+              GHS {accounts.reduce((total, acc) => {
+                const todayIso = new Date().toISOString().split('T')[0];
+                const todaySplits = (acc.dailyCycles?.flatMap((c) => c.dailySplits || []) || []).filter((s) => s.date === todayIso);
+                return total + todaySplits.reduce((sum, s) => sum + s.amount, 0);
+              }, 0).toFixed(2)} (0% Variance)
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Success Notification Banner */}
+      {successMessage && (
+        <div className="p-4 rounded-2xl bg-emerald-500 text-white font-bold text-xs flex items-center justify-between shadow-xl animate-fade-in">
+          <div className="flex items-center space-x-2">
+            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+            <span>{successMessage}</span>
+          </div>
+          <button
+            onClick={() => setSuccessMessage(null)}
+            className="text-white hover:text-slate-200 font-mono text-sm px-2 cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
       )}
 
