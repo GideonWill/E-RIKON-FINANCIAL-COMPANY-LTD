@@ -446,10 +446,6 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
 
   if (hasUpdates) {
     broadcastRealtimeEvent('MANUAL_SYNC', { source: 'CLOUD_PULL' });
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('erikon_realtime_update', { detail: { type: 'MANUAL_SYNC' } }));
-      window.dispatchEvent(new CustomEvent('erikon_cloud_synced', { detail: { timestamp: new Date().toISOString() } }));
-    }
   }
 
   lastSyncTimestamp = new Date().toLocaleTimeString();
@@ -530,10 +526,10 @@ export const initCloudSync = () => {
     }
   });
 
-  // Fast background poller (every 1.5s) to guarantee zero delay across devices
+  // Background fallback poller (every 10s)
   const pollTimer = setInterval(() => {
     pullCloudToLocal().catch(() => { });
-  }, 1500);
+  }, 10000);
 
   // Instant sync on screen resume / tab focus
   const handleVisibilityChange = () => {

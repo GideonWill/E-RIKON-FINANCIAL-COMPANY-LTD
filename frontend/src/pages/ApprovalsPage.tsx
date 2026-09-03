@@ -200,8 +200,10 @@ export const ApprovalsPage: React.FC = () => {
       });
 
       const finalApprovals = Array.from(apprMap.values());
-      saveStoredApprovals(finalApprovals);
-      setApprovals(finalApprovals);
+      if (JSON.stringify(finalApprovals) !== JSON.stringify(localApprovals)) {
+        saveStoredApprovals(finalApprovals);
+        setApprovals(finalApprovals);
+      }
     } catch {
       setApprovals(getStoredApprovals());
     }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 // ─── BroadcastChannel (same-tab / same-browser sync) ──────────────────────────
 const SYNC_CHANNEL_NAME = 'erikon_ecfms_realtime_sync';
@@ -155,18 +155,12 @@ export const disconnectSSE = (clearToken = true): void => {
 export const subscribeRealtimeEvents = (
   callback: (payload: RealtimeSyncPayload) => void
 ): (() => void) => {
-  // Add to internal subscriber registry (receives SSE events relayed above)
+  // Add to internal subscriber registry
   subscribers.add(callback);
 
   // Also handle BroadcastChannel messages (from other tabs on the same browser)
   const handleBroadcastMessage = (event: MessageEvent<RealtimeSyncPayload>) => {
     if (event.data) callback(event.data);
-  };
-
-  // Handle same-tab custom events (dispatched by local write operations in api.ts)
-  const handleCustomEvent = (event: Event) => {
-    const customEvt = event as CustomEvent<RealtimeSyncPayload>;
-    if (customEvt.detail) callback(customEvt.detail);
   };
 
   // Handle localStorage changes from other tabs
@@ -185,7 +179,6 @@ export const subscribeRealtimeEvents = (
   }
 
   if (typeof window !== 'undefined') {
-    window.addEventListener('erikon_realtime_update', handleCustomEvent);
     window.addEventListener('storage', handleStorageEvent);
   }
 
@@ -195,7 +188,6 @@ export const subscribeRealtimeEvents = (
       syncChannel.removeEventListener('message', handleBroadcastMessage);
     }
     if (typeof window !== 'undefined') {
-      window.removeEventListener('erikon_realtime_update', handleCustomEvent);
       window.removeEventListener('storage', handleStorageEvent);
     }
   };
@@ -219,20 +211,34 @@ export const broadcastRealtimeEvent = (type: SyncEventType, data?: any) => {
     }
   }
 
-  // Dispatch custom event for same-tab subscribers
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('erikon_realtime_update', { detail: payload }));
-  }
-
-  // Also notify all direct subscribers
+  // Notify all direct subscribers in this tab
   notifyAllSubscribers(payload);
 };
 
-// ─── React Hook ───────────────────────────────────────────────────────────────
+// ─── Smooth React Hook with automatic batching & debouncing ───────────────────
 
 export const useRealtimeSync = (onUpdate: (payload: RealtimeSyncPayload) => void) => {
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
+
   useEffect(() => {
-    const unsubscribe = subscribeRealtimeEvents(onUpdate);
-    return () => unsubscribe();
-  }, [onUpdate]);
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    let latestPayload: RealtimeSyncPayload | null = null;
+
+    const debouncedCallback = (payload: RealtimeSyncPayload) => {
+      latestPayload = payload;
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        if (latestPayload) {
+          onUpdateRef.current(latestPayload);
+        }
+      }, 60);
+    };
+
+    const unsubscribe = subscribeRealtimeEvents(debouncedCallback);
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      unsubscribe();
+    };
+  }, []);
 };
