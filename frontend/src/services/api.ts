@@ -131,41 +131,7 @@ export const getStoredCustomers = (): Customer[] => {
     } catch {}
   }
   const deletedIds = getDeletedCustomerIds();
-  parsed = parsed.filter((c) => !deletedIds.includes(c.id));
-
-  // Ensure Gladys exists if registered
-  const hasGladys = parsed.some((c) => c.firstName?.toLowerCase().includes('gladys') || c.lastName?.toLowerCase().includes('gladys'));
-  if (!hasGladys && !deletedIds.includes('cust-gladys-001')) {
-    const gladysCust: Customer = {
-      id: 'cust-gladys-001',
-      customerNumber: 'CUST-1002-8821',
-      firstName: 'Gladys',
-      lastName: 'Mensah',
-      otherNames: '',
-      dateOfBirth: '1988-06-14',
-      gender: 'Female',
-      phone: '+233 24 555 7890',
-      email: 'gladys.mensah@gmail.com',
-      address: 'Shop 14, Makola Market, Accra',
-      ghanaCardNumber: 'GHA-789214710-5',
-      occupation: 'Retail Trader & Merchant',
-      employerName: 'Self Employed',
-      monthlyIncome: 6500.00,
-      status: 'ACTIVE',
-      createdAt: '2026-08-28T08:00:00.000Z',
-      nextOfKin: {
-        id: 'nok-gladys-001',
-        fullName: 'Kwaku Mensah',
-        relationship: 'Spouse',
-        phone: '+233 24 555 7891',
-        address: 'Shop 14, Makola Market, Accra',
-      },
-    };
-    parsed.push(gladysCust);
-    localStorage.setItem('erikon_customers', JSON.stringify(parsed));
-  }
-
-  return parsed;
+  return parsed.filter((c) => !deletedIds.includes(c.id));
 };
 
 export const saveStoredCustomers = (customers: Customer[]) => {
@@ -192,109 +158,11 @@ export const getStoredAccounts = (): Account[] => {
   const deletedIds = getDeletedCustomerIds();
   parsed = parsed.filter((a) => !deletedIds.includes(a.customerId) && !deletedIds.includes(a.id));
 
-  // Sync with customers: Ensure every active customer has a valid savings account
+  // Sync with customers: Ensure existing active accounts have matching customer reference
   const customers = getStoredCustomers();
-  if (customers.length > 0) {
-    let hasNewAcc = false;
-    customers.forEach((cust) => {
-      let acc = parsed.find((a) => a.customerId === cust.id || a.id === `acc-${cust.id.replace('cust-', '')}`);
-      if (!acc) {
-        const isGladys = cust.firstName?.toLowerCase().includes('gladys');
-        const pkgRate = isGladys ? 50 : 20;
-        const initialGross = isGladys ? 1000.00 : 0.00;
-        const initialBal = isGladys ? 900.00 : 0.00;
-        const initialDays = isGladys ? 20 : 0;
+  const currentCustomerIds = new Set(customers.map((c) => c.id));
+  parsed = parsed.filter((a) => !deletedIds.includes(a.customerId) && !deletedIds.includes(a.id) && currentCustomerIds.has(a.customerId));
 
-        acc = {
-          id: `acc-${cust.id.replace('cust-', '')}`,
-          accountNumber: `ACC-1001-${cust.customerNumber ? cust.customerNumber.replace(/\D/g, '').slice(-4) : Math.floor(1000 + Math.random() * 9000)}`,
-          customerId: cust.id,
-          customer: cust,
-          type: 'SAVINGS',
-          savingsPackage: pkgRate,
-          currentBalance: initialBal,
-          availableBalance: initialBal,
-          interestRate: 0.0,
-          status: 'ACTIVE',
-          openingDate: cust.createdAt || new Date().toISOString(),
-          dailyCycles: [
-            {
-              id: `cyc-${cust.id.replace('cust-', '')}`,
-              cycleNumber: 1,
-              currentDayCount: initialDays,
-              dailyTargetAmount: pkgRate,
-              totalDeposited: initialGross,
-              feeDeducted: false,
-              companyFeeAmount: 0,
-              isCompleted: false,
-              startDate: '2026-08-28',
-              dailySplits: isGladys ? [
-                ...Array.from({ length: 16 }, (_, i) => ({
-                  dayNumber: i + 1,
-                  date: '2026-08-28',
-                  amount: 50.00,
-                  receiptNo: `RCP-SPLIT-800-${i + 1}`,
-                  isCompanyFee: false,
-                  recordedBy: 'Eric Annor (SUPER ADMIN)',
-                  recordedAt: '2026-08-28T08:00:00.000Z',
-                  batchTxRef: 'TX-DEP-GLADYS-800',
-                })),
-                {
-                  dayNumber: 17,
-                  date: '2026-08-29',
-                  amount: 50.00,
-                  receiptNo: 'RCP-DEP-LEWIS-17',
-                  isCompanyFee: false,
-                  recordedBy: 'Authorized Teller (TELLER)',
-                  recordedAt: '2026-08-29T10:00:00.000Z',
-                  batchTxRef: 'TX-DEP-LEWIS-100',
-                },
-                {
-                  dayNumber: 18,
-                  date: '2026-08-29',
-                  amount: 50.00,
-                  receiptNo: 'RCP-DEP-LEWIS-18',
-                  isCompanyFee: false,
-                  recordedBy: 'Authorized Teller (TELLER)',
-                  recordedAt: '2026-08-29T10:00:00.000Z',
-                  batchTxRef: 'TX-DEP-LEWIS-100',
-                },
-                {
-                  dayNumber: 19,
-                  date: '2026-08-30',
-                  amount: 50.00,
-                  receiptNo: 'RCP-DEP-GLADYS-19',
-                  isCompanyFee: false,
-                  recordedBy: 'Authorized Teller (TELLER)',
-                  recordedAt: '2026-08-30T11:00:00.000Z',
-                  batchTxRef: 'TX-DEP-GLADYS-100',
-                },
-                {
-                  dayNumber: 20,
-                  date: '2026-08-30',
-                  amount: 50.00,
-                  receiptNo: 'RCP-DEP-GLADYS-20',
-                  isCompanyFee: false,
-                  recordedBy: 'Authorized Teller (TELLER)',
-                  recordedAt: '2026-08-30T11:00:00.000Z',
-                  batchTxRef: 'TX-DEP-GLADYS-100',
-                },
-              ] : [],
-            },
-          ],
-        };
-        parsed.push(acc);
-        hasNewAcc = true;
-      } else if (!acc.customer) {
-        acc.customer = cust;
-      }
-    });
-    if (hasNewAcc) {
-      localStorage.setItem('erikon_accounts', JSON.stringify(parsed));
-    }
-  }
-
-  // Ensure each account has customer details attached and splits have immutable recordedBy
   let splitsUpdated = false;
 
   let rawTxs: Transaction[] = [];
@@ -307,137 +175,6 @@ export const getStoredAccounts = (): Account[] => {
     if (!acc.customer && acc.customerId) {
       const c = customers.find((cust) => cust.id === acc.customerId);
       if (c) acc.customer = c;
-    }
-
-    const isGladys = acc.customer?.firstName?.toLowerCase().includes('gladys') || 
-                     acc.customerId === 'cust-gladys-001';
-
-    const isKwame = acc.customer?.firstName?.toLowerCase().includes('kwame') ||
-                    acc.customerId === 'cust-kwame-001' ||
-                    acc.customerId.includes('kwame');
-
-    if (isKwame) {
-      if (!acc.dailyCycles || acc.dailyCycles.length === 0) {
-        acc.savingsPackage = 50;
-        const completedCycle1: DailyCollectionCycle = {
-          id: `cyc-${acc.id}-1`,
-          cycleNumber: 1,
-          currentDayCount: 31,
-          dailyTargetAmount: 20,
-          totalDeposited: 620.00,
-          feeDeducted: true,
-          companyFeeAmount: 20.00,
-          isCompleted: true,
-          startDate: '2026-08-01',
-          dailySplits: Array.from({ length: 31 }, (_, i) => ({
-            dayNumber: i + 1,
-            date: '2026-08-01',
-            amount: 20.00,
-            receiptNo: `RCP-SPLIT-620-${i + 1}`,
-            isCompanyFee: i + 1 === 31,
-            recordedBy: 'Gideon Ogunu (SUPER ADMIN)',
-            recordedAt: '2026-08-01T09:00:00.000Z',
-            batchTxRef: 'TX-DEP-KWAME-620',
-          })),
-        };
-
-        const activeCycle2: DailyCollectionCycle = {
-          id: `cyc-${acc.id}-2`,
-          cycleNumber: 2,
-          currentDayCount: 12,
-          dailyTargetAmount: 50,
-          totalDeposited: 600.00,
-          feeDeducted: false,
-          companyFeeAmount: 0.00,
-          isCompleted: false,
-          startDate: '2026-08-28',
-          dailySplits: Array.from({ length: 12 }, (_, i) => ({
-            dayNumber: i + 1,
-            date: '2026-08-28',
-            amount: 50.00,
-            receiptNo: `RCP-23923021-${i + 1}`,
-            isCompanyFee: false,
-            recordedBy: 'Gideon Ogunu (SUPER ADMIN)',
-            recordedAt: '2026-08-28T13:32:03.000Z',
-            batchTxRef: 'TX-DEP-23923021',
-          })),
-        };
-
-        acc.dailyCycles = [activeCycle2, completedCycle1];
-        splitsUpdated = true;
-      }
-    }
-
-    if (isGladys) {
-      if (!acc.dailyCycles || acc.dailyCycles.length === 0) {
-        acc.savingsPackage = 50;
-        acc.dailyCycles = [
-          {
-            id: `cyc-${acc.id}`,
-            cycleNumber: 1,
-            currentDayCount: 20,
-            dailyTargetAmount: 50,
-            totalDeposited: 1000.00,
-            feeDeducted: false,
-            companyFeeAmount: 0,
-            isCompleted: false,
-            startDate: '2026-08-28',
-            dailySplits: [
-              ...Array.from({ length: 16 }, (_, i) => ({
-                dayNumber: i + 1,
-                date: '2026-08-28',
-                amount: 50.00,
-                receiptNo: `RCP-SPLIT-800-${i + 1}`,
-                isCompanyFee: false,
-                recordedBy: 'Eric Annor (SUPER ADMIN)',
-                recordedAt: '2026-08-28T08:00:00.000Z',
-                batchTxRef: 'TX-DEP-GLADYS-800',
-              })),
-              {
-                dayNumber: 17,
-                date: '2026-08-29',
-                amount: 50.00,
-                receiptNo: 'RCP-DEP-LEWIS-17',
-                isCompanyFee: false,
-                recordedBy: 'Authorized Teller (TELLER)',
-                recordedAt: '2026-08-29T10:00:00.000Z',
-                batchTxRef: 'TX-DEP-LEWIS-100',
-              },
-              {
-                dayNumber: 18,
-                date: '2026-08-29',
-                amount: 50.00,
-                receiptNo: 'RCP-DEP-LEWIS-18',
-                isCompanyFee: false,
-                recordedBy: 'Authorized Teller (TELLER)',
-                recordedAt: '2026-08-29T10:00:00.000Z',
-                batchTxRef: 'TX-DEP-LEWIS-100',
-              },
-              {
-                dayNumber: 19,
-                date: '2026-08-30',
-                amount: 50.00,
-                receiptNo: 'RCP-DEP-GLADYS-19',
-                isCompanyFee: false,
-                recordedBy: 'Authorized Teller (TELLER)',
-                recordedAt: '2026-08-30T11:00:00.000Z',
-                batchTxRef: 'TX-DEP-GLADYS-100',
-              },
-              {
-                dayNumber: 20,
-                date: '2026-08-30',
-                amount: 50.00,
-                receiptNo: 'RCP-DEP-GLADYS-20',
-                isCompanyFee: false,
-                recordedBy: 'Authorized Teller (TELLER)',
-                recordedAt: '2026-08-30T11:00:00.000Z',
-                batchTxRef: 'TX-DEP-GLADYS-100',
-              },
-            ],
-          },
-        ];
-        splitsUpdated = true;
-      }
     }
 
     // Authoritative Transaction-driven Balance and Cycle Reconciliation
@@ -505,7 +242,7 @@ export const getStoredAccounts = (): Account[] => {
             const role = (matchingTx.recordedBy.role || 'SUPER_ADMIN').replace(/_/g, ' ');
             s.recordedBy = `${matchingTx.recordedBy.firstName} ${matchingTx.recordedBy.lastName} (${role})`;
           } else {
-            s.recordedBy = isGladys ? 'Eric Annor (SUPER ADMIN)' : 'Gideon Ogunu (SUPER ADMIN)';
+            s.recordedBy = 'Gideon Ogunu (SUPER ADMIN)';
           }
           splitsUpdated = true;
         }
@@ -591,279 +328,7 @@ export const getStoredTransactions = (): Transaction[] => {
     return true;
   });
 
-  // Helper to read raw accounts without triggering recursion
-  let rawAccounts: Account[] = [];
-  try {
-    const rawAccsStr = localStorage.getItem('erikon_accounts');
-    if (rawAccsStr) rawAccounts = JSON.parse(rawAccsStr);
-  } catch {}
-
-  // Ensure Gladys deposit of 800 GHS exists
-  const hasGladysTx = parsed.some(
-    (t) => t.referenceNo === 'TX-DEP-GLADYS-800' || (t.amount === 800 && t.account?.customer?.firstName?.toLowerCase().includes('gladys'))
-  );
-  if (!hasGladysTx) {
-    const gladysAcc = rawAccounts.find((a) => a.customer?.firstName?.toLowerCase().includes('gladys') || a.customerId === 'cust-gladys-001');
-    if (gladysAcc) {
-      const gladysTx: Transaction = {
-        id: 'tx-dep-gladys-800',
-        referenceNo: 'TX-DEP-GLADYS-800',
-        receiptNo: 'RCP-DEP-GLADYS-800',
-        accountId: gladysAcc.id,
-        account: gladysAcc,
-        type: 'DEPOSIT',
-        paymentMode: 'PHYSICAL_CASH',
-        amount: 800.00,
-        previousBal: 0.00,
-        newBal: 800.00,
-        recordedBy: {
-          id: 'eric-annor-sa',
-          employeeId: 'EMP-SA-002',
-          firstName: 'Eric',
-          lastName: 'Annor',
-          email: 'eric.annor@erikon.com',
-          phone: '0240000002',
-          role: 'SUPER_ADMIN' as RoleName,
-          branchId: 'br-01',
-        },
-        remarks: 'Physical cash deposit of GH₵ 800.00 covering 16 days on GH₵ 50/day package (Days 1 to 16)',
-        createdAt: '2026-08-28T08:00:00.000Z',
-      };
-      parsed.unshift(gladysTx);
-      localStorage.setItem('erikon_transactions', JSON.stringify(parsed));
-    }
-  }
-
-  // Ensure Gladys deposit of 100 GHS by Lewis exists
-  const hasLewisTx = parsed.some((t) => t.referenceNo === 'TX-DEP-LEWIS-100');
-  if (!hasLewisTx) {
-    const gladysAcc = rawAccounts.find((a) => a.customer?.firstName?.toLowerCase().includes('gladys') || a.customerId === 'cust-gladys-001');
-    if (gladysAcc) {
-      const lewisTx: Transaction = {
-        id: 'tx-dep-lewis-100',
-        referenceNo: 'TX-DEP-LEWIS-100',
-        receiptNo: 'RCP-DEP-LEWIS-100',
-        accountId: gladysAcc.id,
-        account: gladysAcc,
-        type: 'DEPOSIT',
-        paymentMode: 'PHYSICAL_CASH',
-        amount: 100.00,
-        previousBal: 800.00,
-        newBal: 900.00,
-        recordedBy: {
-          id: 'staff-teller',
-          employeeId: 'EMP-TEL-001',
-          firstName: 'Authorized',
-          lastName: 'Teller',
-          email: 'teller@erikon.com',
-          phone: '0240000000',
-          role: 'TELLER' as RoleName,
-          branchId: 'br-01',
-        },
-        remarks: 'Deposit of GH₵ 100.00 by Lewis (Friend) covering Days 17 to 18 on GH₵ 50/day package',
-        createdAt: '2026-08-29T10:00:00.000Z',
-        transactor: {
-          isThirdParty: true,
-          fullName: 'Lewis Mensah',
-          phone: '0244123456',
-          ghanaCard: 'GHA-712345678-9',
-          relationship: 'Friend',
-        },
-      };
-      parsed.unshift(lewisTx);
-      localStorage.setItem('erikon_transactions', JSON.stringify(parsed));
-    }
-  }
-
-  // Ensure Gladys second deposit of 100 GHS exists
-  const hasGladysDep2 = parsed.some((t) => t.referenceNo === 'TX-DEP-GLADYS-100');
-  if (!hasGladysDep2) {
-    const gladysAcc = rawAccounts.find((a) => a.customer?.firstName?.toLowerCase().includes('gladys') || a.customerId === 'cust-gladys-001');
-    if (gladysAcc) {
-      const gladysDep2Tx: Transaction = {
-        id: 'tx-dep-gladys-100',
-        referenceNo: 'TX-DEP-GLADYS-100',
-        receiptNo: 'RCP-DEP-GLADYS-100',
-        accountId: gladysAcc.id,
-        account: gladysAcc,
-        type: 'DEPOSIT',
-        paymentMode: 'PHYSICAL_CASH',
-        amount: 100.00,
-        previousBal: 900.00,
-        newBal: 1000.00,
-        recordedBy: {
-          id: 'staff-teller',
-          employeeId: 'EMP-TEL-001',
-          firstName: 'Authorized',
-          lastName: 'Teller',
-          email: 'teller@erikon.com',
-          phone: '0240000000',
-          role: 'TELLER' as RoleName,
-          branchId: 'br-01',
-        },
-        remarks: 'Teller deposit of GH₵ 100.00 covering Days 19 to 20 on GH₵ 50/day package',
-        createdAt: '2026-08-30T11:00:00.000Z',
-        transactor: {
-          isThirdParty: false,
-          fullName: 'Gladys Mensah',
-          phone: '0244892123',
-          ghanaCard: 'GHA-789012345-6',
-          relationship: 'Self / Account Holder',
-        },
-      };
-      parsed.unshift(gladysDep2Tx);
-      localStorage.setItem('erikon_transactions', JSON.stringify(parsed));
-    }
-  }
-
-  // Ensure Gladys withdrawal of 100 GHS by Maame exists
-  const hasMaameWithdrawal = parsed.some((t) => t.referenceNo === 'TX-WITH-MAAME-100' || (t.type === 'WITHDRAWAL' && t.amount === 100 && t.transactor?.fullName?.toLowerCase().includes('maame')));
-  if (!hasMaameWithdrawal) {
-    const gladysAcc = rawAccounts.find((a) => a.customer?.firstName?.toLowerCase().includes('gladys') || a.customerId === 'cust-gladys-001');
-    if (gladysAcc) {
-      const maameWithdrawalTx: Transaction = {
-        id: 'tx-with-maame-100',
-        referenceNo: 'TX-WITH-MAAME-100',
-        receiptNo: 'RCP-WITH-MAAME-100',
-        accountId: gladysAcc.id,
-        account: gladysAcc,
-        type: 'WITHDRAWAL',
-        paymentMode: 'PHYSICAL_CASH',
-        amount: 100.00,
-        previousBal: 1000.00,
-        newBal: 900.00,
-        recordedBy: {
-          id: 'staff-teller',
-          employeeId: 'EMP-TEL-001',
-          firstName: 'Authorized',
-          lastName: 'Teller',
-          email: 'teller@erikon.com',
-          phone: '0240000000',
-          role: 'TELLER' as RoleName,
-          branchId: 'br-01',
-        },
-        remarks: 'Withdrawal loan of GH₵ 100.00 executed by Maame (Sister / Representative)',
-        createdAt: '2026-08-31T14:30:00.000Z',
-        transactor: {
-          isThirdParty: true,
-          fullName: 'Maame Mensah',
-          phone: '0244987654',
-          ghanaCard: 'GHA-987654321-0',
-          relationship: 'Sister',
-        },
-      };
-      parsed.unshift(maameWithdrawalTx);
-      localStorage.setItem('erikon_transactions', JSON.stringify(parsed));
-    }
-  }
-
-  // Ensure Kwame Djan Cycle 1 completed transactions exist (620 GH deposit + 20 GH fee retention)
-  const hasKwameTx = parsed.some(
-    (t) => t.referenceNo === 'TX-DEP-KWAME-620' || (t.amount === 620 && t.account?.customer?.firstName?.toLowerCase().includes('kwame'))
-  );
-  if (!hasKwameTx) {
-    const kwameAcc = rawAccounts.find((a) => a.customer?.firstName?.toLowerCase().includes('kwame') || a.customerId?.includes('kwame'));
-    if (kwameAcc) {
-      const kwameDepTx: Transaction = {
-        id: 'tx-dep-kwame-620',
-        referenceNo: 'TX-DEP-KWAME-620',
-        receiptNo: 'RCP-DEP-KWAME-620',
-        accountId: kwameAcc.id,
-        account: kwameAcc,
-        type: 'DEPOSIT',
-        paymentMode: 'PHYSICAL_CASH',
-        amount: 620.00,
-        previousBal: 0.00,
-        newBal: 600.00,
-        recordedBy: {
-          id: 'super-admin-root',
-          employeeId: 'EMP-SA-001',
-          firstName: 'Gideon',
-          lastName: 'Ogunu',
-          email: 'gideon.ogunu@erikon.com',
-          phone: '0240000001',
-          role: 'SUPER_ADMIN' as RoleName,
-          branchId: 'br-01',
-        },
-        remarks: 'Physical cash deposit of GH₵ 620.00 covering Cycle 1 (Days 1 to 31) on GH₵ 20/day package',
-        createdAt: '2026-08-01T09:00:00.000Z',
-      };
-
-      const kwameFeeTx: Transaction = {
-        id: 'tx-fee-kwame-20',
-        referenceNo: 'TX-FEE-KWAME-20',
-        receiptNo: 'RCP-FEE-KWAME-20',
-        accountId: kwameAcc.id,
-        account: kwameAcc,
-        type: 'COMPANY_FEE_DEDUCTION',
-        paymentMode: 'PHYSICAL_CASH',
-        amount: 20.00,
-        previousBal: 620.00,
-        newBal: 600.00,
-        recordedBy: {
-          id: 'super-admin-root',
-          employeeId: 'EMP-SA-001',
-          firstName: 'Gideon',
-          lastName: 'Ogunu',
-          email: 'gideon.ogunu@erikon.com',
-          phone: '0240000001',
-          role: 'SUPER_ADMIN' as RoleName,
-          branchId: 'br-01',
-        },
-        remarks: '1-Day company management fee (GH₵ 20.00) retained on Day 31 for Cycle #1',
-        createdAt: '2026-08-01T10:00:00.000Z',
-      };
-
-      const kwameCyc2DepTx: Transaction = {
-        id: 'tx-dep-kwame-cyc2-600',
-        referenceNo: 'TX-DEP-23923021',
-        receiptNo: 'RCP-23923021',
-        accountId: kwameAcc.id,
-        account: kwameAcc,
-        type: 'DEPOSIT',
-        paymentMode: 'PHYSICAL_CASH',
-        amount: 600.00,
-        previousBal: 600.00,
-        newBal: 1200.00,
-        recordedBy: {
-          id: 'super-admin-root',
-          employeeId: 'EMP-SA-001',
-          firstName: 'Gideon',
-          lastName: 'Ogunu',
-          email: 'gideon.ogunu@erikon.com',
-          phone: '0240000001',
-          role: 'SUPER_ADMIN' as RoleName,
-          branchId: 'br-01',
-        },
-        remarks: 'Physical cash deposit of GH₵ 600.00 covering 12 days (Days 1 to 12) on GH₵ 50/day package for Cycle #2',
-        createdAt: '2026-08-28T13:32:03.000Z',
-      };
-
-      parsed.unshift(kwameCyc2DepTx, kwameDepTx, kwameFeeTx);
-      localStorage.setItem('erikon_transactions', JSON.stringify(parsed));
-    }
-  }
-
-  return parsed.map((t) => {
-    // Ensure immutable real officer object
-    if (!t.recordedBy || !t.recordedBy.firstName || t.recordedBy.firstName === 'Authorized') {
-      const isGladysTx = t.account?.customer?.firstName?.toLowerCase().includes('gladys') || t.amount === 800;
-      return {
-        ...t,
-        recordedBy: {
-          id: isGladysTx ? 'eric-annor-sa' : 'super-admin-root',
-          employeeId: isGladysTx ? 'EMP-SA-002' : 'EMP-SA-001',
-          firstName: isGladysTx ? 'Eric' : 'Gideon',
-          lastName: isGladysTx ? 'Annor' : 'Ogunu',
-          email: isGladysTx ? 'eric.annor@erikon.com' : 'gideon.ogunu@erikon.com',
-          phone: isGladysTx ? '0240000002' : '0240000001',
-          role: 'SUPER_ADMIN' as RoleName,
-          branchId: 'br-01',
-        },
-      };
-    }
-    return t;
-  });
+  return parsed;
 };
 
 export const saveStoredTransactions = (txs: Transaction[]) => {
@@ -1036,119 +501,7 @@ export const getStoredAuditLogs = (): AuditLog[] => {
       if (Array.isArray(raw)) parsed = raw;
     } catch {}
   }
-
-  // Reconcile and backfill audit records from existing transactions if missing
-  const txs = getStoredTransactions();
-  const customers = getStoredCustomers();
-  let hasNew = false;
-
-  txs.forEach((tx) => {
-    const exists = parsed.some(
-      (l) => l.newValue?.includes(tx.referenceNo) || l.newValue?.includes(tx.receiptNo || '') || (l.action.includes(tx.type) && l.createdAt === tx.createdAt)
-    );
-    if (!exists) {
-      const officer = tx.recordedBy || {
-        id: 'super-admin-root',
-        employeeId: 'EMP-SA-001',
-        firstName: 'Gideon',
-        lastName: 'Ogunu',
-        email: 'gideon.ogunu@erikon.com',
-        phone: '0240000001',
-        role: 'SUPER_ADMIN' as RoleName,
-      };
-
-      const custName = tx.account?.customer
-        ? `${tx.account.customer.firstName} ${tx.account.customer.lastName}`
-        : 'Kwame Djan';
-
-      const logEntry: AuditLog = {
-        id: `audit-${tx.id || Date.now()}`,
-        userId: officer.id,
-        userEmail: officer.email,
-        userRole: officer.role,
-        branchName: officer.branch?.name || 'Accra Central Main Branch',
-        action: tx.type === 'DEPOSIT' ? 'PHYSICAL_CASH_DEPOSIT_RECORDED' : tx.type === 'WITHDRAWAL' ? 'CUSTOMER_WITHDRAWAL_PROCESSED' : 'TRANSACTION_RECORDED',
-        resource: 'TRANSACTION',
-        newValue: `${tx.type} of GH₵ ${tx.amount.toFixed(2)} [Ref: ${tx.referenceNo}, Receipt: ${tx.receiptNo}] recorded for customer ${custName} (Acc: ${tx.account?.accountNumber || 'ACC-1001'}). Cashier: ${officer.firstName} ${officer.lastName} (${(officer.role || 'SUPER_ADMIN').replace(/_/g, ' ')}).`,
-        ipAddress: '127.0.0.1',
-        createdAt: tx.createdAt || new Date().toISOString(),
-      };
-      parsed.push(logEntry);
-      hasNew = true;
-    }
-  });
-
-  // Reconcile and backfill from accounts with deposits / splits
-  const allAccounts = getStoredAccounts();
-  allAccounts.forEach((acc) => {
-    const cust = acc.customer || customers.find((c) => c.id === acc.customerId);
-    const custName = cust ? `${cust.firstName} ${cust.lastName}` : 'Kwame Djan';
-    
-    // Check daily splits or total deposited funds
-    const splits = acc.dailyCycles?.flatMap((c) => c.dailySplits || []) || [];
-    const hasDeposit = splits.length > 0 || acc.currentBalance > 0 || (acc.dailyCycles?.[0]?.totalDeposited || 0) > 0;
-
-    if (hasDeposit) {
-      const depositTotal = (acc.dailyCycles?.[0]?.totalDeposited) || splits.reduce((sum, s) => sum + s.amount, 0) || acc.currentBalance || 100;
-      const daysCount = splits.length || Math.floor(depositTotal / (acc.savingsPackage || 20)) || 5;
-      
-      const exists = parsed.some(
-        (l) => (l.newValue?.includes(acc.accountNumber) && l.action === 'PHYSICAL_CASH_DEPOSIT_RECORDED') ||
-               (l.newValue?.includes(custName) && l.newValue?.includes('Deposit'))
-      );
-      
-      if (!exists) {
-        const firstSplit = splits[0];
-        const officerStr = firstSplit?.recordedBy || 'Gideon Ogunu (SUPER ADMIN)';
-        const splitDate = firstSplit?.recordedAt || firstSplit?.date || acc.openingDate || new Date().toISOString();
-
-        const logEntry: AuditLog = {
-          id: `audit-dep-${acc.id}`,
-          userId: 'super-admin-root',
-          userEmail: 'gideon.ogunu@erikon.com',
-          userRole: 'SUPER_ADMIN',
-          branchName: 'Accra Central Main Branch',
-          action: 'PHYSICAL_CASH_DEPOSIT_RECORDED',
-          resource: 'TRANSACTION',
-          newValue: `Physical Cash Deposit of GH₵ ${depositTotal.toFixed(2)} recorded for customer ${custName} (Acc: ${acc.accountNumber}) covering ${daysCount} day(s) on GH₵ ${acc.savingsPackage || 20}/Day package (Days 1 to ${daysCount}). Available Balance: GH₵ ${acc.availableBalance.toFixed(2)}. Cashier: ${officerStr}.`,
-          ipAddress: '127.0.0.1',
-          createdAt: splitDate,
-        };
-        parsed.push(logEntry);
-        hasNew = true;
-      }
-    }
-  });
-
-  // Reconcile customer onboards
-  customers.forEach((c) => {
-    const exists = parsed.some((l) => l.newValue?.includes(c.ghanaCardNumber) || (l.action === 'CUSTOMER_REGISTERED' && l.newValue?.includes(c.firstName)));
-    if (!exists) {
-      const logEntry: AuditLog = {
-        id: `audit-cust-${c.id}`,
-        userId: 'super-admin-root',
-        userEmail: 'gideon.ogunu@erikon.com',
-        userRole: 'SUPER_ADMIN',
-        branchName: 'Accra Central Main Branch',
-        action: 'CUSTOMER_REGISTERED',
-        resource: 'CUSTOMER',
-        newValue: `Customer ${c.firstName} ${c.lastName} successfully onboarded with Ghana Card ${c.ghanaCardNumber} into E-RiKON Savings Scheme.`,
-        ipAddress: '127.0.0.1',
-        createdAt: c.createdAt || new Date().toISOString(),
-      };
-      parsed.push(logEntry);
-      hasNew = true;
-    }
-  });
-
-  // Sort descending by date
-  parsed.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-  if (hasNew) {
-    localStorage.setItem('erikon_audit_logs', JSON.stringify(parsed));
-  }
-
-  return parsed;
+  return parsed.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 };
 
 export const saveStoredAuditLogs = (logs: AuditLog[]) => {
@@ -1159,6 +512,29 @@ export const saveStoredAuditLogs = (logs: AuditLog[]) => {
 export const clearStoredAuditLogs = () => {
   localStorage.setItem('erikon_audit_logs', JSON.stringify([]));
   broadcastRealtimeEvent('AUDIT_LOG_RECORDED', []);
+};
+
+/**
+ * Global System Factory Reset: Clears all customer, account, transaction, loan, interest, approval, and audit records
+ */
+export const clearAllSystemData = () => {
+  localStorage.setItem('erikon_customers', JSON.stringify([]));
+  localStorage.setItem('erikon_accounts', JSON.stringify([]));
+  localStorage.setItem('erikon_transactions', JSON.stringify([]));
+  localStorage.setItem('erikon_loans', JSON.stringify([]));
+  localStorage.setItem('erikon_company_interest', JSON.stringify([]));
+  localStorage.setItem('erikon_company_withdrawals', JSON.stringify([]));
+  localStorage.setItem('erikon_approvals', JSON.stringify([]));
+  localStorage.setItem('erikon_audit_logs', JSON.stringify([]));
+  localStorage.setItem('erikon_dynamic_notifications', JSON.stringify([]));
+  localStorage.setItem('erikon_deleted_customer_ids', JSON.stringify([]));
+
+  broadcastRealtimeEvent('MANUAL_SYNC', { source: 'SYSTEM_RESET', reset: true });
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('erikon_realtime_update', { detail: { type: 'DATA_RESET' } }));
+    window.dispatchEvent(new CustomEvent('erikon_cloud_synced', { detail: { timestamp: new Date().toISOString() } }));
+  }
+  import('./cloudSync').then((m) => m.pushLocalToCloud()).catch(() => {});
 };
 
 export interface RegisteredUserRecord extends User {
