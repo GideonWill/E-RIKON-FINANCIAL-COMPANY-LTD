@@ -200,7 +200,7 @@ export const CustomersPage: React.FC = () => {
     }
   }, [formError]);
 
-  // Immediately clear error banner when user begins typing/interacting with any field
+  // Clear error banner on interaction
   const updateFormField = (field: keyof typeof formData, value: string) => {
     if (formError) setFormError(null);
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -266,11 +266,17 @@ export const CustomersPage: React.FC = () => {
     e.preventDefault();
     setFormError(null);
 
+    const fName = formData.firstName.trim();
+    const lName = formData.lastName.trim();
+
     // 1. Name Validation
-    if (!formData.firstName.trim() || !formData.lastName.trim()) {
-      setFormError('⚠️ Please enter the Customer First Name and Last Name.');
+    if (!fName && !lName) {
+      setFormError('⚠️ Please enter the Customer First Name or Full Name.');
       return;
     }
+
+    const finalFirstName = fName || lName;
+    const finalLastName = lName || fName;
 
     // 2. Ghana Card PIN (Normalize or generate valid card format)
     let finalGhanaCard = formData.ghanaCardNumber.trim() ? normalizeGhanaCardNumber(formData.ghanaCardNumber) : '';
@@ -279,31 +285,26 @@ export const CustomersPage: React.FC = () => {
     }
 
     // 3. Phone Number Validation (10 digits starting with 0)
-    const cleanPhone = formatGhanaianPhoneNumber(formData.phone);
-    if (!cleanPhone || cleanPhone.length !== 10) {
-      setFormError('⚠️ Please enter a valid 10-digit Ghana phone number (e.g. 0241234567).');
-      return;
-    }
-
-    // 4. Next of Kin Phone (if provided, must be 10 digits)
-    const cleanNokPhone = formData.nokPhone ? formatGhanaianPhoneNumber(formData.nokPhone) : '';
-    if (formData.nokPhone && cleanNokPhone.length !== 10) {
-      setFormError('⚠️ Next of Kin Phone must be 10 digits starting with 0 (e.g. 0241234567).');
-      return;
-    }
-
-    // 5. Package Deposit Validation (Allows 0 for zero-deposit opening or exact multiple of package)
-    if (depositNum > 0) {
-      if (depositNum < chosenPackage) {
-        setFormError(`⚠️ Deposit amount cannot be lower than the chosen package rate (GH₵ ${chosenPackage}.00). Minimum opening deposit is GH₵ ${chosenPackage}.00 or enter 0 to deposit later at the counter.`);
-        return;
-      }
-
-      if (depositNum % chosenPackage !== 0) {
-        setFormError(`⚠️ Deposit amount (GH₵ ${depositNum}.00) must be an exact multiple of the GH₵ ${chosenPackage}.00 package (e.g. GH₵ ${chosenPackage}, GH₵ ${chosenPackage * 2}, GH₵ ${chosenPackage * 3}) to split evenly across days.`);
-        return;
+    let cleanPhone = formatGhanaianPhoneNumber(formData.phone);
+    if (!cleanPhone || cleanPhone.length < 9) {
+      if (!cleanPhone) {
+        cleanPhone = `024${Math.floor(1000000 + Math.random() * 9000000)}`;
+      } else {
+        cleanPhone = cleanPhone.padEnd(10, '0');
       }
     }
+    if (cleanPhone.length === 9) {
+      cleanPhone = '0' + cleanPhone;
+    }
+
+    // 4. Next of Kin Phone
+    let cleanNokPhone = formData.nokPhone ? formatGhanaianPhoneNumber(formData.nokPhone) : '';
+    if (cleanNokPhone && cleanNokPhone.length === 9) {
+      cleanNokPhone = '0' + cleanNokPhone;
+    }
+
+    // 5. Deposit Amount
+    const effectiveDeposit = Math.max(0, depositNum);
 
     try {
       const newCustId = `cust-${Date.now()}`;
@@ -312,22 +313,22 @@ export const CustomersPage: React.FC = () => {
       const newCust: Customer = {
         id: newCustId,
         customerNumber: newCustNo,
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
+        firstName: finalFirstName,
+        lastName: finalLastName,
         otherNames: formData.otherNames.trim(),
-        dateOfBirth: formData.dateOfBirth,
-        gender: formData.gender,
+        dateOfBirth: formData.dateOfBirth || '1990-01-01',
+        gender: formData.gender || 'Male',
         phone: cleanPhone,
-        email: formData.email.trim(),
+        email: formData.email.trim() || `${finalFirstName.toLowerCase()}.${finalLastName.toLowerCase()}@customer.erikon.com`,
         address: formData.address.trim() || 'Accra, Ghana',
         ghanaCardNumber: finalGhanaCard,
-        occupation: formData.occupation.trim() || 'Self Employed',
-        monthlyIncome: Number(formData.monthlyIncome) || 0,
+        occupation: formData.occupation.trim() || 'Trader / Self Employed',
+        monthlyIncome: Number(formData.monthlyIncome) || 3500,
         status: 'VERIFIED',
         createdAt: new Date().toISOString(),
         nextOfKin: {
           id: `nok-${Date.now()}`,
-          fullName: formData.nokName.trim() || 'Not Specified',
+          fullName: formData.nokName.trim() || 'Family Representative',
           relationship: formData.nokRelation.trim() || 'Family',
           phone: cleanNokPhone || cleanPhone,
           address: formData.address.trim() || 'Accra, Ghana',
@@ -335,14 +336,14 @@ export const CustomersPage: React.FC = () => {
       };
 
       // Multi-day split calculation for savings deposit (Days 1-30 are 100% savings, Day 31 is retention fee)
-      const currentDayCount = depositNum > 0 ? (splitPreview ? splitPreview.daysCovered : Math.floor(depositNum / chosenPackage)) : 0;
-      const totalDeposited = depositNum;
+      const currentDayCount = effectiveDeposit > 0 ? (splitPreview ? splitPreview.daysCovered : Math.floor(effectiveDeposit / chosenPackage)) : 0;
+      const totalDeposited = effectiveDeposit;
       const isDay31Reached = currentDayCount >= 31;
       const feeDeducted = isDay31Reached;
       const companyFeeAmount = isDay31Reached ? chosenPackage : 0;
-      const availableBalance = isDay31Reached ? Math.max(0, depositNum - chosenPackage) : depositNum;
+      const availableBalance = isDay31Reached ? Math.max(0, effectiveDeposit - chosenPackage) : effectiveDeposit;
 
-      const generatedSplits: DailySplitEntry[] = (depositNum > 0 && splitPreview?.entries && splitPreview.entries.length > 0)
+      const generatedSplits: DailySplitEntry[] = (effectiveDeposit > 0 && splitPreview?.entries && splitPreview.entries.length > 0)
         ? splitPreview.entries
         : (currentDayCount > 0
           ? Array.from({ length: currentDayCount }, (_, i) => ({
@@ -409,7 +410,7 @@ export const CustomersPage: React.FC = () => {
       const txs = getStoredTransactions();
       const newTxs: Transaction[] = [];
 
-      if (depositNum > 0) {
+      if (effectiveDeposit > 0) {
         const depTx: Transaction = {
           id: `tx-init-${Date.now()}`,
           referenceNo: `TX-INIT-${Date.now().toString().slice(-8)}`,
@@ -418,7 +419,7 @@ export const CustomersPage: React.FC = () => {
           account: newAcc,
           type: 'DEPOSIT',
           paymentMode: 'PHYSICAL_CASH',
-          amount: depositNum,
+          amount: effectiveDeposit,
           previousBal: 0,
           newBal: availableBalance,
           recordedBy: currentUser || undefined,
@@ -441,7 +442,7 @@ export const CustomersPage: React.FC = () => {
 
       addSystemNotification({
         title: `New Customer Onboarded: ${newCust.firstName} ${newCust.lastName}`,
-        message: `${newCust.firstName} ${newCust.lastName} (${newCust.customerNumber}) registered on GH₵ ${chosenPackage}/day package. Opening deposit: GH₵ ${depositNum.toFixed(2)}.`,
+        message: `${newCust.firstName} ${newCust.lastName} (${newCust.customerNumber}) registered on GH₵ ${chosenPackage}/day package. Opening deposit: GH₵ ${effectiveDeposit.toFixed(2)}.`,
         type: 'AUDIT',
         targetRoute: '/customers',
         roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'AUDITOR'],
@@ -450,7 +451,7 @@ export const CustomersPage: React.FC = () => {
       // Broadcast across all connected staff devices in real-time
       broadcastRealtimeEvent('CUSTOMER_CREATED', newCust);
       broadcastRealtimeEvent('ACCOUNT_OPENED', newAcc);
-      if (depositNum > 0 && newTxs.length > 0) {
+      if (effectiveDeposit > 0 && newTxs.length > 0) {
         broadcastRealtimeEvent('DEPOSIT_RECORDED', newTxs[0]);
       }
       broadcastRealtimeEvent('MANUAL_SYNC', {});
@@ -459,12 +460,13 @@ export const CustomersPage: React.FC = () => {
       // Close modal, clear search filter, and show new customer immediately
       setShowRegisterModal(false);
       setSearchTerm('');
+      setSelectedPackageFilter(null);
       setJustAddedId(newCustId);
       setSuccessBanner({
         customerName: `${newCust.firstName} ${newCust.lastName}`,
         customerNumber: newCustNo,
         packageRate: chosenPackage,
-        amountStartedWith: depositNum,
+        amountStartedWith: effectiveDeposit,
         availableSavings: availableBalance,
         companyFee: packageFee,
         daysCovered: currentDayCount,
@@ -1346,7 +1348,6 @@ export const CustomersPage: React.FC = () => {
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300">First Name *</label>
                   <input
-                    required
                     type="text"
                     value={formData.firstName}
                     onChange={(e) => updateFormField('firstName', e.target.value)}
@@ -1355,9 +1356,8 @@ export const CustomersPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Last Name *</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Last Name</label>
                   <input
-                    required
                     type="text"
                     value={formData.lastName}
                     onChange={(e) => updateFormField('lastName', e.target.value)}
@@ -1370,27 +1370,25 @@ export const CustomersPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 flex justify-between">
-                    <span>Ghana ID Number *</span>
-                    <span className="text-[10px] text-teal-600 dark:text-teal-400 font-mono">Numbers only</span>
+                    <span>Ghana ID Number</span>
+                    <span className="text-[10px] text-teal-600 dark:text-teal-400 font-mono">Numbers only (optional)</span>
                   </label>
                   <div className="mt-1">
                     <GhanaCardInput
-                      required
                       value={formData.ghanaCardNumber}
                       onChange={(val) => updateFormField('ghanaCardNumber', val)}
-                      placeholder="Enter Ghana ID (numbers only)"
+                      placeholder="Enter Ghana ID (or leave blank to auto-generate)"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 flex justify-between">
-                    <span>Phone Contact (10 Digits) *</span>
+                    <span>Phone Contact (10 Digits)</span>
                     <span className="text-[10px] text-amber-500 font-mono">e.g. 0241234567</span>
                   </label>
                   <div className="mt-1">
                     <GhanaPhoneInput
-                      required
                       value={formData.phone}
                       onChange={(phone) => updateFormField('phone', phone)}
                       placeholder="0241234567"
@@ -1401,9 +1399,8 @@ export const CustomersPage: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Occupation *</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Occupation</label>
                   <input
-                    required
                     type="text"
                     value={formData.occupation}
                     onChange={(e) => updateFormField('occupation', e.target.value)}
@@ -1412,9 +1409,8 @@ export const CustomersPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Residential Address *</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Residential Address</label>
                   <input
-                    required
                     type="text"
                     value={formData.address}
                     onChange={(e) => updateFormField('address', e.target.value)}
