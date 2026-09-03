@@ -14,7 +14,8 @@ import {
   CompanyInterestRecord,
   CompanyInterestWithdrawal,
   ApprovalRequest,
-  TransactorInfo
+  TransactorInfo,
+  PaymentMode
 } from '../types';
 import { broadcastRealtimeEvent } from './realtimeSync';
 
@@ -378,7 +379,7 @@ export const getStoredAccounts = (): Account[] => {
       splitsUpdated = true;
     }
 
-    const totalDepositedAll = Math.max(cycleDeposits, totalDepositTxSum, acc.currentBalance ? (acc.currentBalance + totalWithdrawn) : 0);
+    const totalDepositedAll = Math.max(cycleDeposits, totalDepositTxSum);
 
     const feeDeductions = (acc.dailyCycles || []).reduce(
       (sum, c) => sum + (c.feeDeducted ? (c.companyFeeAmount || c.dailyTargetAmount || 0) : 0),
@@ -1828,6 +1829,90 @@ export const recordPackageDeposit = (
   saveStoredAuditLogs([depositAuditLog, ...auditLogs]);
 
   return { updatedAccount: acc, transaction: newTx, splitResult };
+};
+
+/**
+ * Record a withdrawal or early savings-backed loan against a customer account
+ */
+export const recordWithdrawal = (
+  accountId: string,
+  amountWithdrawn: number,
+  officerUser: User,
+  paymentMode: PaymentMode = 'PHYSICAL_CASH',
+  remarks?: string,
+  transactor?: TransactorInfo
+): { updatedAccount: Account; transaction: Transaction } => {
+  const accounts = getStoredAccounts();
+  const accIndex = accounts.findIndex((a) => a.id === accountId);
+  if (accIndex === -1) throw new Error('Account not found');
+
+  const acc = { ...accounts[accIndex] };
+  const loanInfo = getMaxWithdrawableLoan(acc);
+
+  if (amountWithdrawn > loanInfo.maxLoanAmount) {
+    throw new Error(
+      `Withdrawal/Loan exceeds allowable limit!\n\n` +
+      `• Total Savings Balance: GH₵ ${acc.availableBalance.toFixed(2)}\n` +
+      `• Protected 1-Day Retention Fee: GH₵ ${loanInfo.protectedRetentionFee.toFixed(2)}\n` +
+      `• Maximum Allowable Withdrawal Loan: GH₵ ${loanInfo.maxLoanAmount.toFixed(2)}\n\n` +
+      `The company 1-day retention fee is safeguarded and cannot be eaten into.`
+    );
+  }
+
+  const previousBal = toDecimal(acc.availableBalance);
+  const newBal = Math.max(0, toDecimal(previousBal - amountWithdrawn));
+  const newCurrentBal = Math.max(0, toDecimal(acc.currentBalance - amountWithdrawn));
+
+  acc.availableBalance = newBal;
+  acc.currentBalance = newCurrentBal;
+
+  const newTx: Transaction = {
+    id: `tx-with-${Date.now()}`,
+    referenceNo: `TX-WITH-${Date.now().toString().slice(-8)}`,
+    receiptNo: `RCP-WITH-${Date.now().toString().slice(-8)}`,
+    accountId: acc.id,
+    account: acc,
+    type: 'WITHDRAWAL',
+    paymentMode,
+    amount: toDecimal(amountWithdrawn),
+    previousBal,
+    newBal,
+    recordedBy: officerUser,
+    remarks: remarks || `Withdrawal loan against savings (Protected fee: GH₵ ${loanInfo.protectedRetentionFee.toFixed(2)})`,
+    createdAt: new Date().toISOString(),
+    transactor,
+  };
+
+  const existingTxs = getStoredTransactions();
+  saveStoredTransactions([newTx, ...existingTxs]);
+
+  accounts[accIndex] = acc;
+  saveStoredAccounts(accounts);
+
+  // Log directly into Immutable Audit Trail
+  const auditLogs = getStoredAuditLogs();
+  const officerTag = officerUser ? `${officerUser.firstName} ${officerUser.lastName} (${(officerUser.role || 'TELLER').replace(/_/g, ' ')})` : 'Authorized Officer';
+  const custName = acc.customer ? `${acc.customer.firstName} ${acc.customer.lastName}` : 'Client';
+  const transactorTag = transactor ? `Transactor: ${transactor.fullName} (${transactor.relationship})` : 'Self';
+
+  const withdrawalAuditLog: AuditLog = {
+    id: `audit-with-${Date.now()}`,
+    userId: officerUser?.id || 'staff-active',
+    userEmail: officerUser?.email || 'teller@erikon.com',
+    userRole: officerUser?.role || 'TELLER',
+    branchName: officerUser?.branch?.name || 'Accra Central Main Branch',
+    action: 'WITHDRAWAL_EXECUTED',
+    resource: 'TRANSACTION',
+    newValue: `Withdrawal of GH₵ ${amountWithdrawn.toFixed(2)} [Ref: ${newTx.referenceNo}, Receipt: ${newTx.receiptNo}] executed for customer ${custName} (Acc: ${acc.accountNumber}). ${transactorTag}. Remaining Available Balance: GH₵ ${acc.availableBalance.toFixed(2)}. Officer: ${officerTag}.`,
+    ipAddress: '127.0.0.1',
+    createdAt: newTx.createdAt,
+  };
+  saveStoredAuditLogs([withdrawalAuditLog, ...auditLogs]);
+
+  broadcastRealtimeEvent('WITHDRAWAL_RECORDED', newTx);
+  import('./cloudSync').then((m) => m.pushLocalToCloud()).catch(() => {});
+
+  return { updatedAccount: acc, transaction: newTx };
 };
 
 /**

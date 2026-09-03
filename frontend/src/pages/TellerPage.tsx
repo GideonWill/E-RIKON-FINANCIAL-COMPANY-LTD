@@ -7,6 +7,7 @@ import {
   saveStoredTransactions,
   accumulateCompanyInterest,
   recordPackageDeposit,
+  recordWithdrawal,
   splitPaymentIntoDays,
   getMaxWithdrawableLoan,
   getStoredCompanyInterest,
@@ -329,75 +330,52 @@ export const TellerPage: React.FC = () => {
         return;
       }
 
-      const previousBal = selectedAccount.availableBalance;
-      const newBal = toDecimal(previousBal - numAmount);
+      try {
+        const previousCurrent = selectedAccount.currentBalance;
+        const { updatedAccount, transaction } = recordWithdrawal(
+          selectedAccount.id,
+          numAmount,
+          tellerUser,
+          paymentMode,
+          remarks || `Withdrawal loan against savings (Protected fee: GH₵ ${loanInfo.protectedRetentionFee.toFixed(2)})`,
+          transactorInfo
+        );
 
-      const updatedAcc = {
-        ...selectedAccount,
-        availableBalance: newBal,
-        currentBalance: toDecimal(selectedAccount.currentBalance - numAmount),
-      };
+        setSelectedAccount(updatedAccount);
+        setAccounts(getStoredAccounts());
+        setPrintedTx(transaction);
 
-      const newTx: Transaction = {
-        id: `tx-with-${Date.now()}`,
-        referenceNo: `TX-WITH-${Date.now().toString().slice(-8)}`,
-        receiptNo: `RCP-WITH-${Date.now().toString().slice(-8)}`,
-        accountId: selectedAccount.id,
-        account: updatedAcc,
-        type: 'WITHDRAWAL',
-        paymentMode,
-        amount: numAmount,
-        previousBal,
-        newBal,
-        recordedBy: tellerUser,
-        remarks: remarks || `Withdrawal loan against savings (Protected fee: GH₵ ${loanInfo.protectedRetentionFee.toFixed(2)})`,
-        createdAt: new Date().toISOString(),
-        transactor: transactorInfo,
-      };
+        addSystemNotification({
+          title: `Withdrawal Executed: GH₵ ${numAmount.toFixed(2)}`,
+          message: `GH₵ ${numAmount.toFixed(2)} withdrawn for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship}).`,
+          type: 'DEPOSIT',
+          targetRoute: '/customers',
+          roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
+        });
 
-      const freshAccs = getStoredAccounts();
-      const idx = freshAccs.findIndex((a) => a.id === selectedAccount.id);
-      if (idx !== -1) {
-        freshAccs[idx] = updatedAcc;
-        saveStoredAccounts(freshAccs);
+        const successInfo: TransactionSuccessDetails = {
+          type: 'WITHDRAWAL',
+          customerName: `${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}`,
+          accountNumber: selectedAccount.accountNumber,
+          amount: numAmount,
+          previousBalance: previousCurrent,
+          newBalance: updatedAccount.currentBalance,
+          newAvailableBalance: updatedAccount.availableBalance,
+          transactor: transactorInfo,
+          referenceNo: transaction.referenceNo,
+          receiptNo: transaction.receiptNo || `RCP-${Date.now()}`,
+          packageRate: selectedAccount.savingsPackage || 20,
+          transaction,
+        };
+        setTransactionSuccess(successInfo);
+
+        setSuccessMessage(
+          `✅ Withdrawal of GHS ${numAmount.toFixed(2)} completed for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship})!`
+        );
+      } catch (err: any) {
+        alert(err.message || 'Error processing withdrawal');
+        return;
       }
-
-      const txs = getStoredTransactions();
-      saveStoredTransactions([newTx, ...txs]);
-
-      setSelectedAccount(updatedAcc);
-      setAccounts(freshAccs);
-      setPrintedTx(newTx);
-      broadcastRealtimeEvent('WITHDRAWAL_RECORDED', newTx);
-      pushLocalToCloud().catch(() => {});
-
-      addSystemNotification({
-        title: `Withdrawal Executed: GH₵ ${numAmount.toFixed(2)}`,
-        message: `GH₵ ${numAmount.toFixed(2)} withdrawn for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship}).`,
-        type: 'DEPOSIT',
-        targetRoute: '/customers',
-        roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
-      });
-
-      const successInfo: TransactionSuccessDetails = {
-        type: 'WITHDRAWAL',
-        customerName: `${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}`,
-        accountNumber: selectedAccount.accountNumber,
-        amount: numAmount,
-        previousBalance: selectedAccount.currentBalance,
-        newBalance: updatedAcc.currentBalance,
-        newAvailableBalance: updatedAcc.availableBalance,
-        transactor: transactorInfo,
-        referenceNo: newTx.referenceNo,
-        receiptNo: newTx.receiptNo || `RCP-${Date.now()}`,
-        packageRate: selectedAccount.savingsPackage || 20,
-        transaction: newTx,
-      };
-      setTransactionSuccess(successInfo);
-
-      setSuccessMessage(
-        `✅ Withdrawal of GHS ${numAmount.toFixed(2)} completed for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship})!`
-      );
     }
 
     setAmount('100');
