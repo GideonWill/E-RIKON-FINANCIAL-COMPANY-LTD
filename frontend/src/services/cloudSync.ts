@@ -179,7 +179,7 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
   const deletedCustIds = getDeletedCustomerIds();
   const deletedUserEmails = (getDeletedUserEmails() || []).map((e) => e.toLowerCase());
 
-  // 1. Authoritative Registered Users Sync (Strictly purge any deleted users)
+  // 1. Authoritative Registered Users Sync (Lossless Merge)
   if (Array.isArray(cloudData.registeredUsers)) {
     const cleanUsers = cloudData.registeredUsers.filter(
       (u) => !deletedUserEmails.includes((u.email || '').toLowerCase()) && 
@@ -190,13 +190,31 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
              !deletedUserEmails.includes((u.id || '').toLowerCase())
     );
 
-    if (JSON.stringify(cleanUsers) !== JSON.stringify(localUsers)) {
-      saveRegisteredUsers(cleanUsers);
+    const userMap = new Map<string, RegisteredUserRecord>();
+    localUsers.forEach((u) => {
+      const key = (u.email || u.id || '').toLowerCase();
+      if (key) userMap.set(key, u);
+    });
+    cleanUsers.forEach((u) => {
+      const key = (u.email || u.id || '').toLowerCase();
+      if (key) {
+        const existing = userMap.get(key);
+        userMap.set(key, { ...existing, ...u });
+      }
+    });
+
+    const mergedUsers = Array.from(userMap.values()).filter(
+      (u) => !deletedUserEmails.includes((u.email || '').toLowerCase()) && 
+             !deletedUserEmails.includes((u.id || '').toLowerCase())
+    );
+
+    if (JSON.stringify(mergedUsers) !== JSON.stringify(localUsers)) {
+      saveRegisteredUsers(mergedUsers);
       hasUpdates = true;
     }
   }
 
-  // 2. Authoritative Approvals Sync
+  // 2. Authoritative Approvals Sync (Lossless Merge)
   if (Array.isArray(cloudData.approvals)) {
     const cleanCloudApprovals = cloudData.approvals.filter(
       (a) => !deletedCustIds.includes(a.targetId || '') && 
@@ -213,7 +231,6 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     localApprovals.forEach((a) => apprMap.set(a.id, a));
     cleanCloudApprovals.forEach((a) => {
       const existing = apprMap.get(a.id);
-      // If local already resolved (APPROVED / REJECTED) and incoming is PENDING, keep local decision!
       if (existing && (existing.status === 'APPROVED' || existing.status === 'REJECTED') && a.status === 'PENDING') {
         apprMap.set(a.id, existing);
       } else {
@@ -233,7 +250,7 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     }
   }
 
-  // 3. Merged Authoritative Customers Sync (Strictly purge deleted customers across devices)
+  // 3. Merged Authoritative Customers Sync (Lossless Merge: Preserve Local Unsynced + Cloud)
   if (Array.isArray(cloudData.customers)) {
     const cleanCloudCust = cloudData.customers.filter(
       (c) => !deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)
@@ -242,13 +259,41 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       (c) => !deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)
     );
 
-    if (JSON.stringify(cleanCloudCust) !== JSON.stringify(localCust)) {
-      saveStoredCustomers(cleanCloudCust);
+    const custMap = new Map<string, any>();
+    // First index local customers
+    localCust.forEach((c) => {
+      if (c.id) custMap.set(c.id, c);
+      if (c.customerNumber) custMap.set(c.customerNumber, c);
+    });
+    // Then merge cloud customers without dropping new local ones
+    cleanCloudCust.forEach((c) => {
+      const existing = (c.id && custMap.get(c.id)) || (c.customerNumber && custMap.get(c.customerNumber));
+      const mergedRecord = { ...existing, ...c };
+      if (c.id) custMap.set(c.id, mergedRecord);
+      if (c.customerNumber) custMap.set(c.customerNumber, mergedRecord);
+    });
+
+    // Deduplicate by ID
+    const uniqueIds = new Set<string>();
+    const mergedCust = Array.from(custMap.values())
+      .filter((c) => {
+        if (!c.id || uniqueIds.has(c.id) || deletedCustIds.includes(c.id) || deletedCustIds.includes(c.customerNumber)) return false;
+        uniqueIds.add(c.id);
+        return true;
+      });
+
+    if (JSON.stringify(mergedCust) !== JSON.stringify(localCust)) {
+      saveStoredCustomers(mergedCust);
       hasUpdates = true;
+    }
+
+    // If local has more customers than cloud payload, push to cloud immediately so Firestore learns about them
+    if (mergedCust.length > cleanCloudCust.length) {
+      setTimeout(() => pushLocalToCloud(), 100);
     }
   }
 
-  // 4. Merged Authoritative Accounts Sync
+  // 4. Merged Authoritative Accounts Sync (Lossless Merge: Preserve Local Unsynced + Cloud)
   if (Array.isArray(cloudData.accounts)) {
     const cleanCloudAcc = cloudData.accounts.filter(
       (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
@@ -257,13 +302,37 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
     );
 
-    if (JSON.stringify(cleanCloudAcc) !== JSON.stringify(localAcc)) {
-      saveStoredAccounts(cleanCloudAcc);
+    const accMap = new Map<string, any>();
+    localAcc.forEach((a) => {
+      if (a.id) accMap.set(a.id, a);
+      if (a.customerId) accMap.set(`cust-${a.customerId}`, a);
+    });
+    cleanCloudAcc.forEach((a) => {
+      const existing = (a.id && accMap.get(a.id)) || (a.customerId && accMap.get(`cust-${a.customerId}`));
+      const mergedRecord = { ...existing, ...a };
+      if (a.id) accMap.set(a.id, mergedRecord);
+      if (a.customerId) accMap.set(`cust-${a.customerId}`, mergedRecord);
+    });
+
+    const uniqueAccIds = new Set<string>();
+    const mergedAcc = Array.from(accMap.values())
+      .filter((a) => {
+        if (!a.id || uniqueAccIds.has(a.id) || deletedCustIds.includes(a.customerId) || deletedCustIds.includes(a.id)) return false;
+        uniqueAccIds.add(a.id);
+        return true;
+      });
+
+    if (JSON.stringify(mergedAcc) !== JSON.stringify(localAcc)) {
+      saveStoredAccounts(mergedAcc);
       hasUpdates = true;
+    }
+
+    if (mergedAcc.length > cleanCloudAcc.length) {
+      setTimeout(() => pushLocalToCloud(), 100);
     }
   }
 
-  // 5. Merged Authoritative Transactions Sync
+  // 5. Merged Authoritative Transactions Sync (Lossless Merge)
   if (Array.isArray(cloudData.transactions)) {
     const localTx = getStoredTransactions();
     const txMap = new Map<string, any>();
@@ -285,7 +354,7 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     }
   }
 
-  // 6. Merged Authoritative Loans Sync
+  // 6. Merged Authoritative Loans Sync (Lossless Merge)
   if (Array.isArray(cloudData.loans)) {
     const cleanLoans = cloudData.loans.filter(
       (l) => !deletedCustIds.includes(l.customerId) && !deletedCustIds.includes(l.id)
@@ -294,8 +363,21 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       (l) => !deletedCustIds.includes(l.customerId) && !deletedCustIds.includes(l.id)
     );
 
-    if (JSON.stringify(cleanLoans) !== JSON.stringify(localLoans)) {
-      saveStoredLoans(cleanLoans);
+    const loanMap = new Map<string, any>();
+    localLoans.forEach((l) => {
+      if (l.id) loanMap.set(l.id, l);
+    });
+    cleanLoans.forEach((l) => {
+      const existing = loanMap.get(l.id);
+      loanMap.set(l.id, { ...existing, ...l });
+    });
+
+    const mergedLoans = Array.from(loanMap.values()).filter(
+      (l) => !deletedCustIds.includes(l.customerId) && !deletedCustIds.includes(l.id)
+    );
+
+    if (JSON.stringify(mergedLoans) !== JSON.stringify(localLoans)) {
+      saveStoredLoans(mergedLoans);
       hasUpdates = true;
     }
   }
@@ -344,11 +426,20 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     }
   }
 
-  // 9. Authoritative Audit Logs Sync
+  // 9. Authoritative Audit Logs Sync (Lossless Merge)
   if (Array.isArray(cloudData.auditLogs)) {
     const localLogs = getStoredAuditLogs();
-    if (cloudData.auditLogs.length !== localLogs.length || JSON.stringify(cloudData.auditLogs) !== JSON.stringify(localLogs)) {
-      saveStoredAuditLogs(cloudData.auditLogs);
+    const logMap = new Map<string, any>();
+    localLogs.forEach((l) => {
+      if (l.id) logMap.set(l.id, l);
+    });
+    cloudData.auditLogs.forEach((l) => {
+      if (l.id) logMap.set(l.id, l);
+    });
+
+    const mergedLogs = Array.from(logMap.values());
+    if (mergedLogs.length !== localLogs.length || JSON.stringify(mergedLogs) !== JSON.stringify(localLogs)) {
+      saveStoredAuditLogs(mergedLogs);
       hasUpdates = true;
     }
   }

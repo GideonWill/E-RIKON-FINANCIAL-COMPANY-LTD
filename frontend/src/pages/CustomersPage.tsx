@@ -391,15 +391,15 @@ export const CustomersPage: React.FC = () => {
       newCust.accounts = [newAcc];
 
       // Save accounts and customers
-      const existingAccs = getStoredAccounts();
-      const updatedAccs = [newAcc, ...existingAccs.filter((a) => a.id !== newAcc.id && a.customerId !== newCust.id)];
-      saveStoredAccounts(updatedAccs);
-      setAccounts(updatedAccs);
-
-      const currentCusts = getStoredCustomers();
-      const updatedCusts = [newCust, ...currentCusts.filter(c => c.id !== newCust.id)];
+      const freshCusts = getStoredCustomers();
+      const updatedCusts = [newCust, ...freshCusts.filter(c => c.id !== newCust.id)];
       saveStoredCustomers(updatedCusts);
       setCustomers(updatedCusts);
+
+      const freshAccs = getStoredAccounts();
+      const updatedAccs = [newAcc, ...freshAccs.filter((a) => a.id !== newAcc.id && a.customerId !== newCust.id)];
+      saveStoredAccounts(updatedAccs);
+      setAccounts(updatedAccs);
 
       // Accumulate company interest only if Day 31 was reached
       if (isDay31Reached) {
@@ -460,7 +460,7 @@ export const CustomersPage: React.FC = () => {
       // Close modal, clear search filter, and show new customer immediately
       setShowRegisterModal(false);
       setSearchTerm('');
-      setSelectedPackageFilter(null);
+      handleSelectPackageFilter(null);
       setJustAddedId(newCustId);
       setSuccessBanner({
         customerName: `${newCust.firstName} ${newCust.lastName}`,
@@ -742,24 +742,24 @@ export const CustomersPage: React.FC = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 via-slate-800 to-slate-900 border-2 border-amber-500/40 shadow-sm flex items-center justify-center font-mono font-black text-amber-500 text-lg shrink-0 group-hover:scale-105 transition-transform">
-                      {cust.firstName[0]}{cust.lastName[0]}
+                      {((cust.firstName || 'C')[0] || 'C').toUpperCase()}{((cust.lastName || cust.firstName || 'U')[0] || 'U').toUpperCase()}
                     </div>
                     <div>
                       <div className="text-[11px] font-mono text-amber-500 font-extrabold flex items-center gap-2">
-                        <span>{cust.customerNumber}</span>
+                        <span>{cust.customerNumber || 'CUST-2026'}</span>
                         <span className="text-[10px] text-slate-400 font-normal">• {fin.acc?.accountNumber || 'ACC-SAVINGS'}</span>
                       </div>
                       <h3 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight group-hover:text-amber-500 transition-colors">
-                        {cust.firstName} {cust.otherNames || ''} {cust.lastName}
+                        {cust.firstName || ''} {cust.otherNames ? `${cust.otherNames} ` : ''}{cust.lastName || ''}
                       </h3>
                       <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
-                        <Briefcase className="w-3.5 h-3.5 text-slate-400" /> {cust.occupation}
+                        <Briefcase className="w-3.5 h-3.5 text-slate-400" /> {cust.occupation || 'Trader / Self Employed'}
                       </div>
                     </div>
                   </div>
 
                   <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3" /> {cust.status}
+                    <ShieldCheck className="w-3 h-3" /> {cust.status || 'VERIFIED'}
                   </span>
                 </div>
 
