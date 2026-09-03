@@ -512,6 +512,11 @@ export const saveStoredAuditLogs = (logs: AuditLog[]) => {
 export const clearStoredAuditLogs = () => {
   localStorage.setItem('erikon_audit_logs', JSON.stringify([]));
   broadcastRealtimeEvent('AUDIT_LOG_RECORDED', []);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('erikon_realtime_update', { detail: { type: 'AUDIT_LOG_RECORDED' } }));
+    window.dispatchEvent(new CustomEvent('erikon_cloud_synced', { detail: { timestamp: new Date().toISOString() } }));
+  }
+  import('./cloudSync').then((m) => m.pushLocalToCloud({ isReset: true })).catch(() => {});
 };
 
 /**

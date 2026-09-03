@@ -84,25 +84,28 @@ export const AuditPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          {currentUser?.role === 'SUPER_ADMIN' && (
+          {(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'AUDITOR' || currentUser?.role === 'ADMIN') && (
             <>
-              <button
-                type="button"
-                onClick={handleClearAllAcrossRoles}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-600 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-xs transition-all cursor-pointer"
-                title="Wipe all dummy/test records across Super Admin, Field Officer, Teller, Auditor, and Admin"
-              >
-                <RefreshCcw className="w-3.5 h-3.5" />
-                Clear All Across Roles
-              </button>
+              {currentUser?.role === 'SUPER_ADMIN' && (
+                <button
+                  type="button"
+                  onClick={handleClearAllAcrossRoles}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-600 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-xs transition-all cursor-pointer"
+                  title="Wipe all dummy/test records across Super Admin, Field Officer, Teller, Auditor, and Admin"
+                >
+                  <RefreshCcw className="w-3.5 h-3.5" />
+                  Clear All Across Roles
+                </button>
+              )}
               {logs.length > 0 && (
                 <button
                   type="button"
                   onClick={handleClearAuditLogs}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/40 bg-rose-500/15 hover:bg-rose-500/30 text-rose-500 text-xs font-black transition-all cursor-pointer"
+                  title="Clear all immutable audit trail logs"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  Clear Logs
+                  Clear Audit Trail
                 </button>
               )}
             </>

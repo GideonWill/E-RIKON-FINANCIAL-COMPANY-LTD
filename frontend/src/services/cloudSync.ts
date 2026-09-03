@@ -44,6 +44,7 @@ export interface CloudVaultPayload {
   auditLogs?: any[];
   deletedCustomerIds?: string[];
   deletedUserEmails?: string[];
+  isReset?: boolean;
   updatedAt?: string;
 }
 
@@ -92,7 +93,7 @@ const getSyncEndpoints = (): string[] => {
 /**
  * Pushes all local storage state to all reachable central cloud sync endpoints
  */
-export const pushLocalToCloud = async (): Promise<boolean> => {
+export const pushLocalToCloud = async (options?: { isReset?: boolean }): Promise<boolean> => {
   if (isPushing) {
     pushPending = true;
     return false;
@@ -112,6 +113,7 @@ export const pushLocalToCloud = async (): Promise<boolean> => {
     auditLogs: getStoredAuditLogs(),
     deletedCustomerIds: getDeletedCustomerIds(),
     deletedUserEmails: getDeletedUserEmails(),
+    isReset: options?.isReset || false,
     updatedAt: new Date().toISOString(),
   };
 
@@ -389,15 +391,8 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
   // 9. Authoritative Audit Logs Sync
   if (Array.isArray(cloudData.auditLogs)) {
     const localLogs = getStoredAuditLogs();
-    const logMap = new Map<string, any>();
-    localLogs.forEach((l) => { if (l.id) logMap.set(l.id, l); });
-    cloudData.auditLogs.forEach((l) => {
-      const existing = logMap.get(l.id);
-      logMap.set(l.id, { ...existing, ...l });
-    });
-    const mergedLogs = Array.from(logMap.values());
-    if (mergedLogs.length !== localLogs.length || JSON.stringify(mergedLogs) !== JSON.stringify(localLogs)) {
-      saveStoredAuditLogs(mergedLogs);
+    if (JSON.stringify(cloudData.auditLogs) !== JSON.stringify(localLogs)) {
+      saveStoredAuditLogs(cloudData.auditLogs);
       hasUpdates = true;
     }
   }
