@@ -444,6 +444,7 @@ export const LoansPage: React.FC = () => {
               return (
                 <div
                   key={loan.id}
+                  id={`loan-card-${loan.id}`}
                   onClick={() => setSelectedLoan(loan)}
                   className={`p-5 rounded-3xl border cursor-pointer transition-all ${
                     isSelected
