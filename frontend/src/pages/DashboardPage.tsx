@@ -115,7 +115,7 @@ export const DashboardPage: React.FC = () => {
     return sum + Math.max(a.currentBalance || 0, cycleTotal, splitsTotal);
   }, 0);
 
-  const totalDepositsSum = Math.max(txDepositsSum, accountDepositsSum, 100);
+  const totalDepositsSum = Math.max(txDepositsSum, accountDepositsSum);
 
   const currentMonthName = new Date().toLocaleString('en-US', { month: 'short' });
   const chartData = [
@@ -362,7 +362,7 @@ export const DashboardPage: React.FC = () => {
                   stroke="#94a3b8" 
                   fontSize={11} 
                   tickLine={false} 
-                  domain={[0, (dataMax: number) => Math.max(120, Math.ceil(dataMax * 1.3))]}
+                  domain={[0, (dataMax: number) => dataMax > 0 ? Math.ceil(dataMax * 1.25) : 100]}
                   tickFormatter={(val) => val >= 1000 ? `GHS ${(val/1000).toFixed(val % 1000 === 0 ? 0 : 1)}k` : `GHS ${val}`} 
                 />
                 <Tooltip 
