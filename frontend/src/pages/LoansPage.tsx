@@ -15,6 +15,7 @@ import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
 import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
 import { pushLocalToCloud } from '../services/cloudSync';
 import { useAuth } from '../contexts/AuthContext';
+import { addSystemNotification } from '../components/ui/NotificationsModal';
 import { 
   Calculator, 
   PlusCircle, 
@@ -175,6 +176,17 @@ export const LoansPage: React.FC = () => {
     saveStoredLoans(updatedLoans);
     broadcastRealtimeEvent('LOAN_CREATED', newLoan);
     pushLocalToCloud().catch(() => {});
+
+    addSystemNotification({
+      title: `Loan Applied: GH₵ ${Number(newLoan.amountRequested).toFixed(2)}`,
+      message: `${newLoan.customer?.firstName} ${newLoan.customer?.lastName} applied for ER-Fast Loan ${newLoan.applicationNo}. Officer: ${currentUser?.firstName || 'Staff'}.`,
+      type: 'LOAN',
+      targetRoute: '/loans',
+      targetState: { loanId: newLoan.id },
+      targetSectionId: `loan-card-${newLoan.id}`,
+      roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+    });
+
     setShowApplyModal(false);
   };
 
@@ -186,6 +198,20 @@ export const LoansPage: React.FC = () => {
     saveStoredLoans(updatedLoans);
     broadcastRealtimeEvent('LOAN_APPROVED', { loanId });
     pushLocalToCloud().catch(() => {});
+
+    const targetLoan = loans.find((l) => l.id === loanId);
+    if (targetLoan) {
+      addSystemNotification({
+        title: `Loan Approved: GH₵ ${Number(targetLoan.amountApproved || targetLoan.amountRequested).toFixed(2)}`,
+        message: `ER-Fast Loan ${targetLoan.applicationNo} for ${targetLoan.customer?.firstName} ${targetLoan.customer?.lastName} approved by ${currentUser?.firstName || 'Staff'}.`,
+        type: 'LOAN',
+        targetRoute: '/loans',
+        targetState: { loanId },
+        targetSectionId: `loan-card-${loanId}`,
+        roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+      });
+    }
+
     if (selectedLoan?.id === loanId) {
       setSelectedLoan({ ...selectedLoan, status: 'APPROVED' });
     }
@@ -233,6 +259,17 @@ export const LoansPage: React.FC = () => {
     saveStoredTransactions([newTx, ...getStoredTransactions()]);
     broadcastRealtimeEvent('LOAN_DISBURSED', { loanId, newTx });
     pushLocalToCloud().catch(() => {});
+
+    const txMonth = newTx.createdAt ? newTx.createdAt.slice(0, 7) : new Date().toISOString().slice(0, 7);
+    addSystemNotification({
+      title: `Loan Disbursed: GH₵ ${Number(loanToDisburse.amountRequested).toFixed(2)}`,
+      message: `Disbursed to ${loanToDisburse.customer?.firstName} ${loanToDisburse.customer?.lastName} (${newTx.receiptNo}). Disbursed by: ${currentUser?.firstName || 'Staff'}.`,
+      type: 'LOAN',
+      targetRoute: '/reports',
+      targetState: { accountId: targetAcc.id, customerId: targetAcc.customerId, month: txMonth, txId: newTx.id },
+      targetSectionId: `statement-row-${newTx.id}`,
+      roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+    });
   };
 
   const handleRecordRepaymentSubmit = (e: React.FormEvent) => {
@@ -297,6 +334,18 @@ export const LoansPage: React.FC = () => {
     saveStoredTransactions([newTx, ...getStoredTransactions()]);
     broadcastRealtimeEvent('LOAN_REPAYMENT_RECORDED', { loanId: selectedLoan.id, newTx });
     pushLocalToCloud().catch(() => {});
+
+    const repMonth = newTx.createdAt ? newTx.createdAt.slice(0, 7) : new Date().toISOString().slice(0, 7);
+    addSystemNotification({
+      title: `Loan Repayment: GH₵ ${paidAmt.toFixed(2)}`,
+      message: `Repayment received for ${selectedLoan.customer?.firstName} ${selectedLoan.customer?.lastName} (${selectedLoan.applicationNo}). Balance left: GH₵ ${newBal.toFixed(2)}. Recorded by: ${currentUser?.firstName || 'Staff'}.`,
+      type: 'LOAN',
+      targetRoute: '/reports',
+      targetState: { accountId: targetAcc.id, customerId: targetAcc.customerId, month: repMonth, txId: newTx.id },
+      targetSectionId: `statement-row-${newTx.id}`,
+      roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+    });
+
     setShowRepayModal(false);
     setPrintedTx(newTx);
   };

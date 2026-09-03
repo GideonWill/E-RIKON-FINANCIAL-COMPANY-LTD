@@ -527,8 +527,20 @@ export const CustomersPage: React.FC = () => {
         targetRoute: '/customers',
         targetState: { customerId: newCust.id, openDrawer: true },
         targetSectionId: `customer-card-${newCust.id}`,
-        roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'AUDITOR'],
+        roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
       });
+
+      if (effectiveDeposit > 0 && newTxs.length > 0) {
+        addSystemNotification({
+          title: `Initial Deposit: GH₵ ${effectiveDeposit.toFixed(2)}`,
+          message: `GH₵ ${effectiveDeposit.toFixed(2)} initial deposit for newly onboarded client ${newCust.firstName} ${newCust.lastName}. Recorded by: ${currentUser?.firstName || 'Staff'}.`,
+          type: 'DEPOSIT',
+          targetRoute: '/reports',
+          targetState: { accountId: newAcc.id, customerId: newCust.id, month: new Date().toISOString().slice(0, 7), txId: newTxs[0].id },
+          targetSectionId: `statement-row-${newTxs[0].id}`,
+          roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+        });
+      }
 
       // Broadcast across all connected staff devices in real-time
       broadcastRealtimeEvent('CUSTOMER_CREATED', newCust);

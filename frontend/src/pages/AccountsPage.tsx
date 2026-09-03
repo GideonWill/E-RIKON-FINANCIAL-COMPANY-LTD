@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { getStoredAccounts, getStoredTransactions, deleteCustomerRecord, startNewCycleForAccount } from '../services/api';
 import { useRealtimeSync } from '../services/realtimeSync';
 import { useAuth } from '../contexts/AuthContext';
+import { addSystemNotification } from '../components/ui/NotificationsModal';
 import { Account } from '../types';
 import { 
   Wallet, 
@@ -397,6 +398,7 @@ export const AccountsPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => {
+                            const nextNo = (cycles[0]?.cycleNumber || 1) + 1;
                             startNewCycleForAccount(selectedAccount.id, currentUser || undefined);
                             const fresh = getStoredAccounts();
                             setAccounts(fresh);
@@ -405,6 +407,16 @@ export const AccountsPage: React.FC = () => {
                               setSelectedAccount(updated);
                               setSelectedCycleNumber(updated.dailyCycles?.[0]?.cycleNumber || null);
                             }
+
+                            addSystemNotification({
+                              title: `New Cycle Started: Cycle #${nextNo}`,
+                              message: `Cycle #${nextNo} initiated for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} (${selectedAccount.accountNumber}). Started by: ${currentUser?.firstName || 'Staff'}.`,
+                              type: 'CYCLE',
+                              targetRoute: '/accounts',
+                              targetState: { accountId: selectedAccount.id },
+                              targetSectionId: `account-card-${selectedAccount.id}`,
+                              roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+                            });
                           }}
                           className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-white text-[11px] font-black shrink-0 flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer transition-all"
                           title="Start Next 31-Day Cycle"

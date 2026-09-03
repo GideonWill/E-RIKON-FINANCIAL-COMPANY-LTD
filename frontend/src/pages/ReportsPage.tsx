@@ -37,7 +37,8 @@ import {
   Table,
   ShieldCheck,
   AlertCircle,
-  User
+  User,
+  Search
 } from 'lucide-react';
 
 export const ReportsPage: React.FC = () => {
@@ -65,18 +66,19 @@ export const ReportsPage: React.FC = () => {
   };
 
   // Statement Generator State
-  const [selectedAccountId, setSelectedAccountId] = useState<string>(accounts[0]?.id || '');
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('ALL');
+  const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
   const [selectedCycleNumber, setSelectedCycleNumber] = useState<number>(1);
-  const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonthKey());
+  const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [isStatementPdfModalOpen, setIsStatementPdfModalOpen] = useState(false);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [emailRecipient, setEmailRecipient] = useState<string>('');
   const [isEmailCopied, setIsEmailCopied] = useState(false);
   const [dispatchStatus, setDispatchStatus] = useState<string | null>(null);
 
-  // Sync selectedAccountId if accounts change
+  // Sync selectedAccountId if accounts change (preserve 'ALL' if user chose consolidated view)
   useEffect(() => {
-    if (accounts.length > 0 && (!selectedAccountId || !accounts.some((a) => a.id === selectedAccountId))) {
+    if (accounts.length > 0 && selectedAccountId !== 'ALL' && !accounts.some((a) => a.id === selectedAccountId)) {
       setSelectedAccountId(accounts[0].id);
     }
   }, [accounts, selectedAccountId]);
@@ -129,11 +131,14 @@ export const ReportsPage: React.FC = () => {
     }
   }, [location.key, location.state, accounts, transactions, navigate, location.pathname, location.search]);
 
-  const selectedAccount: Account | undefined = accounts.find((a) => a.id === selectedAccountId) || accounts[0];
+  const isAllAccounts = selectedAccountId === 'ALL';
+  const selectedAccount: Account | undefined = isAllAccounts ? undefined : (accounts.find((a) => a.id === selectedAccountId) || accounts[0]);
   
   // Dynamically resolve client package rate and label based on the specific chosen client account
   const packageRate = selectedAccount?.savingsPackage || 0;
-  const clientPackageLabel = selectedAccount 
+  const clientPackageLabel = isAllAccounts
+    ? 'All Registered Clients (Consolidated)'
+    : selectedAccount 
     ? (selectedAccount.savingsPackage 
         ? `GH₵ ${selectedAccount.savingsPackage}.00 / Day`
         : selectedAccount.type 
@@ -267,6 +272,7 @@ export const ReportsPage: React.FC = () => {
   // Month Options List (Current & Full Calendar)
   const currentKey = getCurrentMonthKey();
   const baseMonthOptions = [
+    { value: 'ALL', label: '📅 All Periods (Complete History)' },
     { value: '2026-09', label: 'September 2026' },
     { value: '2026-08', label: 'August 2026' },
     { value: '2026-07', label: 'July 2026' },
@@ -286,6 +292,7 @@ export const ReportsPage: React.FC = () => {
     : [{ value: currentKey, label: new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' }) }, ...baseMonthOptions];
 
   const getMonthTitle = (m: string) => {
+    if (m === 'ALL') return 'All Historical Periods';
     const found = MONTH_OPTIONS.find((opt) => opt.value === m);
     if (found) return found.label;
     const [y, mon] = m.split('-');
@@ -294,18 +301,53 @@ export const ReportsPage: React.FC = () => {
 
   // Transactions belonging strictly to the selected client and selected month
   const monthlyClientTransactions: Transaction[] = transactions.filter((t) => {
-    if (!selectedAccount) return false;
-    const targetCustId = selectedAccount.customerId || selectedAccount.customer?.id;
-    const txCustId = t.account?.customerId || t.account?.customer?.id;
-    const isClient = t.accountId === selectedAccount.id || (Boolean(targetCustId) && targetCustId === txCustId);
-    const isMonth = t.createdAt ? t.createdAt.startsWith(selectedMonth) : false;
-    return isClient && isMonth;
+    let isClient = true;
+    if (!isAllAccounts) {
+      if (!selectedAccount) return false;
+      const targetCustId = selectedAccount.customerId || selectedAccount.customer?.id;
+      const targetAccNo = selectedAccount.accountNumber;
+      const txCustId = t.account?.customerId || t.account?.customer?.id;
+      const txAccId = t.accountId || t.account?.id;
+      const txAccNo = t.account?.accountNumber;
+
+      isClient = 
+        txAccId === selectedAccount.id ||
+        (Boolean(targetAccNo) && targetAccNo === txAccNo) ||
+        (Boolean(targetCustId) && targetCustId === txCustId) ||
+        (Boolean(selectedAccount.customer?.customerNumber) && t.account?.customer?.customerNumber === selectedAccount.customer?.customerNumber);
+    }
+
+    if (!isClient) return false;
+
+    if (selectedMonth !== 'ALL') {
+      const isMonth = t.createdAt ? t.createdAt.startsWith(selectedMonth) : false;
+      if (!isMonth) return false;
+    }
+
+    if (clientSearchQuery.trim()) {
+      const q = clientSearchQuery.toLowerCase();
+      const c = t.account?.customer;
+      const cName = c ? `${c.firstName} ${c.lastName}`.toLowerCase() : '';
+      const accNo = t.account?.accountNumber?.toLowerCase() || '';
+      const rep = t.transactor?.fullName?.toLowerCase() || '';
+      const staff = t.recordedBy ? `${t.recordedBy.firstName} ${t.recordedBy.lastName}`.toLowerCase() : '';
+      const ref = t.referenceNo?.toLowerCase() || '';
+      const rcp = t.receiptNo?.toLowerCase() || '';
+
+      if (!cName.includes(q) && !accNo.includes(q) && !rep.includes(q) && !staff.includes(q) && !ref.includes(q) && !rcp.includes(q)) {
+        return false;
+      }
+    }
+
+    return true;
   });
 
   // Daily cycle splits for this client in the selected month
-  const monthlyDailySplits: DailySplitEntry[] = (selectedAccount?.dailyCycles || []).flatMap((c) =>
-    (c.dailySplits || []).filter((s) => s.date.startsWith(selectedMonth))
-  );
+  const monthlyDailySplits: DailySplitEntry[] = !isAllAccounts && selectedAccount?.dailyCycles
+    ? selectedAccount.dailyCycles.flatMap((c) =>
+        (c.dailySplits || []).filter((s) => selectedMonth === 'ALL' || s.date.startsWith(selectedMonth))
+      )
+    : [];
 
   // Financial totals for the chosen month
   const monthDeposits = monthlyClientTransactions
@@ -586,6 +628,29 @@ export const ReportsPage: React.FC = () => {
 
           {/* Selectors & Dispatch Buttons */}
           <div className="flex flex-wrap items-center gap-2.5">
+            {/* Quick Client Search Input */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search client (Rolland, Francis...)"
+                value={clientSearchQuery}
+                onChange={(e) => {
+                  const q = e.target.value;
+                  setClientSearchQuery(q);
+                  if (q.trim()) {
+                    const found = accounts.find((a) => {
+                      const name = a.customer ? `${a.customer.firstName} ${a.customer.lastName}`.toLowerCase() : '';
+                      return name.includes(q.toLowerCase()) || a.accountNumber?.toLowerCase().includes(q.toLowerCase());
+                    });
+                    if (found) setSelectedAccountId(found.id);
+                  }
+                }}
+                className="pl-8 pr-3 py-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-xs font-bold text-slate-950 dark:text-white placeholder:text-slate-400 w-52 sm:w-60 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-xs"
+              />
+            </div>
+
+            {/* Account Selector */}
             {accounts.length > 0 ? (
               <select
                 value={selectedAccountId}
@@ -593,13 +658,19 @@ export const ReportsPage: React.FC = () => {
                   setSelectedAccountId(e.target.value);
                   setSelectedCycleNumber(1);
                 }}
-                className="py-2 px-3 rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-xs font-bold text-slate-950 dark:text-white shadow-xs cursor-pointer"
+                className="py-2 px-3 rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-xs font-bold text-slate-950 dark:text-white shadow-xs cursor-pointer max-w-[260px]"
               >
-                {accounts.map((acc) => (
-                  <option key={acc.id} value={acc.id} className="text-slate-950 dark:text-white bg-white dark:bg-slate-900">
-                    {acc.customer ? `${acc.customer.firstName} ${acc.customer.lastName}` : 'Client'} ({acc.accountNumber})
-                  </option>
-                ))}
+                <option value="ALL" className="font-black text-[#0d9488] bg-white dark:bg-slate-900">
+                  🌟 All Clients (Consolidated Ledger View)
+                </option>
+                {accounts.map((acc) => {
+                  const name = acc.customer ? `${acc.customer.firstName} ${acc.customer.lastName}` : 'Client';
+                  return (
+                    <option key={acc.id} value={acc.id} className="text-slate-950 dark:text-white bg-white dark:bg-slate-900">
+                      {name} — {acc.accountNumber} (GHS {(acc.availableBalance || 0).toFixed(2)})
+                    </option>
+                  );
+                })}
               </select>
             ) : (
               <span className="py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-mono text-slate-500">
@@ -705,6 +776,7 @@ export const ReportsPage: React.FC = () => {
               <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 uppercase text-[10px] tracking-wider">
                 <th className="py-2.5 px-3">#</th>
                 <th className="py-2.5 px-3">Date & Exact Time</th>
+                <th className="py-2.5 px-3">Customer / Client</th>
                 <th className="py-2.5 px-3">Receipt No</th>
                 <th className="py-2.5 px-3">Reference No</th>
                 <th className="py-2.5 px-3">Classification</th>
@@ -732,12 +804,26 @@ export const ReportsPage: React.FC = () => {
                     ? `${tx.recordedBy.firstName || ''} ${tx.recordedBy.lastName || ''}`.trim() || 'Staff Officer'
                     : 'Staff Officer';
 
+                  const clientName = tx.account?.customer
+                    ? `${tx.account.customer.firstName} ${tx.account.customer.lastName}`
+                    : 'Registered Client';
+
                   return (
                     <tr key={tx.id} id={`statement-row-${tx.id}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                       <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">{idx + 1}</td>
                       <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 font-bold flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
                         <span>{formattedDateTime}</span>
+                      </td>
+                      <td className="py-2.5 px-3 font-sans">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {clientName}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {tx.account?.accountNumber || '—'}
+                          </span>
+                        </div>
                       </td>
                       <td className="py-2.5 px-3 font-bold text-[#0d9488]">{tx.receiptNo || '—'}</td>
                       <td className="py-2.5 px-3 text-slate-500">{tx.referenceNo || '—'}</td>
