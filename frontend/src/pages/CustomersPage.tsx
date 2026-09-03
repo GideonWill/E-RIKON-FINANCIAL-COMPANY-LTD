@@ -1389,8 +1389,9 @@ export const CustomersPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
+                    const accId = fin.acc?.id;
                     setSelectedDetailCustomer(null);
-                    navigate('/reports');
+                    navigate('/reports', { state: { accountId: accId, customerId: selectedDetailCustomer.id } });
                   }}
                   className="py-2.5 sm:py-3 sm:flex-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >

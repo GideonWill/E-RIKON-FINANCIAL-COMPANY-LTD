@@ -263,14 +263,15 @@ export const TellerPage: React.FC = () => {
       pushLocalToCloud().catch(() => {});
 
       const custId = selectedAccount.customerId || selectedAccount.customer?.id;
+      const depMonth = transaction.createdAt ? transaction.createdAt.slice(0, 7) : new Date().toISOString().slice(0, 7);
       addSystemNotification({
         title: `Deposit Recorded: GH₵ ${numAmount.toFixed(2)}`,
         message: `GH₵ ${numAmount.toFixed(2)} deposited for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship}).`,
         type: 'DEPOSIT',
-        targetRoute: '/customers',
-        targetState: { customerId: custId, openDrawer: true },
-        targetSectionId: custId ? `customer-card-${custId}` : undefined,
-        roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
+        targetRoute: '/reports',
+        targetState: { accountId: selectedAccount.id, customerId: custId, month: depMonth, txId: transaction.id },
+        targetSectionId: `statement-row-${transaction.id}`,
+        roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
       });
 
       setSuccessMessage(
@@ -332,14 +333,15 @@ export const TellerPage: React.FC = () => {
       pushLocalToCloud().catch(() => {});
 
       const custId = selectedAccount.customerId || selectedAccount.customer?.id;
+      const withMonth = newTx.createdAt ? newTx.createdAt.slice(0, 7) : new Date().toISOString().slice(0, 7);
       addSystemNotification({
         title: `Withdrawal Executed: GH₵ ${numAmount.toFixed(2)}`,
         message: `GH₵ ${numAmount.toFixed(2)} withdrawn for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship}).`,
-        type: 'DEPOSIT',
-        targetRoute: '/customers',
-        targetState: { customerId: custId, openDrawer: true },
-        targetSectionId: custId ? `customer-card-${custId}` : undefined,
-        roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
+        type: 'WITHDRAWAL',
+        targetRoute: '/reports',
+        targetState: { accountId: selectedAccount.id, customerId: custId, month: withMonth, txId: newTx.id },
+        targetSectionId: `statement-row-${newTx.id}`,
+        roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
       });
 
       setSuccessMessage(

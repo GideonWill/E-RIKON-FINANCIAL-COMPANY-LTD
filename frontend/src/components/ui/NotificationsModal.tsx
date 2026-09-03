@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getStoredApprovals } from '../../services/api';
+import { getStoredApprovals, getStoredTransactions } from '../../services/api';
 import { useRealtimeSync } from '../../services/realtimeSync';
 import { RoleName } from '../../types';
 import { 
@@ -17,7 +17,8 @@ import {
   Smartphone, 
   ShieldCheck,
   CheckCircle2,
-  Trash2
+  Trash2,
+  ArrowDownLeft
 } from 'lucide-react';
 
 export interface NotificationItem {
@@ -25,7 +26,7 @@ export interface NotificationItem {
   title: string;
   message: string;
   time: string;
-  type: 'LOAN' | 'DEPOSIT' | 'CYCLE' | 'SYSTEM' | 'FIELD' | 'AUDIT';
+  type: 'LOAN' | 'DEPOSIT' | 'WITHDRAWAL' | 'CYCLE' | 'SYSTEM' | 'FIELD' | 'AUDIT';
   targetRoute: string;
   targetState?: any;
   targetSectionId?: string;
@@ -69,14 +70,18 @@ export const saveStoredDynamicNotifications = (notifications: NotificationItem[]
 
 export const clearAllNotifications = () => {
   localStorage.setItem('erikon_dynamic_notifications', JSON.stringify([]));
-  localStorage.setItem('erikon_read_notifications', JSON.stringify([]));
+  const txs = getStoredTransactions();
+  const txIds = txs.map((t) => `tx-${t.id}`);
+  const approvals = getStoredApprovals();
+  const apprIds = approvals.map((a) => `appr-${a.id}`);
+  saveStoredReadNotificationIds(Array.from(new Set([...getStoredReadNotificationIds(), ...txIds, ...apprIds])));
   window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
 };
 
 export const addSystemNotification = (item: {
   title: string;
   message: string;
-  type: 'LOAN' | 'DEPOSIT' | 'CYCLE' | 'SYSTEM' | 'FIELD' | 'AUDIT';
+  type: 'LOAN' | 'DEPOSIT' | 'WITHDRAWAL' | 'CYCLE' | 'SYSTEM' | 'FIELD' | 'AUDIT';
   targetRoute: string;
   targetState?: any;
   targetSectionId?: string;
@@ -113,6 +118,78 @@ export const getSystemNotifications = (role: RoleName): NotificationItem[] => {
       }))
     : [];
 
+  // Live transaction ledger notifications for all workstations (deposits, withdrawals, loans)
+  const allStaffRoles: RoleName[] = ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'];
+  const transactions = getStoredTransactions();
+
+  const transactionNotifications: NotificationItem[] = transactions
+    .slice(0, 30)
+    .map((tx) => {
+      const isWithdrawal = tx.type === 'WITHDRAWAL';
+      const isDeposit = tx.type === 'DEPOSIT';
+      const isLoanDisbursed = tx.type === 'LOAN_DISBURSEMENT';
+      const isLoanRepayment = tx.type === 'LOAN_REPAYMENT';
+      const isFee = tx.type === 'COMPANY_FEE_DEDUCTION';
+
+      const cust = tx.account?.customer;
+      const clientName = cust
+        ? `${cust.firstName} ${cust.lastName}`
+        : tx.account?.accountNumber
+        ? `Account ${tx.account.accountNumber}`
+        : 'Registered Client';
+      const amountStr = `GH₵ ${(tx.amount || 0).toFixed(2)}`;
+
+      let title = `Transaction: ${amountStr}`;
+      let notifType: NotificationItem['type'] = 'DEPOSIT';
+
+      if (isWithdrawal) {
+        title = `Client Withdrawal: ${amountStr}`;
+        notifType = 'WITHDRAWAL';
+      } else if (isDeposit) {
+        title = `Client Deposit: ${amountStr}`;
+        notifType = 'DEPOSIT';
+      } else if (isLoanDisbursed) {
+        title = `Loan Disbursed: ${amountStr}`;
+        notifType = 'LOAN';
+      } else if (isLoanRepayment) {
+        title = `Loan Repayment: ${amountStr}`;
+        notifType = 'LOAN';
+      } else if (isFee) {
+        title = `Day 31 Company Fee: ${amountStr}`;
+        notifType = 'CYCLE';
+      }
+
+      const txDate = tx.createdAt ? new Date(tx.createdAt) : new Date();
+      const txMonth = tx.createdAt
+        ? tx.createdAt.slice(0, 7)
+        : `${txDate.getFullYear()}-${(txDate.getMonth() + 1).toString().padStart(2, '0')}`;
+      const timeStr = txDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      const byUser = tx.recordedBy
+        ? `${tx.recordedBy.firstName || ''} ${tx.recordedBy.lastName || ''}`.trim() || 'Staff'
+        : 'Staff';
+      const repStr = tx.transactor?.fullName ? ` • Transactor: ${tx.transactor.fullName}` : '';
+      const message = `${clientName} (${tx.account?.accountNumber || 'Acc'}) • ${amountStr} ${tx.type?.toLowerCase().replace(/_/g, ' ')} by ${byUser}${repStr}`;
+
+      return {
+        id: `tx-${tx.id}`,
+        title,
+        message,
+        time: timeStr,
+        type: notifType,
+        targetRoute: '/reports',
+        targetState: {
+          accountId: tx.accountId,
+          customerId: tx.account?.customerId || tx.account?.customer?.id,
+          month: txMonth,
+          txId: tx.id,
+        },
+        targetSectionId: `statement-row-${tx.id}`,
+        roles: allStaffRoles,
+        isRead: readIds.includes(`tx-${tx.id}`),
+      };
+    });
+
   // Dynamic system update notifications for specific roles
   const dynamicNotifications: NotificationItem[] = getStoredDynamicNotifications()
     .filter((n) => n.roles.includes(role))
@@ -121,7 +198,13 @@ export const getSystemNotifications = (role: RoleName): NotificationItem[] => {
       isRead: readIds.includes(n.id) || n.isRead,
     }));
 
-  return [...approvalNotifications, ...dynamicNotifications];
+  // Merge and deduplicate by ID, prioritizing dynamic notification overrides if present
+  const notifMap = new Map<string, NotificationItem>();
+  approvalNotifications.forEach((n) => notifMap.set(n.id, n));
+  transactionNotifications.forEach((n) => notifMap.set(n.id, n));
+  dynamicNotifications.forEach((n) => notifMap.set(n.id, n));
+
+  return Array.from(notifMap.values()).filter((n) => n.roles.includes(role));
 };
 
 export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose, onNotificationsUpdated }) => {
@@ -194,6 +277,8 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
         return <Sparkles className="w-4 h-4 text-amber-500" />;
       case 'DEPOSIT':
         return <Wallet className="w-4 h-4 text-emerald-500" />;
+      case 'WITHDRAWAL':
+        return <ArrowDownLeft className="w-4 h-4 text-rose-500" />;
       case 'FIELD':
         return <Smartphone className="w-4 h-4 text-blue-500" />;
       case 'AUDIT':

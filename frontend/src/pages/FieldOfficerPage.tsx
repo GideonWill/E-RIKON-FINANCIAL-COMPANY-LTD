@@ -10,6 +10,7 @@ import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
 import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
 import { pushLocalToCloud } from '../services/cloudSync';
 import { useAuth } from '../contexts/AuthContext';
+import { addSystemNotification } from '../components/ui/NotificationsModal';
 import { 
   Smartphone, 
   Search, 
@@ -176,6 +177,18 @@ export const FieldOfficerPage: React.FC = () => {
       setFieldRemarks('');
       broadcastRealtimeEvent('PACKAGE_DEPOSIT_RECORDED', { accountId: selectedAccount.id, amount: numAmount });
       pushLocalToCloud().catch(() => {});
+
+      const custId = selectedAccount.customerId || selectedAccount.customer?.id;
+      const txMonth = transaction.createdAt ? transaction.createdAt.slice(0, 7) : new Date().toISOString().slice(0, 7);
+      addSystemNotification({
+        title: `Field Deposit Recorded: GH₵ ${numAmount.toFixed(2)}`,
+        message: `GH₵ ${numAmount.toFixed(2)} collected in field for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} (${splitResult.daysCovered} day(s) covered).`,
+        type: 'FIELD',
+        targetRoute: '/reports',
+        targetState: { accountId: selectedAccount.id, customerId: custId, month: txMonth, txId: transaction.id },
+        targetSectionId: `statement-row-${transaction.id}`,
+        roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+      });
 
       setSuccessMessage(
         `✅ Recorded GHS ${numAmount.toFixed(2)} for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}! Automatically spread across ${splitResult.daysCovered} day(s) (Days ${splitResult.startDay} to ${splitResult.endDay}) on the GH₵ ${currentPackage} Package.${splitResult.isDay31Included ? ' 🌟 Day 31 company management fee retained & added to Company Interest Vault!' : ''}`

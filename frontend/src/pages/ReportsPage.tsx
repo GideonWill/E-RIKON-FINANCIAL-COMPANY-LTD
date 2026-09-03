@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   getStoredTransactions, 
   getStoredLoans, 
@@ -51,10 +52,21 @@ export const ReportsPage: React.FC = () => {
     setLoans(getStoredLoans());
   });
 
+  const location = useLocation();
+  const navigate = useNavigate();
+  const processedLocationKeyRef = useRef<string | null>(null);
+
+  const getCurrentMonthKey = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    return `${year}-${month}`;
+  };
+
   // Statement Generator State
   const [selectedAccountId, setSelectedAccountId] = useState<string>(accounts[0]?.id || '');
   const [selectedCycleNumber, setSelectedCycleNumber] = useState<number>(1);
-  const [selectedMonth, setSelectedMonth] = useState<string>('2026-08');
+  const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonthKey());
   const [isStatementPdfModalOpen, setIsStatementPdfModalOpen] = useState(false);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [emailRecipient, setEmailRecipient] = useState<string>('');
@@ -67,6 +79,54 @@ export const ReportsPage: React.FC = () => {
       setSelectedAccountId(accounts[0].id);
     }
   }, [accounts, selectedAccountId]);
+
+  // Listen for direct navigation from Workstation Alerts / Notifications / Customer 360 Statement
+  useEffect(() => {
+    const stateObj = location.state as {
+      accountId?: string;
+      customerId?: string;
+      month?: string;
+      txId?: string;
+    } | null;
+
+    if (stateObj && processedLocationKeyRef.current !== location.key) {
+      const freshAccs = accounts.length > 0 ? accounts : getStoredAccounts();
+      const targetAcc = freshAccs.find(
+        (a) => a.id === stateObj.accountId || (stateObj.customerId && (a.customerId === stateObj.customerId || a.customer?.id === stateObj.customerId))
+      );
+
+      if (targetAcc) {
+        processedLocationKeyRef.current = location.key;
+        setSelectedAccountId(targetAcc.id);
+
+        if (stateObj.month) {
+          setSelectedMonth(stateObj.month);
+        } else if (stateObj.txId) {
+          const freshTxs = transactions.length > 0 ? transactions : getStoredTransactions();
+          const foundTx = freshTxs.find((t) => t.id === stateObj.txId);
+          if (foundTx?.createdAt) {
+            setSelectedMonth(foundTx.createdAt.slice(0, 7));
+          }
+        }
+
+        if (stateObj.txId) {
+          setTimeout(() => {
+            const el = document.getElementById(`statement-row-${stateObj.txId}`);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              el.classList.add('bg-teal-500/20', 'ring-4', 'ring-teal-500', 'transition-all');
+              setTimeout(() => {
+                el.classList.remove('bg-teal-500/20', 'ring-4', 'ring-teal-500');
+              }, 4000);
+            }
+          }, 250);
+        }
+
+        window.history.replaceState({}, document.title);
+        navigate(location.pathname + location.search, { replace: true, state: null });
+      }
+    }
+  }, [location.key, location.state, accounts, transactions, navigate, location.pathname, location.search]);
 
   const selectedAccount: Account | undefined = accounts.find((a) => a.id === selectedAccountId) || accounts[0];
   
@@ -203,8 +263,10 @@ export const ReportsPage: React.FC = () => {
     exportCsv('E-RIKON_Loan_Portfolio_Report', data);
   };
 
-  // Month Options List (2026 Full Calendar)
-  const MONTH_OPTIONS = [
+  // Month Options List (Current & Full Calendar)
+  const currentKey = getCurrentMonthKey();
+  const baseMonthOptions = [
+    { value: '2026-09', label: 'September 2026' },
     { value: '2026-08', label: 'August 2026' },
     { value: '2026-07', label: 'July 2026' },
     { value: '2026-06', label: 'June 2026' },
@@ -213,11 +275,14 @@ export const ReportsPage: React.FC = () => {
     { value: '2026-03', label: 'March 2026' },
     { value: '2026-02', label: 'February 2026' },
     { value: '2026-01', label: 'January 2026' },
-    { value: '2026-09', label: 'September 2026' },
     { value: '2026-10', label: 'October 2026' },
     { value: '2026-11', label: 'November 2026' },
     { value: '2026-12', label: 'December 2026' },
   ];
+
+  const MONTH_OPTIONS = baseMonthOptions.some((m) => m.value === currentKey)
+    ? baseMonthOptions
+    : [{ value: currentKey, label: new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' }) }, ...baseMonthOptions];
 
   const getMonthTitle = (m: string) => {
     const found = MONTH_OPTIONS.find((opt) => opt.value === m);
@@ -229,7 +294,9 @@ export const ReportsPage: React.FC = () => {
   // Transactions belonging strictly to the selected client and selected month
   const monthlyClientTransactions: Transaction[] = transactions.filter((t) => {
     if (!selectedAccount) return false;
-    const isClient = t.accountId === selectedAccount.id || t.account?.customerId === selectedAccount.customerId;
+    const targetCustId = selectedAccount.customerId || selectedAccount.customer?.id;
+    const txCustId = t.account?.customerId || t.account?.customer?.id;
+    const isClient = t.accountId === selectedAccount.id || (Boolean(targetCustId) && targetCustId === txCustId);
     const isMonth = t.createdAt ? t.createdAt.startsWith(selectedMonth) : false;
     return isClient && isMonth;
   });
@@ -657,7 +724,7 @@ export const ReportsPage: React.FC = () => {
                   });
 
                   return (
-                    <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                    <tr key={tx.id} id={`statement-row-${tx.id}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                       <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">{idx + 1}</td>
                       <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 font-bold flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
