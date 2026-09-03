@@ -271,7 +271,7 @@ export const TellerPage: React.FC = () => {
       });
 
       setSuccessMessage(
-        `🎉 Deposit of GHS ${numAmount.toFixed(2)} recorded! Covered ${splitResult.daysCovered} days (Days ${splitResult.startDay} to ${splitResult.endDay}) on GH₵ ${chosenPackage}/day package.`
+        `🎉 DEPOSIT SUCCESSFUL! GH₵ ${numAmount.toFixed(2)} recorded for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}. Covered ${splitResult.daysCovered} day(s) on GH₵ ${chosenPackage}/day package.`
       );
     } else {
       // Withdrawal as Savings-Backed Loan (Safeguards the 1-day retention fee)
@@ -336,11 +336,23 @@ export const TellerPage: React.FC = () => {
         roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
       });
 
-      setSuccessMessage(`✅ Savings-backed withdrawal loan of GHS ${numAmount.toFixed(2)} completed successfully!`);
+      setSuccessMessage(
+        `🎉 WITHDRAWAL SUCCESSFUL! GH₵ ${numAmount.toFixed(2)} has been successfully paid out to ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}. Remaining balance: GH₵ ${newBal.toFixed(2)}.`
+      );
     }
 
-    setAmount('100');
+    // Reset all form and representative fields to empty
+    setAmount('');
     setRemarks('');
+    setTransactorName('');
+    setTransactorPhone('');
+    setTransactorGhanaCard('');
+    setIsThirdParty(false);
+
+    // Auto-dismiss banner after 4 seconds
+    setTimeout(() => {
+      setSuccessMessage(null);
+    }, 4000);
   };
 
   const handleConfirmPaid = (tx: Transaction) => {

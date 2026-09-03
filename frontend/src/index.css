@@ -8,12 +8,12 @@
     --font-mono: 'JetBrains Mono', monospace;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
-    --header-height: calc(3.5rem + env(safe-area-inset-top, 0px));
+    --header-height: calc(3.75rem + env(safe-area-inset-top, 0px));
   }
 
   @media (min-width: 640px) {
     :root {
-      --header-height: calc(4rem + env(safe-area-inset-top, 0px));
+      --header-height: calc(4.25rem + env(safe-area-inset-top, 0px));
     }
   }
 }
