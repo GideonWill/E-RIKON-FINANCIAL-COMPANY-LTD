@@ -11,7 +11,8 @@ import {
   saveStoredTransactions,
   accumulateCompanyInterest,
   startNewCycleForAccount,
-  clearClientAndFinancialDatabase
+  clearClientAndFinancialDatabase,
+  toDecimal
 } from '../services/api';
 import { subscribeRealtimeEvents, broadcastRealtimeEvent, useRealtimeSync } from '../services/realtimeSync';
 import { pushLocalToCloud } from '../services/cloudSync';
@@ -120,14 +121,23 @@ export const CustomersPage: React.FC = () => {
 
   // Subscribe to multi-device real-time sync
   useRealtimeSync(() => {
-    setCustomers(getStoredCustomers());
-    setAccounts(getStoredAccounts());
-    setTransactions(getStoredTransactions());
+    const freshCusts = getStoredCustomers();
+    const freshAccs = getStoredAccounts();
+    const freshTxs = getStoredTransactions();
+    setCustomers(freshCusts);
+    setAccounts(freshAccs);
+    setTransactions(freshTxs);
+    if (selectedDetailCustomer) {
+      const refreshed = freshCusts.find((c) => c.id === selectedDetailCustomer.id);
+      if (refreshed) setSelectedDetailCustomer(refreshed);
+    }
   });
 
   // Helper to calculate comprehensive financial summary for any customer (and specific cycle)
   const getCustomerFinancialSummary = (cust: Customer, targetCycleNo?: number | null) => {
-    const acc = accounts.find((a) => a.customerId === cust.id) || getStoredAccounts().find((a) => a.customerId === cust.id) || cust.accounts?.[0];
+    const acc = accounts.find((a) => a.customerId === cust.id || (cust.id && a.customer?.id === cust.id)) || 
+                getStoredAccounts().find((a) => a.customerId === cust.id || (cust.id && a.customer?.id === cust.id)) || 
+                cust.accounts?.[0];
     const cycles = acc?.dailyCycles && acc.dailyCycles.length > 0 ? acc.dailyCycles : [];
     const activeCycle = targetCycleNo
       ? (cycles.find((c) => c.cycleNumber === targetCycleNo) || cycles[0])
@@ -136,28 +146,33 @@ export const CustomersPage: React.FC = () => {
     const packageRate = acc?.savingsPackage || activeCycle?.dailyTargetAmount || 20;
     const daysPaid = activeCycle?.currentDayCount || 0;
     
-    // Total deposited across all cycles
-    const totalDepositedAcrossCycles = cycles.reduce((sum, c) => sum + (c.totalDeposited || 0), 0) || (acc?.currentBalance || (daysPaid * packageRate));
-    
-    // Cycle-specific deposit
-    const cycleDeposited = activeCycle?.totalDeposited !== undefined
-      ? activeCycle.totalDeposited
-      : (daysPaid * packageRate);
-
     // Customer transactions & withdrawals
     const customerTransactions = transactions.filter(
-      (t) => t.accountId === acc?.id || t.account?.customerId === cust.id || t.account?.customer?.id === cust.id
+      (t) => (acc?.id && t.accountId === acc.id) || 
+             t.account?.customerId === cust.id || 
+             t.account?.customer?.id === cust.id ||
+             (t.account?.id && acc?.id && t.account.id === acc.id)
     );
     const customerWithdrawals = customerTransactions.filter((t) => t.type === 'WITHDRAWAL');
     const totalWithdrawn = customerWithdrawals.reduce((sum, t) => sum + t.amount, 0);
 
     const isDay31FeeRetained = daysPaid >= 31 || (activeCycle?.feeDeducted === true);
     const companyFeeAmount = isDay31FeeRetained ? (activeCycle?.companyFeeAmount || packageRate) : 0;
+
+    // Total deposited across all cycles
+    const totalDepositedAcrossCycles = acc?.currentBalance !== undefined 
+      ? toDecimal(acc.currentBalance + totalWithdrawn)
+      : cycles.reduce((sum, c) => sum + (c.totalDeposited || 0), 0) || (daysPaid * packageRate);
     
-    // Available Net Savings Balance (always cumulative current balance, preserved across cycles if not withdrawn)
+    // Cycle-specific deposit
+    const cycleDeposited = activeCycle?.totalDeposited !== undefined
+      ? activeCycle.totalDeposited
+      : (daysPaid * packageRate);
+    
+    // Available Net Savings Balance
     const availableSavings = acc?.availableBalance !== undefined
       ? acc.availableBalance
-      : Math.max(0, totalDepositedAcrossCycles - (isDay31FeeRetained ? companyFeeAmount : 0) - totalWithdrawn);
+      : Math.max(0, toDecimal(totalDepositedAcrossCycles - (isDay31FeeRetained ? companyFeeAmount : 0) - totalWithdrawn));
 
     return {
       acc,
