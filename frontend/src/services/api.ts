@@ -1325,9 +1325,7 @@ export const recordPackageDeposit = (
     transactor,
   };
 
-  accounts[accIndex] = acc;
-  saveStoredAccounts(accounts);
-
+  // 1. FIRST: Save transactions so getStoredTransactions() has the new deposit immediately
   const existingTxs = getStoredTransactions();
   const txListToAdd: Transaction[] = [newTx];
 
@@ -1353,6 +1351,13 @@ export const recordPackageDeposit = (
   }
 
   saveStoredTransactions([...txListToAdd, ...existingTxs]);
+
+  // 2. SECOND: Save accounts with updated balances and cycles
+  accounts[accIndex] = acc;
+  saveStoredAccounts(accounts);
+
+  // 3. THIRD: Push to cloud vault immediately
+  import('./cloudSync').then((m) => m.pushLocalToCloud()).catch(() => {});
 
   // Log directly into Immutable Audit Trail
   const auditLogs = getStoredAuditLogs();

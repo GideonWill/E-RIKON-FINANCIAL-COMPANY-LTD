@@ -440,23 +440,7 @@ export const CustomersPage: React.FC = () => {
       // Link account to customer and vice versa
       newCust.accounts = [newAcc];
 
-      // Save accounts and customers
-      const freshCusts = getStoredCustomers();
-      const updatedCusts = [newCust, ...freshCusts.filter(c => c.id !== newCust.id)];
-      saveStoredCustomers(updatedCusts);
-      setCustomers(updatedCusts);
-
-      const freshAccs = getStoredAccounts();
-      const updatedAccs = [newAcc, ...freshAccs.filter((a) => a.id !== newAcc.id && a.customerId !== newCust.id)];
-      saveStoredAccounts(updatedAccs);
-      setAccounts(updatedAccs);
-
-      // Accumulate company interest only if Day 31 was reached
-      if (isDay31Reached) {
-        accumulateCompanyInterest(newAcc, 1, chosenPackage);
-      }
-
-      // Record ledger deposit transaction & upfront fee transaction
+      // 1. Record ledger deposit transaction FIRST
       const txs = getStoredTransactions();
       const newTxs: Transaction[] = [];
 
@@ -489,6 +473,22 @@ export const CustomersPage: React.FC = () => {
       const allUpdatedTxs = [...newTxs, ...txs];
       setTransactions(allUpdatedTxs);
       saveStoredTransactions(allUpdatedTxs);
+
+      // 2. Save accounts and customers
+      const freshCusts = getStoredCustomers();
+      const updatedCusts = [newCust, ...freshCusts.filter(c => c.id !== newCust.id)];
+      saveStoredCustomers(updatedCusts);
+      setCustomers(updatedCusts);
+
+      const freshAccs = getStoredAccounts();
+      const updatedAccs = [newAcc, ...freshAccs.filter((a) => a.id !== newAcc.id && a.customerId !== newCust.id)];
+      saveStoredAccounts(updatedAccs);
+      setAccounts(updatedAccs);
+
+      // Accumulate company interest only if Day 31 was reached
+      if (isDay31Reached) {
+        accumulateCompanyInterest(newAcc, 1, chosenPackage);
+      }
 
       addSystemNotification({
         title: `New Customer Onboarded: ${newCust.firstName} ${newCust.lastName}`,
