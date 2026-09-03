@@ -1,5 +1,5 @@
 import React from 'react';
-import { CreditCard, CheckCircle2 } from 'lucide-react';
+import { CreditCardIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 export const formatGhanaCardNumber = (val: string): string => {
   if (!val) return '';

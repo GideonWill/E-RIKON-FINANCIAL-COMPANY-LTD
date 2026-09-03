@@ -1,5 +1,4 @@
 import React from 'react';
-import { LucideIcon } from 'lucide-react';
 
 interface StatCardProps {
   title: string;
@@ -7,7 +6,7 @@ interface StatCardProps {
   subtitle?: string;
   change?: string;
   changeType?: 'positive' | 'negative' | 'neutral';
-  icon: LucideIcon;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   colorScheme?: 'amber' | 'blue' | 'emerald' | 'rose' | 'purple';
   onClick?: () => void;
 }
