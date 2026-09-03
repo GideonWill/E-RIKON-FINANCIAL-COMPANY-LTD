@@ -293,7 +293,29 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     }
   }
 
-  // 4. Merged Authoritative Accounts Sync (Lossless Merge: Preserve Local Unsynced + Cloud)
+  // 4. Merged Authoritative Transactions Sync (Lossless Merge - Processed FIRST so Accounts reconcile with new transactions)
+  if (Array.isArray(cloudData.transactions)) {
+    const localTx = getStoredTransactions();
+    const txMap = new Map<string, any>();
+    localTx.forEach((t) => {
+      if (t.id) txMap.set(t.id, t);
+      if (t.referenceNo) txMap.set(t.referenceNo, t);
+    });
+    cloudData.transactions.forEach((t) => {
+      const existing = txMap.get(t.id) || (t.referenceNo ? txMap.get(t.referenceNo) : null);
+      txMap.set(t.id, { ...existing, ...t });
+    });
+
+    const mergedTx = Array.from(new Set(Array.from(txMap.values()).map((t) => t.id)))
+      .map((id) => txMap.get(id)!);
+
+    if (mergedTx.length !== localTx.length || JSON.stringify(mergedTx) !== JSON.stringify(localTx)) {
+      saveStoredTransactions(mergedTx);
+      hasUpdates = true;
+    }
+  }
+
+  // 5. Merged Authoritative Accounts Sync (Lossless Merge with authoritative balance precedence)
   if (Array.isArray(cloudData.accounts)) {
     const cleanCloudAcc = cloudData.accounts.filter(
       (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
@@ -309,7 +331,13 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     });
     cleanCloudAcc.forEach((a) => {
       const existing = (a.id && accMap.get(a.id)) || (a.customerId && accMap.get(`cust-${a.customerId}`));
-      const mergedRecord = { ...existing, ...a };
+      const mergedRecord = { 
+        ...existing, 
+        ...a,
+        currentBalance: a.currentBalance !== undefined ? a.currentBalance : existing?.currentBalance,
+        availableBalance: a.availableBalance !== undefined ? a.availableBalance : existing?.availableBalance,
+        dailyCycles: a.dailyCycles || existing?.dailyCycles
+      };
       if (a.id) accMap.set(a.id, mergedRecord);
       if (a.customerId) accMap.set(`cust-${a.customerId}`, mergedRecord);
     });
@@ -329,28 +357,6 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
 
     if (mergedAcc.length > cleanCloudAcc.length) {
       setTimeout(() => pushLocalToCloud(), 100);
-    }
-  }
-
-  // 5. Merged Authoritative Transactions Sync (Lossless Merge)
-  if (Array.isArray(cloudData.transactions)) {
-    const localTx = getStoredTransactions();
-    const txMap = new Map<string, any>();
-    localTx.forEach((t) => {
-      if (t.id) txMap.set(t.id, t);
-      if (t.referenceNo) txMap.set(t.referenceNo, t);
-    });
-    cloudData.transactions.forEach((t) => {
-      const existing = txMap.get(t.id) || (t.referenceNo ? txMap.get(t.referenceNo) : null);
-      txMap.set(t.id, { ...existing, ...t });
-    });
-
-    const mergedTx = Array.from(new Set(Array.from(txMap.values()).map((t) => t.id)))
-      .map((id) => txMap.get(id)!);
-
-    if (mergedTx.length !== localTx.length || JSON.stringify(mergedTx) !== JSON.stringify(localTx)) {
-      saveStoredTransactions(mergedTx);
-      hasUpdates = true;
     }
   }
 
