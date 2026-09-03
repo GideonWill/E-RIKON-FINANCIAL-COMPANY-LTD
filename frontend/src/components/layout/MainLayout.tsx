@@ -70,14 +70,23 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     >
       <Header onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)} />
 
-      <div className="flex flex-1 pt-14 sm:pt-16 min-h-0 overflow-hidden relative min-w-0">
+      <div 
+        className="flex flex-1 min-h-0 overflow-hidden relative min-w-0"
+        style={{
+          paddingTop: 'calc(var(--header-height, 3.5rem) + 0.75rem)',
+        }}
+      >
         <Sidebar
           isOpen={isMobileMenuOpen}
           onClose={() => setIsMobileMenuOpen(false)}
         />
         <main 
-          className="flex-1 p-3 sm:p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden overscroll-contain"
-          style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+          className="flex-1 px-3.5 py-3 sm:px-6 sm:py-5 md:px-8 md:py-6 overflow-y-auto max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden overscroll-contain"
+          style={{ 
+            WebkitOverflowScrolling: 'touch', 
+            touchAction: 'pan-y',
+            paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1.75rem)'
+          }}
         >
           {children}
         </main>

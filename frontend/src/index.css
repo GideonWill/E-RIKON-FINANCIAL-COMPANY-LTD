@@ -8,6 +8,13 @@
     --font-mono: 'JetBrains Mono', monospace;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --header-height: calc(3.5rem + env(safe-area-inset-top, 0px));
+  }
+
+  @media (min-width: 640px) {
+    :root {
+      --header-height: calc(4rem + env(safe-area-inset-top, 0px));
+    }
   }
 }
 
@@ -17,17 +24,12 @@ body {
   padding-top: 0;
 }
 
-/* Safe Area Inset Support: Moves navbar completely below iPhone battery, wifi & Dynamic Island */
+/* Safe Area Inset Support: Clean header sizing with exact safe-area adaptation */
 header.app-header {
-  padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem) !important;
-  padding-bottom: 0.75rem !important;
-}
-
-@media only screen and (max-width: 768px) {
-  header.app-header {
-    padding-top: max(calc(env(safe-area-inset-top, 0px) + 0.75rem), 3.25rem) !important;
-    padding-bottom: 0.75rem !important;
-  }
+  padding-top: max(env(safe-area-inset-top, 0px), 0.35rem) !important;
+  padding-bottom: 0.35rem !important;
+  min-height: var(--header-height);
+  height: var(--header-height);
 }
 
 /* Input typography: crisp dark font in light mode, bright white font in dark mode */
