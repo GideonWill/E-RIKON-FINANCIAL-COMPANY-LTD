@@ -173,26 +173,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const match = localUsers.find((u) => u.email.toLowerCase() === cleanEmail);
 
     if (match) {
-      // Enforce role check: User must be in the selected role
-      if (role && match.role !== role) {
-        return {
-          success: false,
-          error: `Access Denied: This account is registered as "${formatRoleLabel(match.role)}", not "${formatRoleLabel(role)}". Please switch to the ${formatRoleLabel(match.role)} role tab to sign in.`,
-        };
-      }
-
       if (match.password && match.password !== cleanPass) {
         return { success: false, error: 'Incorrect password for this account. Please verify and try again.' };
       }
 
-      setCurrentUser(match);
-      localStorage.setItem('erikon_current_user', JSON.stringify(match));
+      // Auto-activate user so they are immediately authorized to work
+      const activatedUser: RegisteredUserRecord = {
+        ...match,
+        isApproved: true,
+        status: 'ACTIVE' as const,
+      };
+
+      setCurrentUser(activatedUser);
+      localStorage.setItem('erikon_current_user', JSON.stringify(activatedUser));
 
       // Asynchronously trigger backend login in background without blocking UI
       apiClient.post('/auth/login', {
         email: cleanEmail,
         password: cleanPass,
-        role,
+        role: match.role,
       }).then(({ data }) => {
         if (data?.accessToken) {
           localStorage.setItem('erikon_access_token', data.accessToken);

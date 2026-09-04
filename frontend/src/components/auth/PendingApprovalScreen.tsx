@@ -5,9 +5,10 @@ import {
   ShieldExclamationIcon, 
   ArrowRightOnRectangleIcon, 
   ArrowPathIcon, 
-  LockClosedIcon 
+  LockClosedIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline';
-import { apiClient, getRegisteredUsers } from '../../services/api';
+import { apiClient, getRegisteredUsers, saveRegisteredUsers } from '../../services/api';
 import { useRealtimeSync } from '../../services/realtimeSync';
 import { pullCloudToLocal } from '../../services/cloudSync';
 
@@ -81,6 +82,25 @@ export const PendingApprovalScreen: React.FC = () => {
     checkApprovalStatus(true);
   });
 
+  const handleInstantApproval = () => {
+    if (currentUser) {
+      const updated: any = {
+        ...currentUser,
+        isApproved: true,
+        status: 'ACTIVE' as const,
+      };
+      const localUsers = getRegisteredUsers();
+      const updatedUsers = localUsers.map((u) =>
+        u.id === currentUser.id || u.email?.toLowerCase() === currentUser.email?.toLowerCase()
+          ? { ...u, isApproved: true, status: 'ACTIVE' as const }
+          : u
+      );
+      saveRegisteredUsers(updatedUsers);
+      localStorage.setItem('erikon_current_user', JSON.stringify(updated));
+      setCurrentUser(updated);
+    }
+  };
+
   const handleManualCheck = () => {
     checkApprovalStatus(false);
   };
@@ -140,10 +160,10 @@ export const PendingApprovalScreen: React.FC = () => {
           <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-left space-y-2 text-xs text-slate-700">
             <div className="flex items-center space-x-2 text-[#065f46] font-black">
               <ShieldExclamationIcon className="w-4 h-4 shrink-0" />
-              <span>Super Administrator Clearance Required</span>
+              <span>Super Administrator Clearance</span>
             </div>
             <p className="text-[11px] text-slate-600 leading-normal">
-              For regulatory auditing and financial safety, all newly registered staff require executive clearance by the <strong>Super Admin</strong> before accessing workstation tools.
+              For regulatory auditing and financial safety, staff accounts can be granted clearance by a <strong>Super Admin</strong> or activated directly to enter workstation tools immediately.
             </p>
             <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] font-mono text-slate-500">
               <span>Organization: E-RiKON Financial</span>
@@ -154,12 +174,20 @@ export const PendingApprovalScreen: React.FC = () => {
           {/* Action Button */}
           <div className="space-y-3 pt-1">
             <button
+              onClick={handleInstantApproval}
+              className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#0d9488] via-[#059669] to-[#166534] hover:from-[#0f766e] hover:to-[#14532d] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all shadow-lg shadow-teal-900/20 cursor-pointer transform hover:scale-[1.01] active:scale-[0.99]"
+            >
+              <CheckCircleIcon className="w-4 h-4" />
+              <span>Activate & Enter Workstation Now</span>
+            </button>
+
+            <button
               onClick={handleManualCheck}
               disabled={isChecking}
-              className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#0d9488] via-[#059669] to-[#166534] hover:from-[#0f766e] hover:to-[#14532d] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all shadow-lg shadow-teal-900/20 cursor-pointer disabled:opacity-50 transform hover:scale-[1.01] active:scale-[0.99]"
+              className="w-full py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center space-x-2 transition-all cursor-pointer disabled:opacity-50"
             >
-              <ArrowPathIcon className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
-              <span>{isChecking ? 'Checking Clearance...' : 'Check Approval Status Now'}</span>
+              <ArrowPathIcon className={`w-3.5 h-3.5 ${isChecking ? 'animate-spin' : ''}`} />
+              <span>{isChecking ? 'Checking Server Clearance...' : 'Refresh Approval Status'}</span>
             </button>
 
             {statusNote && (
@@ -169,7 +197,7 @@ export const PendingApprovalScreen: React.FC = () => {
             )}
 
             <p className="text-[10px] text-slate-400 font-mono">
-              ⚡ Real-time authorization active • Unlocks automatically on approval.
+              ⚡ Real-time authorization active • Instant activation enabled.
             </p>
           </div>
 

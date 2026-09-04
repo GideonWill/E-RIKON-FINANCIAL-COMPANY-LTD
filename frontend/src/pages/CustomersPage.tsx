@@ -548,7 +548,6 @@ export const CustomersPage: React.FC = () => {
       if (effectiveDeposit > 0 && newTxs.length > 0) {
         broadcastRealtimeEvent('DEPOSIT_RECORDED', newTxs[0]);
       }
-      broadcastRealtimeEvent('MANUAL_SYNC', {});
       pushLocalToCloud().catch(() => {});
 
       // Close modal, clear search filter, and show new customer immediately

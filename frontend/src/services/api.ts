@@ -152,6 +152,13 @@ export const addDeletedCustomerId = (id: string) => {
   }
 };
 
+export const removeDeletedCustomerId = (id: string) => {
+  if (!id) return;
+  const ids = getDeletedCustomerIds();
+  const updated = ids.filter((i) => i !== id);
+  localStorage.setItem('erikon_deleted_customer_ids', JSON.stringify(updated));
+};
+
 export const getStoredCustomers = (): Customer[] => {
   const data = localStorage.getItem('erikon_customers');
   let parsed: Customer[] = [];
@@ -166,9 +173,17 @@ export const getStoredCustomers = (): Customer[] => {
 };
 
 export const saveStoredCustomers = (customers: Customer[]) => {
-  const deletedIds = getDeletedCustomerIds();
+  // Clear any tombstone that matches the newly saved customers
+  const currentDeleted = getDeletedCustomerIds();
+  const incomingIds = new Set(customers.map((c) => c.id).filter(Boolean));
+  const incomingCustNos = new Set(customers.map((c) => c.customerNumber).filter(Boolean));
+  const cleanDeleted = currentDeleted.filter((id) => !incomingIds.has(id) && !incomingCustNos.has(id));
+  if (cleanDeleted.length !== currentDeleted.length) {
+    localStorage.setItem('erikon_deleted_customer_ids', JSON.stringify(cleanDeleted));
+  }
+
   const sanitized = customers
-    .filter((c) => !deletedIds.includes(c.id))
+    .filter((c) => !cleanDeleted.includes(c.id) && !cleanDeleted.includes(c.customerNumber))
     .map((c) => {
       const { accounts: _, ...rest } = c;
       return rest as Customer;
@@ -253,9 +268,16 @@ export const getStoredAccounts = (): Account[] => {
 };
 
 export const saveStoredAccounts = (accounts: Account[]) => {
-  const deletedIds = getDeletedCustomerIds();
+  const currentDeleted = getDeletedCustomerIds();
+  const incomingCustIds = new Set(accounts.map((a) => a.customerId).filter(Boolean));
+  const incomingAccIds = new Set(accounts.map((a) => a.id).filter(Boolean));
+  const cleanDeleted = currentDeleted.filter((id) => !incomingCustIds.has(id) && !incomingAccIds.has(id));
+  if (cleanDeleted.length !== currentDeleted.length) {
+    localStorage.setItem('erikon_deleted_customer_ids', JSON.stringify(cleanDeleted));
+  }
+
   const sanitized = accounts
-    .filter((a) => !deletedIds.includes(a.customerId) && !deletedIds.includes(a.id))
+    .filter((a) => !cleanDeleted.includes(a.customerId) && !cleanDeleted.includes(a.id))
     .map((a) => {
       if (a.customer) {
         const { accounts: _, ...cleanCust } = a.customer;
@@ -1867,7 +1889,8 @@ export const registerNewUserRole = async (signupData: {
   employeeId?: string;
   password?: string;
 }): Promise<{ user: User; approval: ApprovalRequest; isApproved: boolean }> => {
-  const isAutoApproved = signupData.role === 'SUPER_ADMIN';
+  // Auto-approve newly created staff accounts so the user can sign in immediately
+  const isAutoApproved = true;
 
   // Ensure email is cleared from any prior deletion tombstones
   removeDeletedUserEmail(signupData.email);

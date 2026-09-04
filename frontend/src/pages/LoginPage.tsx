@@ -158,15 +158,10 @@ export const LoginPage: React.FC = () => {
       setEmail(signupEmail);
       setPassword(signupPassword);
 
-      if (isApproved) {
-        setSignupSuccessMsg(
-          `🎉 Super Admin account registered for ${user.firstName} ${user.lastName} (${signupEmail})! You can sign in immediately.`
-        );
-      } else {
-        setSignupSuccessMsg(
-          `✅ Registration submitted for ${signupRoleType.replace(/_/g, ' ')} (${user.firstName} ${user.lastName}). Awaiting Super Admin clearance. You can sign in to check live approval.`
-        );
-      }
+      setActiveTab('signin');
+      setSignupSuccessMsg(
+        `🎉 ${signupRoleType.replace(/_/g, ' ')} account registered for ${user.firstName} ${user.lastName}! Your credentials have been filled in below. Click "Login" to sign in immediately.`
+      );
 
       setSignupFirstName('');
       setSignupLastName('');
