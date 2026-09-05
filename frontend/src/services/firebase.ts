@@ -87,7 +87,11 @@ export const subscribeRealtimeDatabaseVault = (
       }
     },
     (error) => {
-      console.error('[Firebase RTDB] Snapshot listener error:', error);
+      console.warn('[Firebase RTDB] Snapshot listener notice (falling back to live SSE & HTTP sync):', error.message || error);
+      isConnectedToCloud = false;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('erikon_firebase_status', { detail: { connected: false } }));
+      }
       if (onError) onError(error);
     }
   );
@@ -106,9 +110,11 @@ export const saveRealtimeDatabaseVault = async (payload: any): Promise<boolean> 
       ...payload,
       updatedAt: new Date().toISOString()
     });
+    isConnectedToCloud = true;
     return true;
-  } catch (err) {
-    console.error('[Firebase RTDB] Failed to write to Realtime Database vault:', err);
+  } catch (err: any) {
+    console.warn('[Firebase RTDB] Write notice (using SSE & HTTP relay):', err?.message || err);
+    isConnectedToCloud = false;
     return false;
   }
 };
@@ -122,11 +128,13 @@ export const getRealtimeDatabaseVault = async (): Promise<any | null> => {
     const vaultRef = ref(rtdb, 'system_vault');
     const snap = await get(vaultRef);
     if (snap.exists()) {
+      isConnectedToCloud = true;
       return snap.val();
     }
     return null;
-  } catch (err) {
-    console.error('[Firebase RTDB] Failed to read from Realtime Database vault:', err);
+  } catch (err: any) {
+    console.warn('[Firebase RTDB] Read notice (using SSE & HTTP relay):', err?.message || err);
+    isConnectedToCloud = false;
     return null;
   }
 };

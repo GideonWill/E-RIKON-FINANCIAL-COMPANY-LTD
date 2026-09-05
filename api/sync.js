@@ -142,43 +142,66 @@ export default async function handler(req, res) {
         );
       }
 
+      // Accumulate deletedCustomerIds and deletedUserEmails
+      const incomingDelCust = Array.isArray(incoming.deletedCustomerIds) ? incoming.deletedCustomerIds : [];
+      const currentDelCust = new Set(globalCloudVault.deletedCustomerIds || []);
+      incomingDelCust.forEach(id => { if (id) currentDelCust.add(id); });
+      globalCloudVault.deletedCustomerIds = Array.from(currentDelCust);
+      const deletedCustIds = globalCloudVault.deletedCustomerIds;
+
+      if (Array.isArray(incoming.deletedUserEmails)) {
+        const currentDelUsers = new Set((globalCloudVault.deletedUserEmails || []).map(e => e.toLowerCase()));
+        incoming.deletedUserEmails.forEach(e => { if (e) currentDelUsers.add(e.toLowerCase()); });
+        globalCloudVault.deletedUserEmails = Array.from(currentDelUsers);
+      }
+
       if (!incoming.authoritative) {
         // 3. Merge customers & apply deletions
-      const deletedCustIds = Array.isArray(incoming.deletedCustomerIds) ? incoming.deletedCustomerIds : [];
-      if (Array.isArray(incoming.customers)) {
-        const custMap = new Map();
-        (globalCloudVault.customers || []).forEach(c => {
-          if (!deletedCustIds.includes(c.id)) custMap.set(c.id, c);
-        });
-        incoming.customers.forEach(c => {
-          if (!deletedCustIds.includes(c.id)) custMap.set(c.id, c);
-        });
-        globalCloudVault.customers = Array.from(custMap.values());
-      } else if (deletedCustIds.length > 0) {
-        globalCloudVault.customers = (globalCloudVault.customers || []).filter(c => !deletedCustIds.includes(c.id));
-      }
+        if (Array.isArray(incoming.customers)) {
+          const custMap = new Map();
+          (globalCloudVault.customers || []).forEach(c => {
+            if (!deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)) custMap.set(c.id, c);
+          });
+          incoming.customers.forEach(c => {
+            if (!deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)) custMap.set(c.id, c);
+          });
+          globalCloudVault.customers = Array.from(custMap.values());
+        } else if (deletedCustIds.length > 0) {
+          globalCloudVault.customers = (globalCloudVault.customers || []).filter(c => !deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber));
+        }
 
-      // 4. Merge accounts & apply deletions
-      if (Array.isArray(incoming.accounts)) {
-        const accMap = new Map();
-        (globalCloudVault.accounts || []).forEach(a => {
-          if (!deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)) accMap.set(a.id, a);
-        });
-        incoming.accounts.forEach(a => {
-          if (!deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)) accMap.set(a.id, a);
-        });
-        globalCloudVault.accounts = Array.from(accMap.values());
-      } else if (deletedCustIds.length > 0) {
-        globalCloudVault.accounts = (globalCloudVault.accounts || []).filter(a => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id));
-      }
+        // 4. Merge accounts & apply deletions
+        if (Array.isArray(incoming.accounts)) {
+          const accMap = new Map();
+          (globalCloudVault.accounts || []).forEach(a => {
+            if (!deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id) && !deletedCustIds.includes(a.customer?.id)) accMap.set(a.id, a);
+          });
+          incoming.accounts.forEach(a => {
+            if (!deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id) && !deletedCustIds.includes(a.customer?.id)) accMap.set(a.id, a);
+          });
+          globalCloudVault.accounts = Array.from(accMap.values());
+        } else if (deletedCustIds.length > 0) {
+          globalCloudVault.accounts = (globalCloudVault.accounts || []).filter(a => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id) && !deletedCustIds.includes(a.customer?.id));
+        }
 
-      // 5. Merge transactions by id
-      if (Array.isArray(incoming.transactions)) {
-        const txMap = new Map();
-        (globalCloudVault.transactions || []).forEach(t => txMap.set(t.id, t));
-        incoming.transactions.forEach(t => txMap.set(t.id, t));
-        globalCloudVault.transactions = Array.from(txMap.values());
-      }
+        // 5. Merge transactions & apply deletions
+        if (Array.isArray(incoming.transactions)) {
+          const txMap = new Map();
+          (globalCloudVault.transactions || []).forEach(t => {
+            const cId = t.customerId || t.account?.customerId || t.account?.customer?.id;
+            if (!deletedCustIds.includes(t.id) && (!cId || !deletedCustIds.includes(cId))) txMap.set(t.id, t);
+          });
+          incoming.transactions.forEach(t => {
+            const cId = t.customerId || t.account?.customerId || t.account?.customer?.id;
+            if (!deletedCustIds.includes(t.id) && (!cId || !deletedCustIds.includes(cId))) txMap.set(t.id, t);
+          });
+          globalCloudVault.transactions = Array.from(txMap.values());
+        } else if (deletedCustIds.length > 0) {
+          globalCloudVault.transactions = (globalCloudVault.transactions || []).filter(t => {
+            const cId = t.customerId || t.account?.customerId || t.account?.customer?.id;
+            return !deletedCustIds.includes(t.id) && (!cId || !deletedCustIds.includes(cId));
+          });
+        }
 
       if (Array.isArray(incoming.loans)) {
         const loanMap = new Map();

@@ -307,13 +307,13 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
 
     const uniqueIds = new Set<string>();
     const mergedCust = Array.from(custMap.values()).filter((c) => {
-      if (!c.id || uniqueIds.has(c.id) || deletedCustIds.includes(c.id) || deletedCustIds.includes(c.customerNumber)) return false;
-      uniqueIds.add(c.id);
+      if (!c.id || uniqueIds.has(c.id)) return false;
+      if (deletedCustIds.includes(c.id) || (c.customerNumber && deletedCustIds.includes(c.customerNumber))) return false;
       return true;
     });
 
     if (JSON.stringify(mergedCust) !== JSON.stringify(localCust)) {
-      saveStoredCustomers(mergedCust);
+      saveStoredCustomers(mergedCust, true);
       hasUpdates = true;
     }
 
@@ -335,8 +335,10 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
 
       const mergedTxs = Array.from(txMap.values()).filter((t) => {
         if (deletedCustIds.includes(t.id) || (t.receiptNo && deletedCustIds.includes(t.receiptNo))) return false;
-        const txCustId = t.account?.customerId || t.account?.customer?.id;
+        const txCustId = t.customerId || t.account?.customerId || t.account?.customer?.id;
+        const txCustNo = t.customer?.customerNumber || t.account?.customer?.customerNumber;
         if (txCustId && deletedCustIds.includes(txCustId)) return false;
+        if (txCustNo && deletedCustIds.includes(txCustNo)) return false;
         return true;
       });
 
@@ -368,7 +370,11 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       });
 
       const mergedAcc = Array.from(accMap.values()).filter(
-        (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
+        (a) =>
+          !deletedCustIds.includes(a.customerId) &&
+          !deletedCustIds.includes(a.id) &&
+          (!a.customer?.id || !deletedCustIds.includes(a.customer.id)) &&
+          (!a.customer?.customerNumber || !deletedCustIds.includes(a.customer.customerNumber))
       );
 
       if (JSON.stringify(mergedAcc) !== JSON.stringify(localAcc)) {
@@ -390,7 +396,11 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       });
 
       const mergedLoans = Array.from(loanMap.values()).filter(
-        (l) => !deletedCustIds.includes(l.customerId) && !deletedCustIds.includes(l.id)
+        (l) =>
+          !deletedCustIds.includes(l.customerId) &&
+          !deletedCustIds.includes(l.id) &&
+          (!l.customer?.id || !deletedCustIds.includes(l.customer.id)) &&
+          (!l.customer?.customerNumber || !deletedCustIds.includes(l.customer.customerNumber))
       );
 
       if (JSON.stringify(mergedLoans) !== JSON.stringify(localLoans)) {
@@ -464,6 +474,10 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     if (hasUpdates) {
       // Notify React components to re-render without triggering a reverse push
       broadcastRealtimeEvent('MANUAL_SYNC', { source: 'REMOTE_CLOUD_PULL' }, 'remote');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('erikon_realtime_update', { detail: { type: 'MANUAL_SYNC', origin: 'remote' } }));
+        window.dispatchEvent(new CustomEvent('erikon_cloud_synced', { detail: { timestamp: new Date().toISOString() } }));
+      }
     }
 
     lastSyncTimestamp = new Date().toLocaleTimeString();
@@ -481,7 +495,7 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
  */
 export const pullCloudToLocal = async (): Promise<boolean> => {
   // 1. Try direct Firebase Realtime Database read first if configured
-  if (isFirebaseConfigured()) {
+  if (isFirebaseConfigured() && isRealtimeCloudConnected()) {
     try {
       const rtdbData = await getRealtimeDatabaseVault();
       if (
@@ -504,7 +518,7 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
   for (const url of endpoints) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
       const res = await fetch(url, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
@@ -519,7 +533,8 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
           ((Array.isArray(vault.registeredUsers) && vault.registeredUsers.length > 0) ||
            (Array.isArray(vault.customers) && vault.customers.length > 0) ||
            (Array.isArray(vault.accounts) && vault.accounts.length > 0) ||
-           (Array.isArray(vault.transactions) && vault.transactions.length > 0))
+           (Array.isArray(vault.transactions) && vault.transactions.length > 0) ||
+           (Array.isArray(vault.deletedCustomerIds) && vault.deletedCustomerIds.length > 0))
         ) {
           cloudData = vault;
           break;
@@ -531,28 +546,30 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
   }
 
   if (!cloudData) return false;
-  const applied = applyIncomingCloudVault(cloudData);
-  // Auto-seed Firebase Realtime Database with the harvested data so all devices sync instantly
-  if (applied && isFirebaseConfigured()) {
-    setTimeout(() => pushLocalToCloud(), 100);
-  }
-  return applied;
+  return applyIncomingCloudVault(cloudData);
 };
 
 /**
  * Initializes background cloud synchronization.
- * - Connects to Firebase Realtime Database with live sub-second WebSocket listener
- * - Pushes to cloud ONLY when local user writes occur
- * - Re-syncs immediately on screen focus, tab visibility change, or online event
+ * - Listens to live SSE & WebSocket events for sub-second cross-device reaction
+ * - Re-syncs immediately on remote notifications, screen focus, tab visibility, or online event
+ * - Keeps a 2.5s fast heartbeat poll so mobile and desktop stay synchronized seamlessly
  */
 export const initCloudSync = () => {
   // Initial pull on app launch
   pullCloudToLocal().catch(() => {});
 
-  // Automatically push to cloud relay whenever a LOCAL user action occurs
+  // Handle local user actions and incoming remote sync notifications
   const unsubscribeEvents = subscribeRealtimeEvents((event) => {
-    // Ignore remote events (already applied) to prevent echo loops
-    if (isApplyingRemoteUpdate || event.origin === 'remote') {
+    // If currently applying a remote payload, do not push
+    if (isApplyingRemoteUpdate) {
+      return;
+    }
+
+    if (event.origin === 'remote') {
+      // High-speed cross-device synchronization: Another device performed a CRUD action or sync!
+      // Immediately pull fresh state into this device
+      pullCloudToLocal().catch(() => {});
       return;
     }
 
@@ -561,17 +578,16 @@ export const initCloudSync = () => {
         pullCloudToLocal().catch(() => {});
       }
     } else {
-      // Local user operation (e.g. deposit recorded, customer registered, loan created)
+      // Local user operation on this device (e.g. deposit recorded, customer registered, customer deleted, loan created)
       pushLocalToCloud().catch(() => {});
     }
   });
 
-  // Background fallback poller (every 8s if disconnected, otherwise RTDB WebSocket handles everything)
+  // Fast background heartbeat poller (every 2.5s)
+  // Guarantees all devices (mobile, tablet, desktop) reflect changes within 1-2 seconds regardless of SSE disconnects
   const pollTimer = setInterval(() => {
-    if (!isRealtimeCloudConnected()) {
-      pullCloudToLocal().catch(() => {});
-    }
-  }, 8000);
+    pullCloudToLocal().catch(() => {});
+  }, 2500);
 
   // Instant sync on screen resume / tab focus (important for mobile devices)
   const handleVisibilityChange = () => {

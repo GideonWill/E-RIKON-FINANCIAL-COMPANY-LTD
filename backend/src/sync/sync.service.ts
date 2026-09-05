@@ -43,16 +43,44 @@ export class SyncService {
   }
 
   updateVault(incoming: Partial<CloudVaultPayload>): CloudVaultPayload {
+    // 0. Process & persist deleted user and customer tombstones
+    if (Array.isArray(incoming.deletedUserEmails)) {
+      const existingUserDel = new Set((this.vault.deletedUserEmails || []).map((e) => e.toLowerCase()));
+      incoming.deletedUserEmails.forEach((email) => {
+        if (email) existingUserDel.add(email.toLowerCase());
+      });
+      this.vault.deletedUserEmails = Array.from(existingUserDel);
+
+      if (Array.isArray(this.vault.registeredUsers)) {
+        this.vault.registeredUsers = this.vault.registeredUsers.filter(
+          (u) => !existingUserDel.has((u.email || '').toLowerCase()) && !existingUserDel.has((u.id || '').toLowerCase())
+        );
+      }
+    }
+
+    if (Array.isArray(incoming.deletedCustomerIds)) {
+      const existingCustDel = new Set(this.vault.deletedCustomerIds || []);
+      incoming.deletedCustomerIds.forEach((id) => {
+        if (id) existingCustDel.add(id);
+      });
+      this.vault.deletedCustomerIds = Array.from(existingCustDel);
+    }
+
+    const activeDeletedCustomerIds = new Set(this.vault.deletedCustomerIds || []);
+    const activeDeletedUserEmails = new Set((this.vault.deletedUserEmails || []).map((e) => e.toLowerCase()));
+
     // 1. Registered Users
     if (Array.isArray(incoming.registeredUsers)) {
       const existingUsersMap = new Map<string, any>();
       (this.vault.registeredUsers || []).forEach((u) => {
-        if (u.email) existingUsersMap.set(u.email.toLowerCase(), u);
+        if (u.email && !activeDeletedUserEmails.has(u.email.toLowerCase())) {
+          existingUsersMap.set(u.email.toLowerCase(), u);
+        }
       });
 
       incoming.registeredUsers.forEach((incomingUser) => {
         const key = incomingUser.email?.toLowerCase();
-        if (!key) return;
+        if (!key || activeDeletedUserEmails.has(key)) return;
 
         const existingUser = existingUsersMap.get(key);
         if (existingUser) {
@@ -76,10 +104,15 @@ export class SyncService {
     if (Array.isArray(incoming.approvals)) {
       const apprMap = new Map<string, any>();
       (this.vault.approvals || []).forEach((a) => {
-        apprMap.set(a.id, a);
+        if (!activeDeletedCustomerIds.has(a.targetId) && !activeDeletedUserEmails.has(a.targetId?.toLowerCase())) {
+          apprMap.set(a.id, a);
+        }
       });
 
       incoming.approvals.forEach((incomingAppr) => {
+        if (activeDeletedCustomerIds.has(incomingAppr.targetId) || activeDeletedUserEmails.has(incomingAppr.targetId?.toLowerCase())) {
+          return;
+        }
         const existingAppr = apprMap.get(incomingAppr.id);
         if (existingAppr) {
           if (existingAppr.status === 'APPROVED' || existingAppr.status === 'REJECTED') {
@@ -94,27 +127,75 @@ export class SyncService {
       this.vault.approvals = Array.from(apprMap.values());
     }
 
-    // 3. Customers
+    // 3. Customers (Purge any matching activeDeletedCustomerIds)
     if (Array.isArray(incoming.customers)) {
-      this.vault.customers = incoming.customers;
+      this.vault.customers = incoming.customers.filter(
+        (c) => !activeDeletedCustomerIds.has(c.id) && !activeDeletedCustomerIds.has(c.customerNumber)
+      );
+    } else if (Array.isArray(this.vault.customers)) {
+      this.vault.customers = this.vault.customers.filter(
+        (c) => !activeDeletedCustomerIds.has(c.id) && !activeDeletedCustomerIds.has(c.customerNumber)
+      );
     }
 
-    // 4. Accounts
+    // 4. Accounts (Purge accounts belonging to deleted customers)
     if (Array.isArray(incoming.accounts)) {
-      this.vault.accounts = incoming.accounts;
+      this.vault.accounts = incoming.accounts.filter(
+        (a) => !activeDeletedCustomerIds.has(a.customerId) &&
+               !activeDeletedCustomerIds.has(a.id) &&
+               !activeDeletedCustomerIds.has(a.customer?.id) &&
+               !activeDeletedCustomerIds.has(a.customer?.customerNumber)
+      );
+    } else if (Array.isArray(this.vault.accounts)) {
+      this.vault.accounts = this.vault.accounts.filter(
+        (a) => !activeDeletedCustomerIds.has(a.customerId) &&
+               !activeDeletedCustomerIds.has(a.id) &&
+               !activeDeletedCustomerIds.has(a.customer?.id) &&
+               !activeDeletedCustomerIds.has(a.customer?.customerNumber)
+      );
     }
 
-    // 5. Transactions
+    // 5. Transactions (Purge transactions belonging to deleted customers/accounts)
     if (Array.isArray(incoming.transactions)) {
-      this.vault.transactions = incoming.transactions;
+      this.vault.transactions = incoming.transactions.filter((t) => {
+        if (activeDeletedCustomerIds.has(t.id) || (t.receiptNo && activeDeletedCustomerIds.has(t.receiptNo))) return false;
+        const custId = t.customerId || t.account?.customerId || t.account?.customer?.id;
+        const custNo = t.customer?.customerNumber || t.account?.customer?.customerNumber;
+        if (custId && activeDeletedCustomerIds.has(custId)) return false;
+        if (custNo && activeDeletedCustomerIds.has(custNo)) return false;
+        return true;
+      });
+    } else if (Array.isArray(this.vault.transactions)) {
+      this.vault.transactions = this.vault.transactions.filter((t) => {
+        if (activeDeletedCustomerIds.has(t.id) || (t.receiptNo && activeDeletedCustomerIds.has(t.receiptNo))) return false;
+        const custId = t.customerId || t.account?.customerId || t.account?.customer?.id;
+        const custNo = t.customer?.customerNumber || t.account?.customer?.customerNumber;
+        if (custId && activeDeletedCustomerIds.has(custId)) return false;
+        if (custNo && activeDeletedCustomerIds.has(custNo)) return false;
+        return true;
+      });
     }
 
     if (Array.isArray(incoming.loans)) {
-      this.vault.loans = incoming.loans;
+      this.vault.loans = incoming.loans.filter(
+        (l) => !activeDeletedCustomerIds.has(l.customerId) && !activeDeletedCustomerIds.has(l.customer?.id)
+      );
+    } else if (Array.isArray(this.vault.loans)) {
+      this.vault.loans = this.vault.loans.filter(
+        (l) => !activeDeletedCustomerIds.has(l.customerId) && !activeDeletedCustomerIds.has(l.customer?.id)
+      );
     }
+
     if (Array.isArray(incoming.companyInterest)) {
-      this.vault.companyInterest = incoming.companyInterest;
+      this.vault.companyInterest = incoming.companyInterest.filter(
+        (i) => !activeDeletedCustomerIds.has(i.customerId)
+      );
+    } else if (Array.isArray(this.vault.companyInterest)) {
+      this.vault.companyInterest = this.vault.companyInterest.filter(
+        (i) => !activeDeletedCustomerIds.has(i.customerId)
+      );
     }
+
     if (Array.isArray(incoming.companyWithdrawals)) {
       this.vault.companyWithdrawals = incoming.companyWithdrawals;
     }
@@ -136,6 +217,7 @@ export class SyncService {
     this.eventsService.broadcast('MANUAL_SYNC', {
       source: 'LIVE_BACKEND_SYNC',
       updatedAt: this.vault.updatedAt,
+      deletedCustomerIds: this.vault.deletedCustomerIds,
     });
 
     return this.vault;

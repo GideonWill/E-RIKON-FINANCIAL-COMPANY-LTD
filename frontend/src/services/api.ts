@@ -141,6 +141,7 @@ export const getStoredCustomers = (): Customer[] => {
 
   // Self-healing customer recovery: Reconcile and recover any customer records embedded in accounts or transactions
   try {
+    const deletedIds = getDeletedCustomerIds();
     const custMap = new Map<string, Customer>();
     parsed.forEach((c) => {
       if (c.id) custMap.set(c.id, c);
@@ -149,7 +150,7 @@ export const getStoredCustomers = (): Customer[] => {
 
     let recoveredAny = false;
 
-    // 1. Recover from accounts
+    // 1. Recover from accounts (Only if not explicitly deleted)
     const rawAccsStr = localStorage.getItem('erikon_accounts');
     if (rawAccsStr) {
       const accs = JSON.parse(rawAccsStr);
@@ -157,16 +158,22 @@ export const getStoredCustomers = (): Customer[] => {
         accs.forEach((acc: any) => {
           if (acc.customer && acc.customer.id && !custMap.has(acc.customer.id)) {
             const { accounts: _, ...cleanCust } = acc.customer;
-            custMap.set(cleanCust.id, cleanCust as Customer);
-            if (cleanCust.customerNumber) custMap.set(cleanCust.customerNumber, cleanCust as Customer);
-            parsed.push(cleanCust as Customer);
-            recoveredAny = true;
+            if (
+              !deletedIds.includes(cleanCust.id) &&
+              !deletedIds.includes(cleanCust.customerNumber || '') &&
+              !deletedIds.includes(acc.customerId || '')
+            ) {
+              custMap.set(cleanCust.id, cleanCust as Customer);
+              if (cleanCust.customerNumber) custMap.set(cleanCust.customerNumber, cleanCust as Customer);
+              parsed.push(cleanCust as Customer);
+              recoveredAny = true;
+            }
           }
         });
       }
     }
 
-    // 2. Recover from transactions
+    // 2. Recover from transactions (Only if not explicitly deleted)
     const rawTxsStr = localStorage.getItem('erikon_transactions');
     if (rawTxsStr) {
       const txs = JSON.parse(rawTxsStr);
@@ -175,10 +182,17 @@ export const getStoredCustomers = (): Customer[] => {
           const cust = tx.account?.customer || tx.customer;
           if (cust && cust.id && !custMap.has(cust.id)) {
             const { accounts: _, ...cleanCust } = cust;
-            custMap.set(cleanCust.id, cleanCust as Customer);
-            if (cleanCust.customerNumber) custMap.set(cleanCust.customerNumber, cleanCust as Customer);
-            parsed.push(cleanCust as Customer);
-            recoveredAny = true;
+            const txCustId = tx.customerId || tx.account?.customerId;
+            if (
+              !deletedIds.includes(cleanCust.id) &&
+              !deletedIds.includes(cleanCust.customerNumber || '') &&
+              (!txCustId || !deletedIds.includes(txCustId))
+            ) {
+              custMap.set(cleanCust.id, cleanCust as Customer);
+              if (cleanCust.customerNumber) custMap.set(cleanCust.customerNumber, cleanCust as Customer);
+              parsed.push(cleanCust as Customer);
+              recoveredAny = true;
+            }
           }
         });
       }
@@ -190,27 +204,21 @@ export const getStoredCustomers = (): Customer[] => {
   } catch {}
 
   const deletedIds = getDeletedCustomerIds();
-  return parsed.filter((c) => !deletedIds.includes(c.id));
+  return parsed.filter((c) => !deletedIds.includes(c.id) && !deletedIds.includes(c.customerNumber || ''));
 };
 
-export const saveStoredCustomers = (customers: Customer[]) => {
-  // Clear any tombstone that matches the newly saved customers
+export const saveStoredCustomers = (customers: Customer[], skipBroadcast = false) => {
   const currentDeleted = getDeletedCustomerIds();
-  const incomingIds = new Set(customers.map((c) => c.id).filter(Boolean));
-  const incomingCustNos = new Set(customers.map((c) => c.customerNumber).filter(Boolean));
-  const cleanDeleted = currentDeleted.filter((id) => !incomingIds.has(id) && !incomingCustNos.has(id));
-  if (cleanDeleted.length !== currentDeleted.length) {
-    localStorage.setItem('erikon_deleted_customer_ids', JSON.stringify(cleanDeleted));
-  }
-
   const sanitized = customers
-    .filter((c) => !cleanDeleted.includes(c.id) && !cleanDeleted.includes(c.customerNumber))
+    .filter((c) => !currentDeleted.includes(c.id) && !currentDeleted.includes(c.customerNumber || ''))
     .map((c) => {
       const { accounts: _, ...rest } = c;
       return rest as Customer;
     });
   localStorage.setItem('erikon_customers', JSON.stringify(sanitized));
-  broadcastRealtimeEvent('CUSTOMER_REGISTERED', sanitized);
+  if (!skipBroadcast) {
+    broadcastRealtimeEvent('CUSTOMER_REGISTERED', sanitized);
+  }
 };
 
 export const getStoredAccounts = (): Account[] => {
@@ -1122,33 +1130,86 @@ export const deleteCustomerRecord = (customerId: string): boolean => {
   const customers = getStoredCustomers();
   const targetCust = customers.find((c) => c.id === customerId || c.customerNumber === customerId);
   const resolvedId = targetCust?.id || customerId;
+  const custNo = targetCust?.customerNumber;
 
   // 2. Add to permanent deleted tombstones
   addDeletedCustomerId(resolvedId);
-  if (targetCust?.customerNumber) addDeletedCustomerId(targetCust.customerNumber);
+  if (customerId) addDeletedCustomerId(customerId);
+  if (custNo) addDeletedCustomerId(custNo);
   if (targetCust?.phone) addDeletedCustomerId(targetCust.phone);
   if (targetCust?.ghanaCardNumber) addDeletedCustomerId(targetCust.ghanaCardNumber);
 
   // 3. Remove from stored customers
-  const updatedCusts = customers.filter((c) => c.id !== resolvedId && c.customerNumber !== targetCust?.customerNumber);
-  saveStoredCustomers(updatedCusts);
+  const updatedCusts = customers.filter(
+    (c) => c.id !== resolvedId && c.id !== customerId && (!custNo || c.customerNumber !== custNo)
+  );
+  saveStoredCustomers(updatedCusts, true);
 
-  // 4. Remove associated accounts
+  // 4. Remove associated accounts and gather account IDs
   const accounts = getStoredAccounts();
-  const updatedAccs = accounts.filter((a) => a.customerId !== resolvedId && a.customerId !== customerId);
+  const targetAccIds = new Set<string>();
+  accounts.forEach((a) => {
+    if (
+      a.customerId === resolvedId ||
+      a.customerId === customerId ||
+      a.customer?.id === resolvedId ||
+      a.customer?.id === customerId ||
+      (custNo && (a.customer?.customerNumber === custNo || a.customerId === custNo))
+    ) {
+      if (a.id) targetAccIds.add(a.id);
+      if (a.accountNumber) targetAccIds.add(a.accountNumber);
+    }
+  });
+
+  const updatedAccs = accounts.filter(
+    (a) =>
+      !targetAccIds.has(a.id) &&
+      !targetAccIds.has(a.accountNumber || '') &&
+      a.customerId !== resolvedId &&
+      a.customerId !== customerId
+  );
   saveStoredAccounts(updatedAccs);
 
-  // 5. Remove associated loans
+  // 5. Remove associated transactions (CRITICAL: prevents resurrection via self-healing)
+  const transactions = getStoredTransactions();
+  const updatedTxs = transactions.filter((t) => {
+    const rawT = t as any;
+    if (targetAccIds.has(t.accountId || '') || targetAccIds.has(t.account?.id || '')) return false;
+    const txCustId = rawT.customerId || t.account?.customerId || t.account?.customer?.id;
+    const txCustNo = rawT.customer?.customerNumber || t.account?.customer?.customerNumber;
+    if (txCustId === resolvedId || txCustId === customerId) return false;
+    if (custNo && (txCustNo === custNo || txCustId === custNo)) return false;
+    return true;
+  });
+  saveStoredTransactions(updatedTxs);
+
+  // 6. Remove associated loans
   const loans = getStoredLoans();
-  const updatedLoans = loans.filter((l) => l.customerId !== resolvedId && l.customerId !== customerId);
+  const updatedLoans = loans.filter(
+    (l) =>
+      l.customerId !== resolvedId &&
+      l.customerId !== customerId &&
+      (!custNo || l.customer?.customerNumber !== custNo)
+  );
   saveStoredLoans(updatedLoans);
 
-  // 6. Remove associated approvals
+  // 7. Remove associated company interest
+  const interests = getStoredCompanyInterest();
+  const updatedInterests = interests.filter(
+    (i) =>
+      i.customerId !== resolvedId &&
+      i.customerId !== customerId &&
+      (!targetAccIds.has(i.accountId || '')) &&
+      (!targetAccIds.has(i.accountNumber || ''))
+  );
+  saveStoredCompanyInterest(updatedInterests);
+
+  // 8. Remove associated approvals
   const approvals = getStoredApprovals();
   const updatedApprovals = approvals.filter((a) => a.targetId !== resolvedId && a.targetId !== customerId);
   saveStoredApprovals(updatedApprovals);
 
-  // 7. Record audit log
+  // 9. Record audit log
   const logs = getStoredAuditLogs();
   const newLog: AuditLog = {
     id: `log-del-${Date.now()}`,
@@ -1164,20 +1225,18 @@ export const deleteCustomerRecord = (customerId: string): boolean => {
   };
   saveStoredAuditLogs([newLog, ...logs]);
 
-  // 8. Broadcast real-time deletion event across all open windows & mobile devices
-  broadcastRealtimeEvent('CUSTOMER_DELETED', { customerId: resolvedId });
+  // 10. Broadcast real-time deletion event across all open windows & mobile devices
+  broadcastRealtimeEvent('CUSTOMER_DELETED', { customerId: resolvedId, customerNumber: custNo });
 
-  // 9. Delete from backend Neon database if connected
+  // 11. Delete from backend database if connected
   apiClient.delete(`/customers/${resolvedId}`).catch(() => { });
 
-  // 10. Immediately push updated state to cloud relay
-  setTimeout(() => {
-    try {
-      import('./cloudSync').then(({ pushLocalToCloud }) => {
-        pushLocalToCloud().catch(() => { });
-      });
-    } catch { }
-  }, 50);
+  // 12. Immediately push updated state to cloud relay
+  try {
+    import('./cloudSync').then(({ pushLocalToCloud }) => {
+      pushLocalToCloud().catch(() => { });
+    });
+  } catch { }
 
   return true;
 };
