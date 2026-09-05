@@ -256,38 +256,65 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       }
     }
 
-    // 3. Merged Authoritative Customers Sync (Lossless Merge)
+    // 3. Merged Authoritative Customers Sync (Lossless Merge + Self-healing from accounts/transactions)
+    let cleanCloudCust: any[] = [];
     if (Array.isArray(cloudData.customers)) {
-      const cleanCloudCust = cloudData.customers.filter(
+      cleanCloudCust = cloudData.customers.filter(
         (c) => !deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)
       );
-      const localCust = getStoredCustomers().filter(
-        (c) => !deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)
-      );
+    }
 
-      const custMap = new Map<string, any>();
-      localCust.forEach((c) => {
-        if (c.id) custMap.set(c.id, c);
-        if (c.customerNumber) custMap.set(c.customerNumber, c);
+    // Auto-harvest customers embedded in accounts
+    if (Array.isArray(cloudData.accounts)) {
+      cloudData.accounts.forEach((acc: any) => {
+        if (acc.customer && acc.customer.id && !deletedCustIds.includes(acc.customer.id)) {
+          if (!cleanCloudCust.some((c) => c.id === acc.customer.id || c.customerNumber === acc.customer.customerNumber)) {
+            const { accounts: _, ...cleanCust } = acc.customer;
+            cleanCloudCust.push(cleanCust);
+          }
+        }
       });
-      cleanCloudCust.forEach((c) => {
-        const existing = (c.id && custMap.get(c.id)) || (c.customerNumber && custMap.get(c.customerNumber));
-        const mergedRecord = { ...existing, ...c };
-        if (c.id) custMap.set(c.id, mergedRecord);
-        if (c.customerNumber) custMap.set(c.customerNumber, mergedRecord);
-      });
+    }
 
-      const uniqueIds = new Set<string>();
-      const mergedCust = Array.from(custMap.values()).filter((c) => {
-        if (!c.id || uniqueIds.has(c.id) || deletedCustIds.includes(c.id) || deletedCustIds.includes(c.customerNumber)) return false;
-        uniqueIds.add(c.id);
-        return true;
+    // Auto-harvest customers embedded in transactions
+    if (Array.isArray(cloudData.transactions)) {
+      cloudData.transactions.forEach((tx: any) => {
+        const cust = tx.account?.customer || tx.customer;
+        if (cust && cust.id && !deletedCustIds.includes(cust.id)) {
+          if (!cleanCloudCust.some((c) => c.id === cust.id || c.customerNumber === cust.customerNumber)) {
+            const { accounts: _, ...cleanCust } = cust;
+            cleanCloudCust.push(cleanCust);
+          }
+        }
       });
+    }
 
-      if (JSON.stringify(mergedCust) !== JSON.stringify(localCust)) {
-        saveStoredCustomers(mergedCust);
-        hasUpdates = true;
-      }
+    const localCust = getStoredCustomers().filter(
+      (c) => !deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)
+    );
+
+    const custMap = new Map<string, any>();
+    localCust.forEach((c) => {
+      if (c.id) custMap.set(c.id, c);
+      if (c.customerNumber) custMap.set(c.customerNumber, c);
+    });
+    cleanCloudCust.forEach((c) => {
+      const existing = (c.id && custMap.get(c.id)) || (c.customerNumber && custMap.get(c.customerNumber));
+      const mergedRecord = { ...existing, ...c };
+      if (c.id) custMap.set(c.id, mergedRecord);
+      if (c.customerNumber) custMap.set(c.customerNumber, mergedRecord);
+    });
+
+    const uniqueIds = new Set<string>();
+    const mergedCust = Array.from(custMap.values()).filter((c) => {
+      if (!c.id || uniqueIds.has(c.id) || deletedCustIds.includes(c.id) || deletedCustIds.includes(c.customerNumber)) return false;
+      uniqueIds.add(c.id);
+      return true;
+    });
+
+    if (JSON.stringify(mergedCust) !== JSON.stringify(localCust)) {
+      saveStoredCustomers(mergedCust);
+      hasUpdates = true;
     }
 
     // 4. Merged Authoritative Transactions Sync
@@ -491,6 +518,7 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
           vault &&
           ((Array.isArray(vault.registeredUsers) && vault.registeredUsers.length > 0) ||
            (Array.isArray(vault.customers) && vault.customers.length > 0) ||
+           (Array.isArray(vault.accounts) && vault.accounts.length > 0) ||
            (Array.isArray(vault.transactions) && vault.transactions.length > 0))
         ) {
           cloudData = vault;
@@ -503,7 +531,12 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
   }
 
   if (!cloudData) return false;
-  return applyIncomingCloudVault(cloudData);
+  const applied = applyIncomingCloudVault(cloudData);
+  // Auto-seed Firebase Realtime Database with the harvested data so all devices sync instantly
+  if (applied && isFirebaseConfigured()) {
+    setTimeout(() => pushLocalToCloud(), 100);
+  }
+  return applied;
 };
 
 /**

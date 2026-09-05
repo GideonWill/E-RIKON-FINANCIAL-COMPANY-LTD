@@ -22,8 +22,11 @@ import {
   CurrencyDollarIcon,
   TrashIcon,
   SparklesIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  PencilSquareIcon
 } from '@heroicons/react/24/outline';
+import { EditCustomerRecordModal } from '../components/ui/EditCustomerRecordModal';
+import { Customer } from '../types';
 
 export const AccountsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -33,6 +36,8 @@ export const AccountsPage: React.FC = () => {
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(accounts[0] || null);
   const [selectedCycleNumber, setSelectedCycleNumber] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const matrixRef = useRef<HTMLDivElement>(null);
 
   const handleSelectAccount = (acc: Account) => {
@@ -321,6 +326,23 @@ export const AccountsPage: React.FC = () => {
                         <span>Record Withdrawal</span>
                       </button>
 
+                      {currentUser?.role === 'SUPER_ADMIN' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (selectedAccount.customer) {
+                              setCustomerToEdit(selectedAccount.customer);
+                              setIsEditModalOpen(true);
+                            }
+                          }}
+                          className="px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 font-black text-xs flex items-center gap-1.5 border border-amber-500/30 cursor-pointer transition-all"
+                          title="Super Admin: Edit & Correct Customer KYC Details or Ledger Savings"
+                        >
+                          <PencilSquareIcon className="w-4 h-4" />
+                          <span>Edit / Correct</span>
+                        </button>
+                      )}
+
                       <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-950 p-2 rounded-2xl border border-slate-100 dark:border-slate-800 text-right">
                         <div className="px-2 border-r border-slate-200 dark:border-slate-800">
                           <div className="text-[9px] text-blue-500 uppercase font-bold">Total Savings</div>
@@ -494,6 +516,28 @@ export const AccountsPage: React.FC = () => {
 
         </div>
       )}
+
+      {/* Super Admin Customer Record & Financial Ledger Correction Modal */}
+      <EditCustomerRecordModal
+        isOpen={isEditModalOpen}
+        customer={customerToEdit}
+        account={selectedAccount}
+        currentUser={currentUser}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setCustomerToEdit(null);
+        }}
+        onSuccess={(_, updatedAcc) => {
+          const fresh = getStoredAccounts();
+          setAccounts(fresh);
+          if (updatedAcc) {
+            setSelectedAccount(updatedAcc);
+          } else if (selectedAccount) {
+            const found = fresh.find(a => a.id === selectedAccount.id);
+            if (found) setSelectedAccount(found);
+          }
+        }}
+      />
 
     </div>
   );

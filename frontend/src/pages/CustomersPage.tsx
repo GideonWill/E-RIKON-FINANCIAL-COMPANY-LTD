@@ -52,8 +52,10 @@ import {
   BuildingLibraryIcon,
   ArrowTopRightOnSquareIcon,
   ChevronRightIcon,
-  CheckIcon
+  CheckIcon,
+  PencilSquareIcon
 } from '@heroicons/react/24/outline';
+import { EditCustomerRecordModal } from '../components/ui/EditCustomerRecordModal';
 
 export const CustomersPage: React.FC = () => {
   const navigate = useNavigate();
@@ -66,6 +68,13 @@ export const CustomersPage: React.FC = () => {
   const [selectedDetailCustomer, setSelectedDetailCustomer] = useState<Customer | null>(null);
   const [selectedDetailCycleNumber, setSelectedDetailCycleNumber] = useState<number | null>(null);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const handleOpenEditCustomer = (cust: Customer) => {
+    setCustomerToEdit(cust);
+    setIsEditModalOpen(true);
+  };
   const [successBanner, setSuccessBanner] = useState<{
     customerName: string;
     customerNumber: string;
@@ -966,6 +975,21 @@ export const CustomersPage: React.FC = () => {
                       <span>31-Day Scheme</span>
                     </button>
 
+                    {currentUser?.role === 'SUPER_ADMIN' && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenEditCustomer(cust);
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/30 transition-all flex items-center gap-1 text-[11px] cursor-pointer"
+                        title="Super Admin: Edit & Correct Customer KYC or Savings"
+                      >
+                        <PencilSquareIcon className="w-3.5 h-3.5" />
+                        <span>Edit</span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={(e) => {
@@ -1043,6 +1067,18 @@ export const CustomersPage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
+                  {currentUser?.role === 'SUPER_ADMIN' && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditCustomer(selectedDetailCustomer)}
+                      className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25 border border-amber-500/30 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                      title="Super Admin: Edit & Correct Customer KYC or Savings"
+                    >
+                      <PencilSquareIcon className="w-4 h-4" />
+                      <span className="hidden sm:inline">Edit / Correct</span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => handleDeleteCustomer(selectedDetailCustomer)}
@@ -1707,6 +1743,25 @@ export const CustomersPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Super Admin Customer Record & Financial Ledger Correction Modal */}
+      <EditCustomerRecordModal
+        isOpen={isEditModalOpen}
+        customer={customerToEdit}
+        currentUser={currentUser}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setCustomerToEdit(null);
+        }}
+        onSuccess={(updatedCust) => {
+          setCustomers(getStoredCustomers());
+          setAccounts(getStoredAccounts());
+          setTransactions(getStoredTransactions());
+          if (selectedDetailCustomer?.id === updatedCust.id) {
+            setSelectedDetailCustomer(updatedCust);
+          }
+        }}
+      />
 
     </div>
   );

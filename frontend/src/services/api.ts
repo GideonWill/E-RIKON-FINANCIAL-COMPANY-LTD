@@ -99,37 +99,7 @@ export const INITIAL_COMPANY_WITHDRAWALS: CompanyInterestWithdrawal[] = [];
 export const INITIAL_APPROVALS: ApprovalRequest[] = [];
 export const INITIAL_AUDIT_LOGS: AuditLog[] = [];
 
-// Automatic one-time clean slate purge for fresh entries
-const CURRENT_DATA_VERSION = 'ecfms_clean_slate_2026_09_03';
-
-if (typeof window !== 'undefined') {
-  try {
-    const activeVersion = localStorage.getItem('erikon_data_version');
-    if (activeVersion !== CURRENT_DATA_VERSION) {
-      localStorage.setItem('erikon_customers', JSON.stringify([]));
-      localStorage.setItem('erikon_accounts', JSON.stringify([]));
-      localStorage.setItem('erikon_transactions', JSON.stringify([]));
-      localStorage.setItem('erikon_loans', JSON.stringify([]));
-      localStorage.setItem('erikon_company_interest', JSON.stringify([]));
-      localStorage.setItem('erikon_company_withdrawals', JSON.stringify([]));
-      localStorage.setItem('erikon_deleted_customer_ids', JSON.stringify([]));
-      localStorage.setItem('erikon_dynamic_notifications', JSON.stringify([]));
-      localStorage.setItem('erikon_read_notifications', JSON.stringify([]));
-      localStorage.setItem('erikon_audit_logs', JSON.stringify([]));
-
-      const rawAppr = localStorage.getItem('erikon_approvals');
-      if (rawAppr) {
-        const parsed = JSON.parse(rawAppr);
-        if (Array.isArray(parsed)) {
-          const staffOnly = parsed.filter((a: any) => a.type === 'STAFF_ROLE_SIGNUP');
-          localStorage.setItem('erikon_approvals', JSON.stringify(staffOnly));
-        }
-      }
-      localStorage.setItem('erikon_data_version', CURRENT_DATA_VERSION);
-      import('./cloudSync').then((m) => m.pushLocalToCloud(true)).catch(() => {});
-    }
-  } catch {}
-}
+export const CURRENT_DATA_VERSION = 'ecfms_clean_slate_2026_09_03';
 
 // --- PERSISTENCE & REAL-TIME REPOSITORY ---
 
@@ -168,6 +138,57 @@ export const getStoredCustomers = (): Customer[] => {
       if (Array.isArray(raw)) parsed = raw;
     } catch {}
   }
+
+  // Self-healing customer recovery: Reconcile and recover any customer records embedded in accounts or transactions
+  try {
+    const custMap = new Map<string, Customer>();
+    parsed.forEach((c) => {
+      if (c.id) custMap.set(c.id, c);
+      if (c.customerNumber) custMap.set(c.customerNumber, c);
+    });
+
+    let recoveredAny = false;
+
+    // 1. Recover from accounts
+    const rawAccsStr = localStorage.getItem('erikon_accounts');
+    if (rawAccsStr) {
+      const accs = JSON.parse(rawAccsStr);
+      if (Array.isArray(accs)) {
+        accs.forEach((acc: any) => {
+          if (acc.customer && acc.customer.id && !custMap.has(acc.customer.id)) {
+            const { accounts: _, ...cleanCust } = acc.customer;
+            custMap.set(cleanCust.id, cleanCust as Customer);
+            if (cleanCust.customerNumber) custMap.set(cleanCust.customerNumber, cleanCust as Customer);
+            parsed.push(cleanCust as Customer);
+            recoveredAny = true;
+          }
+        });
+      }
+    }
+
+    // 2. Recover from transactions
+    const rawTxsStr = localStorage.getItem('erikon_transactions');
+    if (rawTxsStr) {
+      const txs = JSON.parse(rawTxsStr);
+      if (Array.isArray(txs)) {
+        txs.forEach((tx: any) => {
+          const cust = tx.account?.customer || tx.customer;
+          if (cust && cust.id && !custMap.has(cust.id)) {
+            const { accounts: _, ...cleanCust } = cust;
+            custMap.set(cleanCust.id, cleanCust as Customer);
+            if (cleanCust.customerNumber) custMap.set(cleanCust.customerNumber, cleanCust as Customer);
+            parsed.push(cleanCust as Customer);
+            recoveredAny = true;
+          }
+        });
+      }
+    }
+
+    if (recoveredAny) {
+      localStorage.setItem('erikon_customers', JSON.stringify(parsed));
+    }
+  } catch {}
+
   const deletedIds = getDeletedCustomerIds();
   return parsed.filter((c) => !deletedIds.includes(c.id));
 };
@@ -1959,4 +1980,171 @@ export const registerNewUserRole = async (signupData: {
   saveStoredApprovals([approvalItem, ...approvals.filter((a) => a.targetId !== newUser.id && a.details?.email?.toLowerCase() !== newUser.email.toLowerCase())]);
 
   return { user: newUser, approval: approvalItem, isApproved: isAutoApproved };
+};
+
+// --- SUPER ADMIN CUSTOMER & FINANCIAL LEDGER CORRECTION ---
+
+export interface SuperAdminCustomerCorrectionPayload {
+  customerId: string;
+  firstName: string;
+  otherNames?: string;
+  lastName: string;
+  phone: string;
+  ghanaCardNumber: string;
+  address: string;
+  occupation?: string;
+  monthlyIncome?: number;
+  gender?: string;
+  dateOfBirth?: string;
+  branchId?: string;
+  nextOfKin?: {
+    fullName: string;
+    phone: string;
+    relationship: string;
+    address?: string;
+  };
+  savingsPackage?: SavingsPackage;
+  totalSavingsDeposited?: number;
+  correctionReason: string;
+  performedBy: User;
+}
+
+export const superAdminUpdateCustomerAndSavings = (payload: SuperAdminCustomerCorrectionPayload): { customer: Customer; account?: Account } => {
+  if (!payload.performedBy || payload.performedBy.role !== 'SUPER_ADMIN') {
+    throw new Error('Access Denied: Only the Super Administrator has authority to modify customer KYC records and ledger balances.');
+  }
+
+  if (!payload.correctionReason || payload.correctionReason.trim().length < 5) {
+    throw new Error('Please provide an administrative reason / justification memo (at least 5 characters) for this correction.');
+  }
+
+  const customers = getStoredCustomers();
+  const customerIndex = customers.findIndex((c) => c.id === payload.customerId || c.customerNumber === payload.customerId);
+  if (customerIndex === -1) {
+    throw new Error('Target customer not found in system repository.');
+  }
+
+  const existingCustomer = customers[customerIndex];
+  const oldCustomerSnapshot = { ...existingCustomer };
+
+  // 1. Update Customer Record
+  const updatedCustomer: Customer = {
+    ...existingCustomer,
+    firstName: payload.firstName.trim(),
+    otherNames: payload.otherNames ? payload.otherNames.trim() : '',
+    lastName: payload.lastName.trim(),
+    phone: payload.phone.trim(),
+    ghanaCardNumber: payload.ghanaCardNumber.trim().toUpperCase(),
+    address: payload.address.trim(),
+    occupation: payload.occupation?.trim() || existingCustomer.occupation,
+    monthlyIncome: payload.monthlyIncome !== undefined ? payload.monthlyIncome : existingCustomer.monthlyIncome,
+    gender: (payload.gender as any) || existingCustomer.gender,
+    dateOfBirth: payload.dateOfBirth || existingCustomer.dateOfBirth,
+    branchId: payload.branchId || existingCustomer.branchId,
+    nextOfKin: payload.nextOfKin ? {
+      id: existingCustomer.nextOfKin?.id || `nok-${Date.now()}`,
+      fullName: payload.nextOfKin.fullName.trim(),
+      phone: payload.nextOfKin.phone.trim(),
+      relationship: payload.nextOfKin.relationship.trim(),
+      address: payload.nextOfKin.address?.trim() || payload.address.trim(),
+    } : existingCustomer.nextOfKin,
+  };
+
+  customers[customerIndex] = updatedCustomer;
+  saveStoredCustomers(customers);
+
+  // 2. Update Corresponding Account & Financial Ledger
+  const accounts = getStoredAccounts();
+  const accountIndex = accounts.findIndex((a) => a.customerId === updatedCustomer.id || a.customer?.id === updatedCustomer.id || a.customer?.customerNumber === updatedCustomer.customerNumber);
+  let updatedAccount: Account | undefined;
+
+  if (accountIndex !== -1) {
+    const existingAccount = accounts[accountIndex];
+    const newPackage = payload.savingsPackage || existingAccount.savingsPackage || 20;
+    const newDepositSum = payload.totalSavingsDeposited !== undefined ? toDecimal(payload.totalSavingsDeposited) : existingAccount.currentBalance;
+
+    const newDayCount = Math.floor(newDepositSum / newPackage);
+    const isFeeDeducted = newDayCount >= 31;
+    const companyFee = isFeeDeducted ? newPackage : 0;
+    const available = isFeeDeducted ? Math.max(0, toDecimal(newDepositSum - companyFee)) : newDepositSum;
+
+    const existingCycles = existingAccount.dailyCycles || [];
+    const activeCycle = existingCycles[0] || {
+      id: `cyc-${Date.now()}`,
+      cycleNumber: 1,
+      startDate: existingAccount.openingDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+      isCompleted: false,
+    };
+
+    activeCycle.dailyTargetAmount = newPackage;
+    activeCycle.totalDeposited = newDepositSum;
+    activeCycle.currentDayCount = newDayCount;
+    activeCycle.feeDeducted = isFeeDeducted;
+    activeCycle.companyFeeAmount = companyFee;
+    activeCycle.isCompleted = newDayCount >= 31;
+    activeCycle.dailySplits = newDayCount > 0 ? Array.from({ length: newDayCount }, (_, i) => ({
+      dayNumber: i + 1,
+      date: activeCycle.startDate || new Date().toISOString().split('T')[0],
+      amount: newPackage,
+      receiptNo: `RCP-CORR-${Date.now().toString().slice(-4)}-${i + 1}`,
+      isCompanyFee: i + 1 === 31,
+    })) : [];
+
+    updatedAccount = {
+      ...existingAccount,
+      customer: updatedCustomer,
+      savingsPackage: newPackage,
+      currentBalance: newDepositSum,
+      availableBalance: available,
+      dailyCycles: [activeCycle, ...existingCycles.slice(1)],
+    };
+
+    accounts[accountIndex] = updatedAccount;
+    saveStoredAccounts(accounts);
+  }
+
+  // 3. Update transactions associated with this customer
+  const transactions = getStoredTransactions();
+  let txsModified = false;
+  const updatedTransactions: Transaction[] = transactions.map((tx) => {
+    if (tx.account?.customerId === updatedCustomer.id || tx.account?.customer?.id === updatedCustomer.id || tx.accountId === updatedAccount?.id) {
+      txsModified = true;
+      const acc = updatedAccount || tx.account;
+      return {
+        ...tx,
+        account: acc ? ({ ...acc, customer: updatedCustomer } as Account) : undefined,
+      } as Transaction;
+    }
+    return tx;
+  });
+  if (txsModified) {
+    saveStoredTransactions(updatedTransactions);
+  }
+
+  // 4. Record Immutable Audit Log Entry
+  const auditLog: AuditLog = {
+    id: `audit-corr-${Date.now()}`,
+    userId: payload.performedBy.id,
+    userEmail: payload.performedBy.email,
+    userRole: 'SUPER_ADMIN',
+    branchName: payload.performedBy.branch?.name || 'Central Administration',
+    action: 'SUPER_ADMIN_CUSTOMER_CORRECTION',
+    resource: `Customer ${updatedCustomer.customerNumber} (${updatedCustomer.firstName} ${updatedCustomer.lastName})`,
+    previousValue: `Name: ${oldCustomerSnapshot.firstName} ${oldCustomerSnapshot.lastName}, Phone: ${oldCustomerSnapshot.phone}, Card: ${oldCustomerSnapshot.ghanaCardNumber}`,
+    newValue: `Name: ${updatedCustomer.firstName} ${updatedCustomer.lastName}, Phone: ${updatedCustomer.phone}, Card: ${updatedCustomer.ghanaCardNumber}, Package: GHS ${payload.savingsPackage || 'unchanged'}, Balance: GHS ${payload.totalSavingsDeposited !== undefined ? payload.totalSavingsDeposited : 'unchanged'}. Reason: ${payload.correctionReason}`,
+    createdAt: new Date().toISOString(),
+  };
+  saveStoredAuditLogs([auditLog, ...getStoredAuditLogs()]);
+
+  // 5. Broadcast to all other devices & tabs
+  broadcastRealtimeEvent('CUSTOMER_CREATED', updatedCustomer);
+  if (updatedAccount) {
+    broadcastRealtimeEvent('ACCOUNT_OPENED', updatedAccount);
+  }
+  broadcastRealtimeEvent('AUDIT_LOG_RECORDED', [auditLog]);
+
+  // 6. Push to Firebase Realtime Database in background
+  import('./cloudSync').then((m) => m.pushLocalToCloud()).catch(() => {});
+
+  return { customer: updatedCustomer, account: updatedAccount };
 };
