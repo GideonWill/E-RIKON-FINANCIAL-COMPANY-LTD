@@ -1,79 +1,93 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
-  getFirestore, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  onSnapshot, 
-  collection, 
-  enableIndexedDbPersistence 
-} from 'firebase/firestore';
+  getDatabase, 
+  ref, 
+  onValue, 
+  set, 
+  get,
+  Database,
+  Unsubscribe
+} from 'firebase/database';
 
-// Firebase configuration for E-RIKON Financial Company PLC
+// Firebase Realtime Database configuration for E-RIKON COMPANY PLC
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ''
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyBexTaAkNwo39yg-Us8ckp8oFf_wJmRO1Y',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'erikon-company-plc.firebaseapp.com',
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || 'https://erikon-company-plc-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'erikon-company-plc',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'erikon-company-plc.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '771545783989',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:771545783989:web:db166570a2ccaf713368fc'
 };
 
 // Check if valid Firebase configuration is present
 export const isFirebaseConfigured = (): boolean => {
   return Boolean(
     firebaseConfig.apiKey &&
+    firebaseConfig.databaseURL &&
     firebaseConfig.projectId &&
     !firebaseConfig.apiKey.includes('your_firebase_api_key')
   );
 };
 
-// Initialize Firebase App instance safely if configured
+// Initialize Firebase App & Realtime Database instance safely
 let app: any = null;
-let firestoreDb: any = null;
+let rtdb: Database | null = null;
+let isConnectedToCloud = false;
 
 if (isFirebaseConfigured()) {
   try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-    firestoreDb = getFirestore(app);
-    if (typeof window !== 'undefined') {
-      enableIndexedDbPersistence(firestoreDb).catch(() => {});
-    }
+    rtdb = getDatabase(app, firebaseConfig.databaseURL);
+    console.log('[Firebase RTDB] Initialized successfully with database URL:', firebaseConfig.databaseURL);
+
+    // Track live connection state
+    const connectedRef = ref(rtdb, '.info/connected');
+    onValue(connectedRef, (snap) => {
+      isConnectedToCloud = snap.val() === true;
+      if (isConnectedToCloud) {
+        console.log('[Firebase RTDB] 🟢 Connected live to Google Cloud Realtime Database');
+      } else {
+        console.log('[Firebase RTDB] 🟡 Connecting / Reconnecting to Google Cloud...');
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('erikon_firebase_status', { detail: { connected: isConnectedToCloud } }));
+      }
+    });
   } catch (e) {
-    console.warn('[Firebase] Initialization notice:', e);
+    console.warn('[Firebase RTDB] Initialization notice:', e);
   }
 }
 
-// Export db safely
-export const db = firestoreDb;
+export const getFirebaseDatabase = (): Database | null => rtdb;
+export const isRealtimeCloudConnected = (): boolean => isConnectedToCloud;
 
 /**
- * Subscribes to live real-time Firestore updates for the global vault document.
- * When ANY device writes to Firestore, all subscribed laptops and phones receive
- * the live updated state in ~50ms via WebSocket connection.
+ * Subscribes to live real-time Firebase Realtime Database updates for the global vault.
+ * When ANY device (phone, laptop, tablet) writes to Firebase, all subscribed devices
+ * receive the updated state in ~30-50ms via persistent WebSocket.
  */
-export const subscribeFirestoreVault = (
+export const subscribeRealtimeDatabaseVault = (
   onUpdate: (vaultData: any) => void,
   onError?: (err: Error) => void
 ): (() => void) => {
-  if (!isFirebaseConfigured()) {
-    console.info('[Firestore] Firebase credentials not yet provided in .env. Falling back to live central relay.');
+  if (!rtdb) {
+    console.info('[Firebase RTDB] Realtime Database not initialized. Falling back to HTTP sync.');
     return () => {};
   }
 
-  const vaultDocRef = doc(db, 'system_vault', 'global_state');
+  const vaultRef = ref(rtdb, 'system_vault');
 
-  const unsubscribe = onSnapshot(
-    vaultDocRef,
+  const unsubscribe = onValue(
+    vaultRef,
     (snapshot) => {
       if (snapshot.exists()) {
-        const data = snapshot.data();
+        const data = snapshot.val();
         onUpdate(data);
       }
     },
     (error) => {
-      console.error('[Firestore] Snapshot listener error:', error);
+      console.error('[Firebase RTDB] Snapshot listener error:', error);
       if (onError) onError(error);
     }
   );
@@ -82,37 +96,58 @@ export const subscribeFirestoreVault = (
 };
 
 /**
- * Saves or updates state directly in the global Firestore vault document.
+ * Saves or updates state directly in the global Realtime Database vault.
  */
-export const saveFirestoreVault = async (payload: any): Promise<boolean> => {
-  if (!isFirebaseConfigured()) return false;
+export const saveRealtimeDatabaseVault = async (payload: any): Promise<boolean> => {
+  if (!rtdb) return false;
   try {
-    const vaultDocRef = doc(db, 'system_vault', 'global_state');
-    await setDoc(vaultDocRef, {
+    const vaultRef = ref(rtdb, 'system_vault');
+    await set(vaultRef, {
       ...payload,
       updatedAt: new Date().toISOString()
-    }, { merge: true });
+    });
     return true;
   } catch (err) {
-    console.error('[Firestore] Failed to write to Firestore vault:', err);
+    console.error('[Firebase RTDB] Failed to write to Realtime Database vault:', err);
     return false;
   }
 };
 
 /**
- * Reads the latest snapshot from Firestore once.
+ * Reads the latest snapshot from Realtime Database once.
  */
-export const getFirestoreVault = async (): Promise<any | null> => {
-  if (!isFirebaseConfigured()) return null;
+export const getRealtimeDatabaseVault = async (): Promise<any | null> => {
+  if (!rtdb) return null;
   try {
-    const vaultDocRef = doc(db, 'system_vault', 'global_state');
-    const snap = await getDoc(vaultDocRef);
+    const vaultRef = ref(rtdb, 'system_vault');
+    const snap = await get(vaultRef);
     if (snap.exists()) {
-      return snap.data();
+      return snap.val();
     }
     return null;
   } catch (err) {
-    console.error('[Firestore] Failed to read from Firestore vault:', err);
+    console.error('[Firebase RTDB] Failed to read from Realtime Database vault:', err);
     return null;
   }
 };
+
+/**
+ * Listen to live connection status changes (online/offline)
+ */
+export const subscribeFirebaseConnection = (onChange: (connected: boolean) => void): (() => void) => {
+  onChange(isConnectedToCloud);
+  const handler = (e: any) => {
+    onChange(Boolean(e.detail?.connected));
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener('erikon_firebase_status', handler);
+    return () => window.removeEventListener('erikon_firebase_status', handler);
+  }
+  return () => {};
+};
+
+// Aliases for seamless backwards compatibility
+export const db = rtdb;
+export const subscribeFirestoreVault = subscribeRealtimeDatabaseVault;
+export const saveFirestoreVault = saveRealtimeDatabaseVault;
+export const getFirestoreVault = getRealtimeDatabaseVault;

@@ -20,6 +20,7 @@ import {
   ArrowPathIcon,
   GlobeAltIcon
 } from '@heroicons/react/24/outline';
+import { subscribeFirebaseConnection, isRealtimeCloudConnected } from '../../services/firebase';
 
 interface HeaderProps {
   onToggleMobileMenu?: () => void;
@@ -35,6 +36,14 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const [showWalkthroughModal, setShowWalkthroughModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isCloudConnected, setIsCloudConnected] = useState(isRealtimeCloudConnected());
+
+  useEffect(() => {
+    const unsub = subscribeFirebaseConnection((connected) => {
+      setIsCloudConnected(connected);
+    });
+    return unsub;
+  }, []);
 
   const calculateUnreadCount = () => {
     if (!currentUser) {
@@ -122,6 +131,19 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           {/* Right: Controls, System Actions, Notifications & User Identity Profile (Strictly Right-Aligned) */}
           <div className="flex items-center justify-end space-x-1.5 sm:space-x-2.5 shrink-0 ml-auto">
             
+            {/* Live Real-Time Multi-Device Sync Indicator */}
+            <div 
+              className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-tight border transition-all ${
+                isCloudConnected 
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/40' 
+                  : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/40'
+              }`}
+              title={isCloudConnected ? "Google Firebase Realtime Database: Connected (<30ms live sync across all devices)" : "Connecting to Google Cloud Realtime Database..."}
+            >
+              <span className={`w-2 h-2 rounded-full ${isCloudConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
+              <span>{isCloudConnected ? 'Live Sync Active' : 'Connecting...'}</span>
+            </div>
+
             {/* Active Workstation Role Badge (Desktop) */}
             <button
               type="button"

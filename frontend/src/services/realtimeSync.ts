@@ -12,17 +12,14 @@ if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
   }
 }
 
-// ─── SSE (Server-Sent Events — cross-device real-time) ────────────────────────
+// ─── SSE (Server-Sent Events — cross-device real-time fallback) ───────────────
 let sseSource: EventSource | null = null;
 let sseReconnectTimer: ReturnType<typeof setTimeout> | null = null;
-let sseReconnectDelay = 1000; // Start at 1s, backs off exponentially up to 30s
+let sseReconnectDelay = 1000;
 const SSE_MAX_DELAY = 30_000;
 
 const SSE_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  (typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:4000/api'
-    : 'https://e-rikon-ecfms-backend.onrender.com/api');
+  import.meta.env.VITE_API_URL || 'https://e-rikon-ecfms-backend.onrender.com/api';
 
 export type SyncEventType =
   | 'CUSTOMER_REGISTERED'
@@ -57,6 +54,7 @@ export interface RealtimeSyncPayload {
   type: SyncEventType;
   timestamp: string;
   data?: any;
+  origin?: 'local' | 'remote';
 }
 
 // ─── Subscriber registry ───────────────────────────────────────────────────────
@@ -70,65 +68,62 @@ const notifyAllSubscribers = (payload: RealtimeSyncPayload) => {
   });
 };
 
-// ─── SSE Connection ────────────────────────────────────────────────────────────
+// ─── SSE Connection (Backup stream) ───────────────────────────────────────────
 
 /**
- * Connect to the Render backend SSE endpoint.
- * Can be called with token or guest mode.
+ * Connect to the backend SSE endpoint (as secondary live stream)
  */
 export const connectSSE = (token?: string): void => {
   if (sseSource) {
-    // Already connected
     return;
   }
+
+  // Only connect if in browser
+  if (typeof window === 'undefined') return;
 
   const activeToken = token || localStorage.getItem('erikon_access_token') || 'guest';
   const url = `${SSE_BASE_URL}/events?token=${encodeURIComponent(activeToken)}`;
 
-  console.log('[SSE] Connecting to real-time event stream...');
-  sseSource = new EventSource(url);
+  try {
+    sseSource = new EventSource(url);
 
-  sseSource.onopen = () => {
-    console.log('[SSE] ✅ Connected to E-RIKON real-time event stream');
-    sseReconnectDelay = 1000; // Reset backoff on successful connection
-  };
+    sseSource.onopen = () => {
+      console.log('[SSE] ✅ Connected to backend stream');
+      sseReconnectDelay = 1000;
+    };
 
-  sseSource.onmessage = (event) => {
-    try {
-      const payload = JSON.parse(event.data) as RealtimeSyncPayload;
-      // Broadcast to all same-tab subscribers
-      notifyAllSubscribers(payload);
-      // Also relay to other browser tabs via BroadcastChannel
-      if (syncChannel) {
-        try {
-          syncChannel.postMessage(payload);
-        } catch {}
+    sseSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data) as RealtimeSyncPayload;
+        payload.origin = 'remote';
+        // Broadcast to all same-tab subscribers
+        notifyAllSubscribers(payload);
+        // Also relay to other browser tabs via BroadcastChannel
+        if (syncChannel) {
+          try {
+            syncChannel.postMessage(payload);
+          } catch {}
+        }
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('erikon_realtime_update', { detail: payload }));
+        }
+      } catch (e) {
+        // Heartbeat comments
       }
-      // Dispatch window custom event for legacy same-tab subscribers
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('erikon_realtime_update', { detail: payload }));
-      }
-    } catch (e) {
-      // Server heartbeat comment lines (": heartbeat\n\n") will fail JSON parse — ignore them
-    }
-  };
+    };
 
-  sseSource.onerror = () => {
-    console.warn(`[SSE] Connection lost. Reconnecting in ${sseReconnectDelay / 1000}s...`);
-    disconnectSSE(false); // Close the broken connection without clearing the token
-
-    // Exponential backoff reconnect
-    sseReconnectTimer = setTimeout(() => {
-      sseReconnectDelay = Math.min(sseReconnectDelay * 2, SSE_MAX_DELAY);
-      connectSSE(token);
-    }, sseReconnectDelay);
-  };
+    sseSource.onerror = () => {
+      disconnectSSE(false);
+      sseReconnectTimer = setTimeout(() => {
+        sseReconnectDelay = Math.min(sseReconnectDelay * 2, SSE_MAX_DELAY);
+        connectSSE(token);
+      }, sseReconnectDelay);
+    };
+  } catch (e) {
+    console.warn('[SSE] Notice: Connection not available, continuing with Firebase Realtime Database.');
+  }
 };
 
-/**
- * Disconnect SSE stream. Call on logout.
- * @param clearToken - If true (default), prevents auto-reconnect.
- */
 export const disconnectSSE = (clearToken = true): void => {
   if (sseReconnectTimer) {
     clearTimeout(sseReconnectTimer);
@@ -141,26 +136,24 @@ export const disconnectSSE = (clearToken = true): void => {
     sseSource.close();
     sseSource = null;
     if (clearToken) {
-      console.log('[SSE] Disconnected from real-time event stream');
+      console.log('[SSE] Disconnected from stream');
     }
   }
 };
 
 // ─── Subscribe to real-time events ────────────────────────────────────────────
 
-/**
- * Subscribe to real-time events from both SSE (cross-device) and BroadcastChannel (same-browser).
- * Returns an unsubscribe function.
- */
 export const subscribeRealtimeEvents = (
   callback: (payload: RealtimeSyncPayload) => void
 ): (() => void) => {
-  // Add to internal subscriber registry
   subscribers.add(callback);
 
-  // Also handle BroadcastChannel messages (from other tabs on the same browser)
+  // Handle BroadcastChannel messages (from other tabs on the same browser)
   const handleBroadcastMessage = (event: MessageEvent<RealtimeSyncPayload>) => {
-    if (event.data) callback(event.data);
+    if (event.data) {
+      const payload = { ...event.data, origin: (event.data.origin || 'remote') as 'local' | 'remote' };
+      callback(payload);
+    }
   };
 
   // Handle localStorage changes from other tabs
@@ -170,6 +163,7 @@ export const subscribeRealtimeEvents = (
         type: 'MANUAL_SYNC',
         timestamp: new Date().toISOString(),
         data: { key: event.key },
+        origin: 'remote',
       });
     }
   };
@@ -193,13 +187,18 @@ export const subscribeRealtimeEvents = (
   };
 };
 
-// ─── Broadcast a local real-time event (same-device operations) ───────────────
+// ─── Broadcast a local real-time event ────────────────────────────────────────
 
-export const broadcastRealtimeEvent = (type: SyncEventType, data?: any) => {
+export const broadcastRealtimeEvent = (
+  type: SyncEventType, 
+  data?: any, 
+  origin: 'local' | 'remote' = 'local'
+) => {
   const payload: RealtimeSyncPayload = {
     type,
     timestamp: new Date().toISOString(),
     data,
+    origin,
   };
 
   // Relay to BroadcastChannel (other tabs)
@@ -215,7 +214,7 @@ export const broadcastRealtimeEvent = (type: SyncEventType, data?: any) => {
   notifyAllSubscribers(payload);
 };
 
-// ─── Smooth React Hook with automatic batching & debouncing ───────────────────
+// ─── React Hook with automatic batching & debouncing ──────────────────────────
 
 export const useRealtimeSync = (onUpdate: (payload: RealtimeSyncPayload) => void) => {
   const onUpdateRef = useRef(onUpdate);
@@ -232,7 +231,7 @@ export const useRealtimeSync = (onUpdate: (payload: RealtimeSyncPayload) => void
         if (latestPayload) {
           onUpdateRef.current(latestPayload);
         }
-      }, 60);
+      }, 50);
     };
 
     const unsubscribe = subscribeRealtimeEvents(debouncedCallback);

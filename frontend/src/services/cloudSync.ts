@@ -26,10 +26,11 @@ import {
 import { ApprovalRequest } from '../types';
 import { broadcastRealtimeEvent, subscribeRealtimeEvents } from './realtimeSync';
 import { 
-  getFirestoreVault,
-  saveFirestoreVault, 
-  subscribeFirestoreVault, 
-  isFirebaseConfigured 
+  getRealtimeDatabaseVault,
+  saveRealtimeDatabaseVault, 
+  subscribeRealtimeDatabaseVault, 
+  isFirebaseConfigured,
+  isRealtimeCloudConnected
 } from './firebase';
 
 export interface CloudVaultPayload {
@@ -51,12 +52,14 @@ export interface CloudVaultPayload {
 
 let isPushing = false;
 let pushPending = false;
+let isApplyingRemoteUpdate = false;
 let lastSyncTimestamp: string | null = null;
 
 export const getLastSyncTime = () => lastSyncTimestamp;
+export const isRemoteSyncInProgress = () => isApplyingRemoteUpdate;
 
 /**
- * Returns all active cloud sync endpoints in priority order
+ * Returns all active cloud sync endpoints in priority order (HTTP fallback)
  */
 const getSyncEndpoints = (): string[] => {
   const endpoints: string[] = [];
@@ -72,12 +75,7 @@ const getSyncEndpoints = (): string[] => {
   // 3. Relative Endpoint
   endpoints.push('/api/sync');
 
-  // 4. Localhost Dev Backend (if running locally)
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    endpoints.push('http://localhost:4000/api/sync');
-  }
-
-  // 5. Custom Environment API URL
+  // 4. Custom Environment API URL
   if (import.meta.env.VITE_API_URL) {
     const customUrl = `${import.meta.env.VITE_API_URL}/sync`.replace(/([^:]\/)\/+/g, '$1');
     if (!endpoints.includes(customUrl)) {
@@ -89,9 +87,14 @@ const getSyncEndpoints = (): string[] => {
 };
 
 /**
- * Pushes all local storage state to all reachable central cloud sync endpoints
+ * Pushes all local storage state to Firebase Realtime Database and HTTP endpoints.
+ * Guards against pushing during remote updates to eliminate echo loops.
  */
 export const pushLocalToCloud = async (authoritative = false): Promise<boolean> => {
+  if (isApplyingRemoteUpdate) {
+    return false;
+  }
+
   if (isPushing) {
     pushPending = true;
     return false;
@@ -115,369 +118,356 @@ export const pushLocalToCloud = async (authoritative = false): Promise<boolean> 
     updatedAt: new Date().toISOString(),
   };
 
-  const payloadStr = JSON.stringify(payload);
-  const endpoints = getSyncEndpoints();
   let anySuccess = false;
 
-  // Write to Firebase Firestore in parallel if configured
+  // 1. Primary: Write to Google Firebase Realtime Database (<30ms global WebSocket relay)
   if (isFirebaseConfigured()) {
-    saveFirestoreVault(payload).then((ok) => {
+    try {
+      const ok = await saveRealtimeDatabaseVault(payload);
       if (ok) anySuccess = true;
-    }).catch(() => {});
+    } catch (e) {
+      console.warn('[CloudSync] Firebase RTDB write error:', e);
+    }
   }
 
-  try {
-    const pushPromises = endpoints.map(async (url) => {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: payloadStr,
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-        if (res.ok) {
-          anySuccess = true;
-          return true;
-        }
-      } catch (e) {
-        // Continue trying other endpoints
-      }
-      return false;
-    });
+  // 2. Secondary: Asynchronous background push to HTTP endpoints (non-blocking)
+  const payloadStr = JSON.stringify(payload);
+  const endpoints = getSyncEndpoints();
 
-    await Promise.allSettled(pushPromises);
-  } finally {
-    lastSyncTimestamp = new Date().toLocaleTimeString();
-    isPushing = false;
-    if (pushPending) {
-      setTimeout(() => pushLocalToCloud(authoritative), 150);
-    }
+  endpoints.forEach((url) => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payloadStr,
+        signal: controller.signal,
+      }).then((res) => {
+        clearTimeout(timeoutId);
+        if (res.ok) anySuccess = true;
+      }).catch(() => {});
+    } catch {}
+  });
+
+  lastSyncTimestamp = new Date().toLocaleTimeString();
+  isPushing = false;
+
+  if (pushPending) {
+    setTimeout(() => pushLocalToCloud(authoritative), 150);
   }
 
   return anySuccess;
 };
 
 /**
- * Applies an incoming cloud vault payload to local storage and dispatches update events
+ * Applies an incoming cloud vault payload to local storage and dispatches update events.
+ * Uses isApplyingRemoteUpdate guard to prevent infinite echo loops.
  */
 export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean => {
   if (!cloudData) return false;
 
+  isApplyingRemoteUpdate = true;
   let hasUpdates = false;
 
-  // Process incoming deleted customer and user tombstones
-  if (Array.isArray(cloudData.deletedCustomerIds)) {
-    cloudData.deletedCustomerIds.forEach((id) => {
-      if (id) addDeletedCustomerId(id);
-    });
-  }
-  if (Array.isArray(cloudData.deletedUserEmails)) {
-    cloudData.deletedUserEmails.forEach((email) => {
-      if (email) addDeletedUserEmail(email);
-    });
-  }
-  const deletedCustIds = getDeletedCustomerIds();
-  const deletedUserEmails = (getDeletedUserEmails() || []).map((e) => e.toLowerCase());
-
-  // 1. Authoritative Registered Users Sync (Lossless Merge)
-  if (Array.isArray(cloudData.registeredUsers)) {
-    const cleanUsers = cloudData.registeredUsers.filter(
-      (u) => !deletedUserEmails.includes((u.email || '').toLowerCase()) && 
-             !deletedUserEmails.includes((u.id || '').toLowerCase())
-    );
-    const localUsers = getRegisteredUsers().filter(
-      (u) => !deletedUserEmails.includes((u.email || '').toLowerCase()) && 
-             !deletedUserEmails.includes((u.id || '').toLowerCase())
-    );
-
-    const userMap = new Map<string, RegisteredUserRecord>();
-    localUsers.forEach((u) => {
-      const key = (u.email || u.id || '').toLowerCase();
-      if (key) userMap.set(key, u);
-    });
-    cleanUsers.forEach((u) => {
-      const key = (u.email || u.id || '').toLowerCase();
-      if (key) {
-        const existing = userMap.get(key);
-        userMap.set(key, { ...existing, ...u });
-      }
-    });
-
-    const mergedUsers = Array.from(userMap.values()).filter(
-      (u) => !deletedUserEmails.includes((u.email || '').toLowerCase()) && 
-             !deletedUserEmails.includes((u.id || '').toLowerCase())
-    );
-
-    if (JSON.stringify(mergedUsers) !== JSON.stringify(localUsers)) {
-      saveRegisteredUsers(mergedUsers);
-      hasUpdates = true;
+  try {
+    // Process incoming deleted customer and user tombstones
+    if (Array.isArray(cloudData.deletedCustomerIds)) {
+      cloudData.deletedCustomerIds.forEach((id) => {
+        if (id) addDeletedCustomerId(id);
+      });
     }
-  }
-
-  // 2. Authoritative Approvals Sync (Lossless Merge)
-  if (Array.isArray(cloudData.approvals)) {
-    const cleanCloudApprovals = cloudData.approvals.filter(
-      (a) => !deletedCustIds.includes(a.targetId || '') && 
-             !deletedUserEmails.includes((a.targetId || '').toLowerCase()) &&
-             !deletedUserEmails.includes((a.details?.email || '').toLowerCase())
-    );
-    const localApprovals = getStoredApprovals().filter(
-      (a) => !deletedCustIds.includes(a.targetId || '') && 
-             !deletedUserEmails.includes((a.targetId || '').toLowerCase()) &&
-             !deletedUserEmails.includes((a.details?.email || '').toLowerCase())
-    );
-
-    const apprMap = new Map<string, any>();
-    localApprovals.forEach((a) => apprMap.set(a.id, a));
-    cleanCloudApprovals.forEach((a) => {
-      const existing = apprMap.get(a.id);
-      if (existing && (existing.status === 'APPROVED' || existing.status === 'REJECTED') && a.status === 'PENDING') {
-        apprMap.set(a.id, existing);
-      } else {
-        apprMap.set(a.id, { ...existing, ...a });
-      }
-    });
-
-    const mergedApprovals = Array.from(apprMap.values()).filter(
-      (a) => !deletedCustIds.includes(a.targetId || '') && 
-             !deletedUserEmails.includes((a.targetId || '').toLowerCase()) &&
-             !deletedUserEmails.includes((a.details?.email || '').toLowerCase())
-    );
-
-    if (JSON.stringify(mergedApprovals) !== JSON.stringify(localApprovals)) {
-      saveStoredApprovals(mergedApprovals);
-      hasUpdates = true;
+    if (Array.isArray(cloudData.deletedUserEmails)) {
+      cloudData.deletedUserEmails.forEach((email) => {
+        if (email) addDeletedUserEmail(email);
+      });
     }
-  }
+    const deletedCustIds = getDeletedCustomerIds();
+    const deletedUserEmails = (getDeletedUserEmails() || []).map((e) => e.toLowerCase());
 
-  // 3. Merged Authoritative Customers Sync (Lossless Merge: Preserve Local Unsynced + Cloud)
-  if (Array.isArray(cloudData.customers)) {
-    const cleanCloudCust = cloudData.customers.filter(
-      (c) => !deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)
-    );
-    const localCust = getStoredCustomers().filter(
-      (c) => !deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)
-    );
+    // 1. Authoritative Registered Users Sync (Lossless Merge)
+    if (Array.isArray(cloudData.registeredUsers)) {
+      const cleanUsers = cloudData.registeredUsers.filter(
+        (u) => !deletedUserEmails.includes((u.email || '').toLowerCase()) && 
+               !deletedUserEmails.includes((u.id || '').toLowerCase())
+      );
+      const localUsers = getRegisteredUsers().filter(
+        (u) => !deletedUserEmails.includes((u.email || '').toLowerCase()) && 
+               !deletedUserEmails.includes((u.id || '').toLowerCase())
+      );
 
-    const custMap = new Map<string, any>();
-    // First index local customers
-    localCust.forEach((c) => {
-      if (c.id) custMap.set(c.id, c);
-      if (c.customerNumber) custMap.set(c.customerNumber, c);
-    });
-    // Then merge cloud customers without dropping new local ones
-    cleanCloudCust.forEach((c) => {
-      const existing = (c.id && custMap.get(c.id)) || (c.customerNumber && custMap.get(c.customerNumber));
-      const mergedRecord = { ...existing, ...c };
-      if (c.id) custMap.set(c.id, mergedRecord);
-      if (c.customerNumber) custMap.set(c.customerNumber, mergedRecord);
-    });
+      const userMap = new Map<string, RegisteredUserRecord>();
+      localUsers.forEach((u) => {
+        const key = (u.email || u.id || '').toLowerCase();
+        if (key) userMap.set(key, u);
+      });
+      cleanUsers.forEach((u) => {
+        const key = (u.email || u.id || '').toLowerCase();
+        if (key) {
+          const existing = userMap.get(key);
+          userMap.set(key, { ...existing, ...u });
+        }
+      });
 
-    // Deduplicate by ID
-    const uniqueIds = new Set<string>();
-    const mergedCust = Array.from(custMap.values())
-      .filter((c) => {
+      const mergedUsers = Array.from(userMap.values()).filter(
+        (u) => !deletedUserEmails.includes((u.email || '').toLowerCase()) && 
+               !deletedUserEmails.includes((u.id || '').toLowerCase())
+      );
+
+      if (JSON.stringify(mergedUsers) !== JSON.stringify(localUsers)) {
+        saveRegisteredUsers(mergedUsers);
+        hasUpdates = true;
+      }
+    }
+
+    // 2. Authoritative Approvals Sync (Lossless Merge)
+    if (Array.isArray(cloudData.approvals)) {
+      const cleanCloudApprovals = cloudData.approvals.filter(
+        (a) => !deletedCustIds.includes(a.targetId || '') && 
+               !deletedUserEmails.includes((a.targetId || '').toLowerCase()) &&
+               !deletedUserEmails.includes((a.details?.email || '').toLowerCase())
+      );
+      const localApprovals = getStoredApprovals().filter(
+        (a) => !deletedCustIds.includes(a.targetId || '') && 
+               !deletedUserEmails.includes((a.targetId || '').toLowerCase()) &&
+               !deletedUserEmails.includes((a.details?.email || '').toLowerCase())
+      );
+
+      const apprMap = new Map<string, any>();
+      localApprovals.forEach((a) => apprMap.set(a.id, a));
+      cleanCloudApprovals.forEach((a) => {
+        const existing = apprMap.get(a.id);
+        if (existing && (existing.status === 'APPROVED' || existing.status === 'REJECTED') && a.status === 'PENDING') {
+          apprMap.set(a.id, existing);
+        } else {
+          apprMap.set(a.id, { ...existing, ...a });
+        }
+      });
+
+      const mergedApprovals = Array.from(apprMap.values()).filter(
+        (a) => !deletedCustIds.includes(a.targetId || '') && 
+               !deletedUserEmails.includes((a.targetId || '').toLowerCase()) &&
+               !deletedUserEmails.includes((a.details?.email || '').toLowerCase())
+      );
+
+      if (JSON.stringify(mergedApprovals) !== JSON.stringify(localApprovals)) {
+        saveStoredApprovals(mergedApprovals);
+        hasUpdates = true;
+      }
+    }
+
+    // 3. Merged Authoritative Customers Sync (Lossless Merge)
+    if (Array.isArray(cloudData.customers)) {
+      const cleanCloudCust = cloudData.customers.filter(
+        (c) => !deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)
+      );
+      const localCust = getStoredCustomers().filter(
+        (c) => !deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)
+      );
+
+      const custMap = new Map<string, any>();
+      localCust.forEach((c) => {
+        if (c.id) custMap.set(c.id, c);
+        if (c.customerNumber) custMap.set(c.customerNumber, c);
+      });
+      cleanCloudCust.forEach((c) => {
+        const existing = (c.id && custMap.get(c.id)) || (c.customerNumber && custMap.get(c.customerNumber));
+        const mergedRecord = { ...existing, ...c };
+        if (c.id) custMap.set(c.id, mergedRecord);
+        if (c.customerNumber) custMap.set(c.customerNumber, mergedRecord);
+      });
+
+      const uniqueIds = new Set<string>();
+      const mergedCust = Array.from(custMap.values()).filter((c) => {
         if (!c.id || uniqueIds.has(c.id) || deletedCustIds.includes(c.id) || deletedCustIds.includes(c.customerNumber)) return false;
         uniqueIds.add(c.id);
         return true;
       });
 
-    if (JSON.stringify(mergedCust) !== JSON.stringify(localCust)) {
-      saveStoredCustomers(mergedCust);
-      hasUpdates = true;
+      if (JSON.stringify(mergedCust) !== JSON.stringify(localCust)) {
+        saveStoredCustomers(mergedCust);
+        hasUpdates = true;
+      }
     }
 
-    // If local has more customers than cloud payload, push to cloud immediately so Firestore learns about them
-    if (mergedCust.length > cleanCloudCust.length) {
-      setTimeout(() => pushLocalToCloud(), 100);
-    }
-  }
+    // 4. Merged Authoritative Transactions Sync
+    if (Array.isArray(cloudData.transactions)) {
+      const localTxs = getStoredTransactions();
+      const txMap = new Map<string, any>();
+      localTxs.forEach((t) => {
+        const key = t.receiptNo || t.id;
+        if (key) txMap.set(key, t);
+      });
+      cloudData.transactions.forEach((t) => {
+        const key = t.receiptNo || t.id;
+        if (key) {
+          const existing = txMap.get(key);
+          txMap.set(key, { ...existing, ...t });
+        }
+      });
 
-  // 4. Merged Authoritative Transactions Sync (Lossless Merge - Processed FIRST so Accounts reconcile with new transactions)
-  if (Array.isArray(cloudData.transactions)) {
-    const localTx = getStoredTransactions();
-    const txMap = new Map<string, any>();
-    localTx.forEach((t) => {
-      if (t.id) txMap.set(t.id, t);
-      if (t.referenceNo) txMap.set(t.referenceNo, t);
-    });
-    cloudData.transactions.forEach((t) => {
-      const existing = txMap.get(t.id) || (t.referenceNo ? txMap.get(t.referenceNo) : null);
-      txMap.set(t.id, { ...existing, ...t });
-    });
-
-    const mergedTx = Array.from(new Set(Array.from(txMap.values()).map((t) => t.id)))
-      .map((id) => txMap.get(id)!);
-
-    if (mergedTx.length !== localTx.length || JSON.stringify(mergedTx) !== JSON.stringify(localTx)) {
-      saveStoredTransactions(mergedTx);
-      hasUpdates = true;
-    }
-  }
-
-  // 5. Merged Authoritative Accounts Sync (Lossless Merge with authoritative balance precedence)
-  if (Array.isArray(cloudData.accounts)) {
-    const cleanCloudAcc = cloudData.accounts.filter(
-      (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
-    );
-    const localAcc = getStoredAccounts().filter(
-      (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
-    );
-
-    const accMap = new Map<string, any>();
-    localAcc.forEach((a) => {
-      if (a.id) accMap.set(a.id, a);
-      if (a.customerId) accMap.set(`cust-${a.customerId}`, a);
-    });
-    cleanCloudAcc.forEach((a) => {
-      const existing = (a.id && accMap.get(a.id)) || (a.customerId && accMap.get(`cust-${a.customerId}`));
-      const mergedRecord = { 
-        ...existing, 
-        ...a,
-        currentBalance: a.currentBalance !== undefined ? a.currentBalance : existing?.currentBalance,
-        availableBalance: a.availableBalance !== undefined ? a.availableBalance : existing?.availableBalance,
-        dailyCycles: a.dailyCycles || existing?.dailyCycles
-      };
-      if (a.id) accMap.set(a.id, mergedRecord);
-      if (a.customerId) accMap.set(`cust-${a.customerId}`, mergedRecord);
-    });
-
-    const uniqueAccIds = new Set<string>();
-    const mergedAcc = Array.from(accMap.values())
-      .filter((a) => {
-        if (!a.id || uniqueAccIds.has(a.id) || deletedCustIds.includes(a.customerId) || deletedCustIds.includes(a.id)) return false;
-        uniqueAccIds.add(a.id);
+      const mergedTxs = Array.from(txMap.values()).filter((t) => {
+        if (deletedCustIds.includes(t.id) || (t.receiptNo && deletedCustIds.includes(t.receiptNo))) return false;
+        const txCustId = t.account?.customerId || t.account?.customer?.id;
+        if (txCustId && deletedCustIds.includes(txCustId)) return false;
         return true;
       });
 
-    if (JSON.stringify(mergedAcc) !== JSON.stringify(localAcc)) {
-      saveStoredAccounts(mergedAcc);
-      hasUpdates = true;
-    }
-
-    if (mergedAcc.length > cleanCloudAcc.length) {
-      setTimeout(() => pushLocalToCloud(), 100);
-    }
-  }
-
-  // 6. Merged Authoritative Loans Sync (Lossless Merge)
-  if (Array.isArray(cloudData.loans)) {
-    const cleanLoans = cloudData.loans.filter(
-      (l) => !deletedCustIds.includes(l.customerId) && !deletedCustIds.includes(l.id)
-    );
-    const localLoans = getStoredLoans().filter(
-      (l) => !deletedCustIds.includes(l.customerId) && !deletedCustIds.includes(l.id)
-    );
-
-    const loanMap = new Map<string, any>();
-    localLoans.forEach((l) => {
-      if (l.id) loanMap.set(l.id, l);
-    });
-    cleanLoans.forEach((l) => {
-      const existing = loanMap.get(l.id);
-      loanMap.set(l.id, { ...existing, ...l });
-    });
-
-    const mergedLoans = Array.from(loanMap.values()).filter(
-      (l) => !deletedCustIds.includes(l.customerId) && !deletedCustIds.includes(l.id)
-    );
-
-    if (JSON.stringify(mergedLoans) !== JSON.stringify(localLoans)) {
-      saveStoredLoans(mergedLoans);
-      hasUpdates = true;
-    }
-  }
-
-  // 7. Merged Authoritative Company Interest Sync (Keyed by client cycle)
-  if (Array.isArray(cloudData.companyInterest)) {
-    const localInt = getStoredCompanyInterest();
-    const intMap = new Map<string, any>();
-    localInt.forEach((i) => {
-      const key = `${i.accountNumber || i.accountId || i.customerId}-cyc-${i.cycleNumber}`;
-      intMap.set(key, i);
-    });
-    cloudData.companyInterest.forEach((i) => {
-      const key = `${i.accountNumber || i.accountId || i.customerId}-cyc-${i.cycleNumber}`;
-      const existing = intMap.get(key);
-      intMap.set(key, { ...existing, ...i });
-    });
-
-    const mergedInt = Array.from(intMap.values());
-    if (mergedInt.length !== localInt.length || JSON.stringify(mergedInt) !== JSON.stringify(localInt)) {
-      saveStoredCompanyInterest(mergedInt);
-      hasUpdates = true;
-    }
-  }
-
-  // 8. Merged Authoritative Company Withdrawals Sync
-  if (Array.isArray(cloudData.companyWithdrawals)) {
-    const localWd = getStoredCompanyWithdrawals();
-    const wdMap = new Map<string, any>();
-    localWd.forEach((w) => {
-      if (w.id) wdMap.set(w.id, w);
-    });
-    cloudData.companyWithdrawals.forEach((w) => {
-      const existing = wdMap.get(w.id);
-      if (existing && (existing.status === 'APPROVED' || existing.status === 'REJECTED') && w.status === 'PENDING_SUPER_ADMIN_APPROVAL') {
-        wdMap.set(w.id, existing);
-      } else {
-        wdMap.set(w.id, { ...existing, ...w });
+      if (JSON.stringify(mergedTxs) !== JSON.stringify(localTxs)) {
+        saveStoredTransactions(mergedTxs);
+        hasUpdates = true;
       }
-    });
-
-    const mergedWd = Array.from(wdMap.values());
-    if (mergedWd.length !== localWd.length || JSON.stringify(mergedWd) !== JSON.stringify(localWd)) {
-      saveStoredCompanyWithdrawals(mergedWd);
-      hasUpdates = true;
     }
-  }
 
-  // 9. Authoritative Audit Logs Sync (Lossless Merge)
-  if (Array.isArray(cloudData.auditLogs)) {
-    const localLogs = getStoredAuditLogs();
-    const logMap = new Map<string, any>();
-    localLogs.forEach((l) => {
-      if (l.id) logMap.set(l.id, l);
-    });
-    cloudData.auditLogs.forEach((l) => {
-      if (l.id) logMap.set(l.id, l);
-    });
+    // 5. Merged Authoritative Accounts Sync
+    if (Array.isArray(cloudData.accounts)) {
+      const localAcc = getStoredAccounts();
+      const accMap = new Map<string, any>();
+      localAcc.forEach((a) => {
+        const key = a.accountNumber || a.id;
+        if (key) accMap.set(key, a);
+      });
+      cloudData.accounts.forEach((a) => {
+        const key = a.accountNumber || a.id;
+        if (key) {
+          const existing = accMap.get(key);
+          const mergedAcc = { ...existing, ...a };
+          // Preserve cycles if incoming cycles are missing
+          if (existing?.dailyCycles && (!a.dailyCycles || a.dailyCycles.length === 0)) {
+            mergedAcc.dailyCycles = existing.dailyCycles;
+          }
+          accMap.set(key, mergedAcc);
+        }
+      });
 
-    const mergedLogs = Array.from(logMap.values());
-    if (mergedLogs.length !== localLogs.length || JSON.stringify(mergedLogs) !== JSON.stringify(localLogs)) {
-      saveStoredAuditLogs(mergedLogs);
-      hasUpdates = true;
+      const mergedAcc = Array.from(accMap.values()).filter(
+        (a) => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id)
+      );
+
+      if (JSON.stringify(mergedAcc) !== JSON.stringify(localAcc)) {
+        saveStoredAccounts(mergedAcc);
+        hasUpdates = true;
+      }
     }
-  }
 
-  if (hasUpdates) {
-    broadcastRealtimeEvent('MANUAL_SYNC', { source: 'CLOUD_PULL' });
-  }
+    // 6. Merged Authoritative Loans Sync
+    if (Array.isArray(cloudData.loans)) {
+      const localLoans = getStoredLoans();
+      const loanMap = new Map<string, any>();
+      localLoans.forEach((l) => {
+        if (l.id) loanMap.set(l.id, l);
+      });
+      cloudData.loans.forEach((l) => {
+        const existing = loanMap.get(l.id);
+        loanMap.set(l.id, { ...existing, ...l });
+      });
 
-  lastSyncTimestamp = new Date().toLocaleTimeString();
-  return true;
+      const mergedLoans = Array.from(loanMap.values()).filter(
+        (l) => !deletedCustIds.includes(l.customerId) && !deletedCustIds.includes(l.id)
+      );
+
+      if (JSON.stringify(mergedLoans) !== JSON.stringify(localLoans)) {
+        saveStoredLoans(mergedLoans);
+        hasUpdates = true;
+      }
+    }
+
+    // 7. Merged Authoritative Company Interest Sync
+    if (Array.isArray(cloudData.companyInterest)) {
+      const localInt = getStoredCompanyInterest();
+      const intMap = new Map<string, any>();
+      localInt.forEach((i) => {
+        const key = `${i.accountNumber || i.accountId || i.customerId}-cyc-${i.cycleNumber}`;
+        intMap.set(key, i);
+      });
+      cloudData.companyInterest.forEach((i) => {
+        const key = `${i.accountNumber || i.accountId || i.customerId}-cyc-${i.cycleNumber}`;
+        const existing = intMap.get(key);
+        intMap.set(key, { ...existing, ...i });
+      });
+
+      const mergedInt = Array.from(intMap.values());
+      if (mergedInt.length !== localInt.length || JSON.stringify(mergedInt) !== JSON.stringify(localInt)) {
+        saveStoredCompanyInterest(mergedInt);
+        hasUpdates = true;
+      }
+    }
+
+    // 8. Merged Authoritative Company Withdrawals Sync
+    if (Array.isArray(cloudData.companyWithdrawals)) {
+      const localWd = getStoredCompanyWithdrawals();
+      const wdMap = new Map<string, any>();
+      localWd.forEach((w) => {
+        if (w.id) wdMap.set(w.id, w);
+      });
+      cloudData.companyWithdrawals.forEach((w) => {
+        const existing = wdMap.get(w.id);
+        if (existing && (existing.status === 'APPROVED' || existing.status === 'REJECTED') && w.status === 'PENDING_SUPER_ADMIN_APPROVAL') {
+          wdMap.set(w.id, existing);
+        } else {
+          wdMap.set(w.id, { ...existing, ...w });
+        }
+      });
+
+      const mergedWd = Array.from(wdMap.values());
+      if (mergedWd.length !== localWd.length || JSON.stringify(mergedWd) !== JSON.stringify(localWd)) {
+        saveStoredCompanyWithdrawals(mergedWd);
+        hasUpdates = true;
+      }
+    }
+
+    // 9. Authoritative Audit Logs Sync
+    if (Array.isArray(cloudData.auditLogs)) {
+      const localLogs = getStoredAuditLogs();
+      const logMap = new Map<string, any>();
+      localLogs.forEach((l) => {
+        if (l.id) logMap.set(l.id, l);
+      });
+      cloudData.auditLogs.forEach((l) => {
+        if (l.id) logMap.set(l.id, l);
+      });
+
+      const mergedLogs = Array.from(logMap.values());
+      if (mergedLogs.length !== localLogs.length || JSON.stringify(mergedLogs) !== JSON.stringify(localLogs)) {
+        saveStoredAuditLogs(mergedLogs);
+        hasUpdates = true;
+      }
+    }
+
+    if (hasUpdates) {
+      // Notify React components to re-render without triggering a reverse push
+      broadcastRealtimeEvent('MANUAL_SYNC', { source: 'REMOTE_CLOUD_PULL' }, 'remote');
+    }
+
+    lastSyncTimestamp = new Date().toLocaleTimeString();
+    return true;
+  } finally {
+    // Release remote sync lock after a brief cool-off
+    setTimeout(() => {
+      isApplyingRemoteUpdate = false;
+    }, 120);
+  }
 };
 
 /**
  * Pulls latest state from authoritative cloud backends and merges into local storage
  */
 export const pullCloudToLocal = async (): Promise<boolean> => {
-  // 1. Try direct Firestore read first if configured
+  // 1. Try direct Firebase Realtime Database read first if configured
   if (isFirebaseConfigured()) {
     try {
-      const firestoreData = await getFirestoreVault();
+      const rtdbData = await getRealtimeDatabaseVault();
       if (
-        firestoreData &&
-        ((Array.isArray(firestoreData.registeredUsers) && firestoreData.registeredUsers.length > 0) ||
-         (Array.isArray(firestoreData.customers) && firestoreData.customers.length > 0) ||
-         (Array.isArray(firestoreData.transactions) && firestoreData.transactions.length > 0))
+        rtdbData &&
+        ((Array.isArray(rtdbData.registeredUsers) && rtdbData.registeredUsers.length > 0) ||
+         (Array.isArray(rtdbData.customers) && rtdbData.customers.length > 0) ||
+         (Array.isArray(rtdbData.transactions) && rtdbData.transactions.length > 0))
       ) {
-        return applyIncomingCloudVault(firestoreData);
+        return applyIncomingCloudVault(rtdbData);
       }
-    } catch {}
+    } catch (e) {
+      console.warn('[CloudSync] RTDB pull error:', e);
+    }
   }
 
   // 2. Fallback to HTTP sync endpoints
@@ -518,42 +508,52 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
 
 /**
  * Initializes background cloud synchronization.
- * - Pulls latest state from authoritative cloud backends on app launch and every 1.5s
- * - Pushes to cloud whenever a write event occurs (customers, accounts, approvals, etc.)
+ * - Connects to Firebase Realtime Database with live sub-second WebSocket listener
+ * - Pushes to cloud ONLY when local user writes occur
  * - Re-syncs immediately on screen focus, tab visibility change, or online event
  */
 export const initCloudSync = () => {
   // Initial pull on app launch
-  pullCloudToLocal().catch(() => { });
+  pullCloudToLocal().catch(() => {});
 
-  // Automatically push to cloud relay whenever any staff user, customer, deposit, or account is created locally
+  // Automatically push to cloud relay whenever a LOCAL user action occurs
   const unsubscribeEvents = subscribeRealtimeEvents((event) => {
-    if (event.type !== 'MANUAL_SYNC') {
-      pushLocalToCloud().catch(() => { });
+    // Ignore remote events (already applied) to prevent echo loops
+    if (isApplyingRemoteUpdate || event.origin === 'remote') {
+      return;
+    }
+
+    if (event.type === 'MANUAL_SYNC') {
+      if (event.data?.source === 'USER_REFRESH') {
+        pullCloudToLocal().catch(() => {});
+      }
     } else {
-      pullCloudToLocal().catch(() => { });
+      // Local user operation (e.g. deposit recorded, customer registered, loan created)
+      pushLocalToCloud().catch(() => {});
     }
   });
 
-  // Background fallback poller (every 10s)
+  // Background fallback poller (every 8s if disconnected, otherwise RTDB WebSocket handles everything)
   const pollTimer = setInterval(() => {
-    pullCloudToLocal().catch(() => { });
-  }, 10000);
+    if (!isRealtimeCloudConnected()) {
+      pullCloudToLocal().catch(() => {});
+    }
+  }, 8000);
 
-  // Instant sync on screen resume / tab focus
+  // Instant sync on screen resume / tab focus (important for mobile devices)
   const handleVisibilityChange = () => {
     if (document.visibilityState === 'visible') {
-      pullCloudToLocal().catch(() => { });
+      pullCloudToLocal().catch(() => {});
     }
   };
 
   const handleFocus = () => {
-    pullCloudToLocal().catch(() => { });
+    pullCloudToLocal().catch(() => {});
   };
 
   const handleOnline = () => {
-    pullCloudToLocal().catch(() => { });
-    pushLocalToCloud().catch(() => { });
+    pullCloudToLocal().catch(() => {});
+    pushLocalToCloud().catch(() => {});
   };
 
   if (typeof window !== 'undefined') {
@@ -562,9 +562,9 @@ export const initCloudSync = () => {
     window.addEventListener('online', handleOnline);
   }
 
-  // Attach live sub-second Firestore onSnapshot listener if configured
-  const unsubscribeFirestore = subscribeFirestoreVault((vaultData) => {
-    if (vaultData) {
+  // Attach live sub-second Firebase Realtime Database onValue listener
+  const unsubscribeFirestore = subscribeRealtimeDatabaseVault((vaultData) => {
+    if (vaultData && !isPushing) {
       applyIncomingCloudVault(vaultData);
     }
   });
@@ -607,7 +607,7 @@ export const importPairingBundle = (encodedBundle: string): boolean => {
       parsed.u.forEach((u: RegisteredUserRecord) => userMap.set(u.email.toLowerCase(), u));
       const merged = Array.from(userMap.values());
       saveRegisteredUsers(merged);
-      pushLocalToCloud().catch(() => { });
+      pushLocalToCloud().catch(() => {});
       return true;
     }
     return false;
