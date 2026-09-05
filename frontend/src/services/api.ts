@@ -37,7 +37,7 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 4000,
+  timeout: 12000,
 });
 
 // Attach JWT token to requests if available
@@ -653,16 +653,41 @@ export const removeDeletedUserEmail = (emailOrId: string) => {
   localStorage.setItem('erikon_deleted_user_emails', JSON.stringify(updated));
 };
 
+export const PRIMARY_SUPER_ADMIN: RegisteredUserRecord = {
+  id: 'b3f9dae2-843e-44b0-adf7-65fbcaec6896',
+  employeeId: 'EMP-6756',
+  firstName: 'Eric Kwasi',
+  lastName: 'Akonnor',
+  email: 'nanaquasi1992nk@gmail.com',
+  phone: '0557005897',
+  role: 'SUPER_ADMIN',
+  ghanaCard: 'GHA-000568509-7',
+  isApproved: true,
+  createdAt: '2026-08-27T16:28:18.023Z',
+  status: 'ACTIVE',
+};
+
 export const getRegisteredUsers = (): RegisteredUserRecord[] => {
   const data = localStorage.getItem('erikon_registered_users');
-  if (!data) return [];
-  try {
-    const parsed = JSON.parse(data);
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
-  } catch {
-    return [];
+  let users: RegisteredUserRecord[] = [];
+  if (data) {
+    try {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) users = parsed;
+    } catch {
+      users = [];
+    }
   }
+
+  // Ensure Primary Super Admin (Eric Kwasi Akonnor) is always registered in the system
+  const hasSuperAdmin = users.some(
+    (u) => (u.email || '').trim().toLowerCase() === PRIMARY_SUPER_ADMIN.email.toLowerCase()
+  );
+  if (!hasSuperAdmin) {
+    users = [PRIMARY_SUPER_ADMIN, ...users];
+  }
+
+  return users;
 };
 
 export const saveRegisteredUsers = (users: RegisteredUserRecord[]) => {

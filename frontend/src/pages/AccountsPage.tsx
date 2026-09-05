@@ -329,7 +329,8 @@ export const AccountsPage: React.FC = () => {
                       {currentUser?.role === 'SUPER_ADMIN' && (
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (selectedAccount.customer) {
                               setCustomerToEdit(selectedAccount.customer);
                               setIsEditModalOpen(true);

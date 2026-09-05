@@ -1070,7 +1070,10 @@ export const CustomersPage: React.FC = () => {
                   {currentUser?.role === 'SUPER_ADMIN' && (
                     <button
                       type="button"
-                      onClick={() => handleOpenEditCustomer(selectedDetailCustomer)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenEditCustomer(selectedDetailCustomer);
+                      }}
                       className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25 border border-amber-500/30 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
                       title="Super Admin: Edit & Correct Customer KYC or Savings"
                     >
