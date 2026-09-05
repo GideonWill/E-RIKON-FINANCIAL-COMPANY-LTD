@@ -127,54 +127,106 @@ export class SyncService {
       this.vault.approvals = Array.from(apprMap.values());
     }
 
-    // 3. Customers (Purge any matching activeDeletedCustomerIds)
+    // 3. Customers (Merge, purge deleted, and deduplicate strictly)
+    const custMap = new Map<string, any>();
+    (this.vault.customers || []).forEach((c) => {
+      if (c && c.id && !activeDeletedCustomerIds.has(c.id) && (!c.customerNumber || !activeDeletedCustomerIds.has(c.customerNumber))) {
+        custMap.set(c.id, c);
+      }
+    });
+
     if (Array.isArray(incoming.customers)) {
-      this.vault.customers = incoming.customers.filter(
-        (c) => !activeDeletedCustomerIds.has(c.id) && !activeDeletedCustomerIds.has(c.customerNumber)
-      );
-    } else if (Array.isArray(this.vault.customers)) {
-      this.vault.customers = this.vault.customers.filter(
-        (c) => !activeDeletedCustomerIds.has(c.id) && !activeDeletedCustomerIds.has(c.customerNumber)
-      );
+      incoming.customers.forEach((c) => {
+        if (!c || !c.id) return;
+        if (activeDeletedCustomerIds.has(c.id) || (c.customerNumber && activeDeletedCustomerIds.has(c.customerNumber))) return;
+        const existing = custMap.get(c.id);
+        custMap.set(c.id, existing ? { ...existing, ...c } : c);
+      });
     }
 
-    // 4. Accounts (Purge accounts belonging to deleted customers)
+    const seenCustNos = new Set<string>();
+    const seenCustCards = new Set<string>();
+    const cleanCusts: any[] = [];
+
+    Array.from(custMap.values()).forEach((c) => {
+      if (c.customerNumber && seenCustNos.has(c.customerNumber)) return;
+      if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0' && seenCustCards.has(c.ghanaCardNumber)) return;
+
+      if (c.customerNumber) seenCustNos.add(c.customerNumber);
+      if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0') seenCustCards.add(c.ghanaCardNumber);
+      cleanCusts.push(c);
+    });
+    this.vault.customers = cleanCusts;
+
+    // 4. Accounts (Merge & Purge accounts belonging to deleted customers)
+    const accMap = new Map<string, any>();
+    (this.vault.accounts || []).forEach((a) => {
+      const key = a.id || a.accountNumber;
+      if (key && !activeDeletedCustomerIds.has(a.customerId) && !activeDeletedCustomerIds.has(a.id) && (!a.customer?.id || !activeDeletedCustomerIds.has(a.customer.id))) {
+        accMap.set(key, a);
+      }
+    });
+
     if (Array.isArray(incoming.accounts)) {
-      this.vault.accounts = incoming.accounts.filter(
-        (a) => !activeDeletedCustomerIds.has(a.customerId) &&
-               !activeDeletedCustomerIds.has(a.id) &&
-               !activeDeletedCustomerIds.has(a.customer?.id) &&
-               !activeDeletedCustomerIds.has(a.customer?.customerNumber)
-      );
-    } else if (Array.isArray(this.vault.accounts)) {
-      this.vault.accounts = this.vault.accounts.filter(
-        (a) => !activeDeletedCustomerIds.has(a.customerId) &&
-               !activeDeletedCustomerIds.has(a.id) &&
-               !activeDeletedCustomerIds.has(a.customer?.id) &&
-               !activeDeletedCustomerIds.has(a.customer?.customerNumber)
-      );
+      incoming.accounts.forEach((incomingAcc) => {
+        const key = incomingAcc.id || incomingAcc.accountNumber;
+        if (!key) return;
+        if (activeDeletedCustomerIds.has(incomingAcc.customerId) || activeDeletedCustomerIds.has(incomingAcc.id) || (incomingAcc.customer?.id && activeDeletedCustomerIds.has(incomingAcc.customer.id))) {
+          return;
+        }
+        const existing = accMap.get(key);
+        if (existing) {
+          const merged = { ...existing, ...incomingAcc };
+          if (existing.dailyCycles && (!incomingAcc.dailyCycles || incomingAcc.dailyCycles.length === 0)) {
+            merged.dailyCycles = existing.dailyCycles;
+          }
+          accMap.set(key, merged);
+        } else {
+          accMap.set(key, incomingAcc);
+        }
+      });
     }
 
-    // 5. Transactions (Purge transactions belonging to deleted customers/accounts)
+    // Auto-recover any accounts from transactions if missing
+    (this.vault.transactions || []).concat(incoming.transactions || []).forEach((t) => {
+      if (t.account && t.account.id) {
+        const key = t.account.id || t.account.accountNumber;
+        if (key && !accMap.has(key)) {
+          if (!activeDeletedCustomerIds.has(t.account.customerId) && !activeDeletedCustomerIds.has(t.account.id)) {
+            accMap.set(key, t.account);
+          }
+        }
+      }
+    });
+
+    this.vault.accounts = Array.from(accMap.values());
+
+    // 5. Transactions (Merge & Purge transactions belonging to deleted customers/accounts)
+    const txMap = new Map<string, any>();
+    (this.vault.transactions || []).forEach((t) => {
+      const key = t.id || t.receiptNo;
+      if (key && !activeDeletedCustomerIds.has(t.id) && (!t.receiptNo || !activeDeletedCustomerIds.has(t.receiptNo))) {
+        const custId = t.customerId || t.account?.customerId || t.account?.customer?.id;
+        const custNo = t.customer?.customerNumber || t.account?.customer?.customerNumber;
+        if ((!custId || !activeDeletedCustomerIds.has(custId)) && (!custNo || !activeDeletedCustomerIds.has(custNo))) {
+          txMap.set(key, t);
+        }
+      }
+    });
+
     if (Array.isArray(incoming.transactions)) {
-      this.vault.transactions = incoming.transactions.filter((t) => {
-        if (activeDeletedCustomerIds.has(t.id) || (t.receiptNo && activeDeletedCustomerIds.has(t.receiptNo))) return false;
+      incoming.transactions.forEach((t) => {
+        const key = t.id || t.receiptNo;
+        if (!key || activeDeletedCustomerIds.has(t.id) || (t.receiptNo && activeDeletedCustomerIds.has(t.receiptNo))) return;
         const custId = t.customerId || t.account?.customerId || t.account?.customer?.id;
         const custNo = t.customer?.customerNumber || t.account?.customer?.customerNumber;
-        if (custId && activeDeletedCustomerIds.has(custId)) return false;
-        if (custNo && activeDeletedCustomerIds.has(custNo)) return false;
-        return true;
-      });
-    } else if (Array.isArray(this.vault.transactions)) {
-      this.vault.transactions = this.vault.transactions.filter((t) => {
-        if (activeDeletedCustomerIds.has(t.id) || (t.receiptNo && activeDeletedCustomerIds.has(t.receiptNo))) return false;
-        const custId = t.customerId || t.account?.customerId || t.account?.customer?.id;
-        const custNo = t.customer?.customerNumber || t.account?.customer?.customerNumber;
-        if (custId && activeDeletedCustomerIds.has(custId)) return false;
-        if (custNo && activeDeletedCustomerIds.has(custNo)) return false;
-        return true;
+        if (custId && activeDeletedCustomerIds.has(custId)) return;
+        if (custNo && activeDeletedCustomerIds.has(custNo)) return;
+        txMap.set(key, t);
       });
     }
+
+    this.vault.transactions = Array.from(txMap.values());
 
     if (Array.isArray(incoming.loans)) {
       this.vault.loans = incoming.loans.filter(

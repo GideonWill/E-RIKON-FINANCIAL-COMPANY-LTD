@@ -294,23 +294,52 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     );
 
     const custMap = new Map<string, any>();
+    const custNoToId = new Map<string, string>();
+    const cardToId = new Map<string, string>();
+
     localCust.forEach((c) => {
-      if (c.id) custMap.set(c.id, c);
-      if (c.customerNumber) custMap.set(c.customerNumber, c);
-    });
-    cleanCloudCust.forEach((c) => {
-      const existing = (c.id && custMap.get(c.id)) || (c.customerNumber && custMap.get(c.customerNumber));
-      const mergedRecord = { ...existing, ...c };
-      if (c.id) custMap.set(c.id, mergedRecord);
-      if (c.customerNumber) custMap.set(c.customerNumber, mergedRecord);
+      if (!c || !c.id) return;
+      custMap.set(c.id, c);
+      if (c.customerNumber) custNoToId.set(c.customerNumber, c.id);
+      if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0') cardToId.set(c.ghanaCardNumber, c.id);
     });
 
-    const uniqueIds = new Set<string>();
-    const mergedCust = Array.from(custMap.values()).filter((c) => {
-      if (!c.id || uniqueIds.has(c.id)) return false;
-      if (deletedCustIds.includes(c.id) || (c.customerNumber && deletedCustIds.includes(c.customerNumber))) return false;
-      return true;
+    cleanCloudCust.forEach((c) => {
+      if (!c || !c.id) return;
+      const matchedId =
+        (c.id && custMap.has(c.id) ? c.id : undefined) ||
+        (c.customerNumber && custNoToId.get(c.customerNumber)) ||
+        (c.ghanaCardNumber && cardToId.get(c.ghanaCardNumber)) ||
+        c.id;
+
+      const existing = custMap.get(matchedId);
+      const targetId = existing?.id || c.id;
+      const mergedRecord = { ...existing, ...c, id: targetId };
+
+      custMap.set(targetId, mergedRecord);
+      if (mergedRecord.customerNumber) custNoToId.set(mergedRecord.customerNumber, targetId);
+      if (mergedRecord.ghanaCardNumber && mergedRecord.ghanaCardNumber !== 'GHA-000000000-0') {
+        cardToId.set(mergedRecord.ghanaCardNumber, targetId);
+      }
     });
+
+    const seenIds = new Set<string>();
+    const seenCustNos = new Set<string>();
+    const seenCards = new Set<string>();
+    const mergedCust: any[] = [];
+
+    for (const c of custMap.values()) {
+      if (!c || !c.id) continue;
+      if (deletedCustIds.includes(c.id) || (c.customerNumber && deletedCustIds.includes(c.customerNumber))) continue;
+      if (seenIds.has(c.id)) continue;
+      if (c.customerNumber && seenCustNos.has(c.customerNumber)) continue;
+      if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0' && seenCards.has(c.ghanaCardNumber)) continue;
+
+      seenIds.add(c.id);
+      if (c.customerNumber) seenCustNos.add(c.customerNumber);
+      if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0') seenCards.add(c.ghanaCardNumber);
+      mergedCust.push(c);
+    }
 
     if (JSON.stringify(mergedCust) !== JSON.stringify(localCust)) {
       saveStoredCustomers(mergedCust, true);

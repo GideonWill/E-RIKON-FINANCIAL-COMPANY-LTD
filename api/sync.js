@@ -157,32 +157,43 @@ export default async function handler(req, res) {
 
       if (!incoming.authoritative) {
         // 3. Merge customers & apply deletions
-        if (Array.isArray(incoming.customers)) {
-          const custMap = new Map();
-          (globalCloudVault.customers || []).forEach(c => {
-            if (!deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)) custMap.set(c.id, c);
-          });
-          incoming.customers.forEach(c => {
-            if (!deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber)) custMap.set(c.id, c);
-          });
-          globalCloudVault.customers = Array.from(custMap.values());
-        } else if (deletedCustIds.length > 0) {
-          globalCloudVault.customers = (globalCloudVault.customers || []).filter(c => !deletedCustIds.includes(c.id) && !deletedCustIds.includes(c.customerNumber));
-        }
+        const rawCusts = Array.isArray(incoming.customers) ? incoming.customers : (globalCloudVault.customers || []);
+        const seenCustIds = new Set();
+        const seenCustNos = new Set();
+        const seenCustCards = new Set();
+        const cleanCusts = [];
+
+        rawCusts.forEach(c => {
+          if (!c || !c.id) return;
+          if (deletedCustIds.includes(c.id) || (c.customerNumber && deletedCustIds.includes(c.customerNumber))) return;
+          if (seenCustIds.has(c.id)) return;
+          if (c.customerNumber && seenCustNos.has(c.customerNumber)) return;
+          if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0' && seenCustCards.has(c.ghanaCardNumber)) return;
+
+          seenCustIds.add(c.id);
+          if (c.customerNumber) seenCustNos.add(c.customerNumber);
+          if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0') seenCustCards.add(c.ghanaCardNumber);
+          cleanCusts.push(c);
+        });
+        globalCloudVault.customers = cleanCusts;
 
         // 4. Merge accounts & apply deletions
+        const accMap = new Map();
+        (globalCloudVault.accounts || []).forEach(a => {
+          if (!deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id) && !deletedCustIds.includes(a.customer?.id)) accMap.set(a.id, a);
+        });
         if (Array.isArray(incoming.accounts)) {
-          const accMap = new Map();
-          (globalCloudVault.accounts || []).forEach(a => {
-            if (!deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id) && !deletedCustIds.includes(a.customer?.id)) accMap.set(a.id, a);
-          });
           incoming.accounts.forEach(a => {
             if (!deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id) && !deletedCustIds.includes(a.customer?.id)) accMap.set(a.id, a);
           });
-          globalCloudVault.accounts = Array.from(accMap.values());
-        } else if (deletedCustIds.length > 0) {
-          globalCloudVault.accounts = (globalCloudVault.accounts || []).filter(a => !deletedCustIds.includes(a.customerId) && !deletedCustIds.includes(a.id) && !deletedCustIds.includes(a.customer?.id));
         }
+        // Auto-recover any missing accounts from transactions
+        (globalCloudVault.transactions || []).concat(incoming.transactions || []).forEach(t => {
+          if (t.account && t.account.id && !deletedCustIds.includes(t.account.customerId) && !deletedCustIds.includes(t.account.id)) {
+            if (!accMap.has(t.account.id)) accMap.set(t.account.id, t.account);
+          }
+        });
+        globalCloudVault.accounts = Array.from(accMap.values());
 
         // 5. Merge transactions & apply deletions
         if (Array.isArray(incoming.transactions)) {

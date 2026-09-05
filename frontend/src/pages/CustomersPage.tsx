@@ -71,6 +71,12 @@ export const CustomersPage: React.FC = () => {
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
+  const isSuperAdmin = 
+    currentUser?.role === 'SUPER_ADMIN' || 
+    (currentUser?.role as string)?.toUpperCase() === 'SUPER_ADMIN' ||
+    currentUser?.email?.toLowerCase().includes('superadmin') || 
+    currentUser?.email === 'nanaquasi1992nk@gmail.com';
+
   const handleOpenEditCustomer = (cust: Customer) => {
     setCustomerToEdit(cust);
     setIsEditModalOpen(true);
@@ -159,44 +165,63 @@ export const CustomersPage: React.FC = () => {
 
   // Helper to calculate comprehensive financial summary for any customer (and specific cycle)
   const getCustomerFinancialSummary = (cust: Customer, targetCycleNo?: number | null) => {
-    const acc = accounts.find((a) => a.customerId === cust.id || (cust.id && a.customer?.id === cust.id)) || 
-                getStoredAccounts().find((a) => a.customerId === cust.id || (cust.id && a.customer?.id === cust.id)) || 
-                cust.accounts?.[0];
+    const acc = accounts.find((a) => a.customerId === cust.id || a.customerId === cust.customerNumber || (cust.id && a.customer?.id === cust.id) || (cust.customerNumber && a.customer?.customerNumber === cust.customerNumber)) || 
+                getStoredAccounts().find((a) => a.customerId === cust.id || a.customerId === cust.customerNumber || (cust.id && a.customer?.id === cust.id) || (cust.customerNumber && a.customer?.customerNumber === cust.customerNumber)) || 
+                cust.accounts?.[0] ||
+                transactions.find((t) => t.account?.customerId === cust.id || t.account?.customerId === cust.customerNumber || t.account?.customer?.id === cust.id || t.account?.customer?.customerNumber === cust.customerNumber)?.account;
+
     const cycles = acc?.dailyCycles && acc.dailyCycles.length > 0 ? acc.dailyCycles : [];
     const activeCycle = targetCycleNo
       ? (cycles.find((c) => c.cycleNumber === targetCycleNo) || cycles[0])
       : cycles[0];
 
-    const packageRate = acc?.savingsPackage || activeCycle?.dailyTargetAmount || 20;
-    const daysPaid = activeCycle?.currentDayCount || 0;
-    
     // Customer transactions & withdrawals
     const customerTransactions = transactions.filter(
       (t) => (acc?.id && t.accountId === acc.id) || 
              t.account?.customerId === cust.id || 
-             t.account?.customer?.id === cust.id ||
+             t.account?.customerId === cust.customerNumber ||
+             t.account?.customer?.id === cust.id || 
+             t.account?.customer?.customerNumber === cust.customerNumber ||
              (t.account?.id && acc?.id && t.account.id === acc.id)
     );
+    const customerDeposits = customerTransactions.filter((t) => t.type === 'DEPOSIT');
+    const totalDepositTxSum = customerDeposits.reduce((sum, t) => sum + t.amount, 0);
     const customerWithdrawals = customerTransactions.filter((t) => t.type === 'WITHDRAWAL');
     const totalWithdrawn = customerWithdrawals.reduce((sum, t) => sum + t.amount, 0);
+
+    const packageRate = acc?.savingsPackage || activeCycle?.dailyTargetAmount || customerDeposits[0]?.account?.savingsPackage || 20;
+    const daysPaid = (activeCycle?.currentDayCount !== undefined && activeCycle.currentDayCount > 0)
+      ? activeCycle.currentDayCount
+      : (totalDepositTxSum > 0 ? Math.floor(totalDepositTxSum / packageRate) : 0);
 
     const isDay31FeeRetained = daysPaid >= 31 || (activeCycle?.feeDeducted === true);
     const companyFeeAmount = isDay31FeeRetained ? (activeCycle?.companyFeeAmount || packageRate) : 0;
 
     // Total deposited across all cycles
-    const totalDepositedAcrossCycles = acc?.currentBalance !== undefined 
+    const totalDepositedAcrossCycles = acc?.currentBalance !== undefined && acc.currentBalance > 0
       ? toDecimal(acc.currentBalance + totalWithdrawn)
-      : cycles.reduce((sum, c) => sum + (c.totalDeposited || 0), 0) || (daysPaid * packageRate);
+      : Math.max(totalDepositTxSum, (cycles.reduce((sum, c) => sum + (c.totalDeposited || 0), 0) || (daysPaid * packageRate)));
     
     // Cycle-specific deposit
-    const cycleDeposited = activeCycle?.totalDeposited !== undefined
+    const cycleDeposited = activeCycle?.totalDeposited !== undefined && activeCycle.totalDeposited > 0
       ? activeCycle.totalDeposited
-      : (daysPaid * packageRate);
+      : Math.max(totalDepositTxSum, daysPaid * packageRate);
     
     // Available Net Savings Balance
-    const availableSavings = acc?.availableBalance !== undefined
+    const availableSavings = acc?.availableBalance !== undefined && acc.availableBalance > 0
       ? acc.availableBalance
       : Math.max(0, toDecimal(totalDepositedAcrossCycles - (isDay31FeeRetained ? companyFeeAmount : 0) - totalWithdrawn));
+
+    let dailySplits = activeCycle?.dailySplits || [];
+    if (dailySplits.length === 0 && daysPaid > 0) {
+      dailySplits = Array.from({ length: daysPaid }, (_, i) => ({
+        dayNumber: i + 1,
+        date: activeCycle?.startDate || cust.createdAt?.split('T')[0] || new Date().toISOString().split('T')[0],
+        amount: packageRate,
+        receiptNo: `RCP-DAY-${i + 1}`,
+        isCompanyFee: i + 1 === 31,
+      }));
+    }
 
     return {
       acc,
@@ -213,7 +238,7 @@ export const CustomersPage: React.FC = () => {
       isDay31FeeRetained,
       companyFeeAmount,
       availableSavings,
-      dailySplits: activeCycle?.dailySplits || [],
+      dailySplits,
     };
   };
 
@@ -515,14 +540,30 @@ export const CustomersPage: React.FC = () => {
 
       // 2. Save accounts and customers
       const freshCusts = getStoredCustomers();
-      const updatedCusts = [newCust, ...freshCusts.filter(c => c.id !== newCust.id)];
+      const updatedCusts = [
+        newCust,
+        ...freshCusts.filter(
+          (c) =>
+            c.id !== newCust.id &&
+            (!newCust.customerNumber || c.customerNumber !== newCust.customerNumber) &&
+            (!newCust.ghanaCardNumber || c.ghanaCardNumber !== newCust.ghanaCardNumber)
+        ),
+      ];
       saveStoredCustomers(updatedCusts);
-      setCustomers(updatedCusts);
+      setCustomers(getStoredCustomers());
 
       const freshAccs = getStoredAccounts();
-      const updatedAccs = [newAcc, ...freshAccs.filter((a) => a.id !== newAcc.id && a.customerId !== newCust.id)];
+      const updatedAccs = [
+        newAcc,
+        ...freshAccs.filter(
+          (a) =>
+            a.id !== newAcc.id &&
+            a.customerId !== newCust.id &&
+            (!newAcc.accountNumber || a.accountNumber !== newAcc.accountNumber)
+        ),
+      ];
       saveStoredAccounts(updatedAccs);
-      setAccounts(updatedAccs);
+      setAccounts(getStoredAccounts());
 
       // Accumulate company interest only if Day 31 was reached
       if (isDay31Reached) {
@@ -975,7 +1016,7 @@ export const CustomersPage: React.FC = () => {
                       <span>31-Day Scheme</span>
                     </button>
 
-                    {currentUser?.role === 'SUPER_ADMIN' && (
+                    {isSuperAdmin && (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -1067,7 +1108,7 @@ export const CustomersPage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
-                  {currentUser?.role === 'SUPER_ADMIN' && (
+                  {isSuperAdmin && (
                     <button
                       type="button"
                       onClick={(e) => {

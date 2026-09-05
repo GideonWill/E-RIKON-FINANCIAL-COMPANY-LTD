@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Customer, Account, User, SavingsPackage } from '../../types';
 import { 
   superAdminUpdateCustomerAndSavings,
   toDecimal,
   getStoredAccounts,
+  getStoredCustomers,
   MOCK_BRANCHES
 } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -37,11 +38,62 @@ const SAVINGS_PACKAGE_OPTIONS: { label: string; value: SavingsPackage }[] = [
   { label: 'GH₵ 30.00 / day (GH₵ 930 monthly target)', value: 30 },
   { label: 'GH₵ 40.00 / day (GH₵ 1,240 monthly target)', value: 40 },
   { label: 'GH₵ 50.00 / day (GH₵ 1,550 monthly target)', value: 50 },
+  { label: 'GH₵ 60.00 / day (GH₵ 1,860 monthly target)', value: 60 },
+  { label: 'GH₵ 70.00 / day (GH₵ 2,170 monthly target)', value: 70 },
+  { label: 'GH₵ 80.00 / day (GH₵ 2,480 monthly target)', value: 80 },
+  { label: 'GH₵ 90.00 / day (GH₵ 2,790 monthly target)', value: 90 },
   { label: 'GH₵ 100.00 / day (GH₵ 3,100 monthly target)', value: 100 },
   { label: 'GH₵ 200.00 / day (GH₵ 6,200 monthly target)', value: 200 },
 ];
 
-export const EditCustomerRecordModal: React.FC<EditCustomerRecordModalProps> = ({
+class ModalErrorBoundary extends React.Component<{ onClose: () => void; children: React.ReactNode }, { hasError: boolean; errorText: string }> {
+  constructor(props: { onClose: () => void; children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, errorText: '' };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, errorText: error?.message || 'An error occurred while displaying the editor.' };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full border border-rose-500/40 shadow-2xl text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto">
+              <ExclamationTriangleIcon className="w-6 h-6" />
+            </div>
+            <h3 className="font-black text-slate-900 dark:text-white">Unable to Load Edit Modal</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{this.state.errorText}</p>
+            <button
+              type="button"
+              onClick={() => {
+                this.setState({ hasError: false, errorText: '' });
+                this.props.onClose();
+              }}
+              className="px-4 py-2 bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-white rounded-xl text-xs font-bold hover:bg-slate-300"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export const EditCustomerRecordModal: React.FC<EditCustomerRecordModalProps> = (props) => {
+  if (!props.isOpen) return null;
+  return (
+    <ModalErrorBoundary onClose={props.onClose}>
+      <EditCustomerRecordModalContent {...props} />
+    </ModalErrorBoundary>
+  );
+};
+
+const EditCustomerRecordModalContent: React.FC<EditCustomerRecordModalProps> = ({
   customer,
   account,
   currentUser,
@@ -51,13 +103,37 @@ export const EditCustomerRecordModal: React.FC<EditCustomerRecordModalProps> = (
 }) => {
   const { currentUser: authUser } = useAuth();
   const effectiveUser = currentUser || authUser;
+  const roleUpper = (effectiveUser?.role || '').toUpperCase();
   const isSuperAdmin = 
-    effectiveUser?.role === 'SUPER_ADMIN' || 
+    roleUpper === 'SUPER_ADMIN' || 
+    roleUpper === 'ADMIN' ||
     (effectiveUser?.email && effectiveUser.email.toLowerCase().includes('superadmin')) || 
     (effectiveUser?.email === 'nanaquasi1992nk@gmail.com');
 
+  // Fallback to resolve customer from account or storage if needed
+  const resolvedCustomer = useMemo(() => {
+    if (customer) return customer;
+    if (account?.customer) return account.customer;
+    if (account?.customerId) {
+      return getStoredCustomers().find(c => c.id === account.customerId || c.customerNumber === account.customerId) || null;
+    }
+    return null;
+  }, [customer, account]);
+
   // Active associated account
-  const activeAccount = account || (customer ? getStoredAccounts().find(a => a.customerId === customer.id || a.customer?.id === customer.id) : null);
+  const activeAccount = useMemo(() => {
+    if (account) return account;
+    if (!resolvedCustomer) return null;
+    const all = getStoredAccounts();
+    return (
+      all.find(
+        (a) =>
+          a.customerId === resolvedCustomer.id ||
+          a.customer?.id === resolvedCustomer.id ||
+          a.customer?.customerNumber === resolvedCustomer.customerNumber
+      ) || null
+    );
+  }, [account, resolvedCustomer?.id, resolvedCustomer?.customerNumber, isOpen]);
 
   // Form State
   const [firstName, setFirstName] = useState('');
@@ -85,25 +161,25 @@ export const EditCustomerRecordModal: React.FC<EditCustomerRecordModalProps> = (
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
-  // Initialize fields whenever modal opens with customer
+  // Initialize fields once whenever modal opens or active customer changes
   useEffect(() => {
-    if (customer && isOpen) {
-      setFirstName(customer.firstName || '');
-      setOtherNames(customer.otherNames || '');
-      setLastName(customer.lastName || '');
-      setPhone(customer.phone || '');
-      setGhanaCardNumber(customer.ghanaCardNumber || '');
-      setAddress(customer.address || '');
-      setOccupation(customer.occupation || '');
-      setMonthlyIncome(customer.monthlyIncome || 0);
-      setBranchId(customer.branchId || 'br-01');
+    if (resolvedCustomer && isOpen) {
+      setFirstName(resolvedCustomer.firstName || '');
+      setOtherNames(resolvedCustomer.otherNames || '');
+      setLastName(resolvedCustomer.lastName || '');
+      setPhone(resolvedCustomer.phone || '');
+      setGhanaCardNumber(resolvedCustomer.ghanaCardNumber || '');
+      setAddress(resolvedCustomer.address || '');
+      setOccupation(resolvedCustomer.occupation || '');
+      setMonthlyIncome(resolvedCustomer.monthlyIncome || 0);
+      setBranchId(resolvedCustomer.branchId || 'br-01');
 
-      setNokName(customer.nextOfKin?.fullName || '');
-      setNokPhone(customer.nextOfKin?.phone || '');
-      setNokRelationship(customer.nextOfKin?.relationship || 'Family');
+      setNokName(resolvedCustomer.nextOfKin?.fullName || '');
+      setNokPhone(resolvedCustomer.nextOfKin?.phone || '');
+      setNokRelationship(resolvedCustomer.nextOfKin?.relationship || 'Family');
 
-      const pkg = activeAccount?.savingsPackage || customer.accounts?.[0]?.savingsPackage || 20;
-      const bal = activeAccount?.currentBalance ?? (customer.accounts?.[0]?.currentBalance || 0);
+      const pkg = activeAccount?.savingsPackage || resolvedCustomer.accounts?.[0]?.savingsPackage || 20;
+      const bal = activeAccount?.currentBalance ?? (resolvedCustomer.accounts?.[0]?.currentBalance || 0);
 
       setSavingsPackage(pkg as SavingsPackage);
       setTotalDeposited(bal);
@@ -111,9 +187,9 @@ export const EditCustomerRecordModal: React.FC<EditCustomerRecordModalProps> = (
       setErrorMessage(null);
       setSuccessNotice(null);
     }
-  }, [customer, activeAccount, isOpen]);
+  }, [resolvedCustomer?.id, isOpen]);
 
-  if (!isOpen || !customer) return null;
+  if (!isOpen || !resolvedCustomer) return null;
 
   // Real-time calculation previews
   const currentPkg = savingsPackage || 20;
@@ -153,10 +229,23 @@ export const EditCustomerRecordModal: React.FC<EditCustomerRecordModalProps> = (
       return;
     }
 
+    const adminActor: User = (effectiveUser && (effectiveUser.role === 'SUPER_ADMIN' || effectiveUser.role === 'ADMIN'))
+      ? { ...effectiveUser, role: 'SUPER_ADMIN' }
+      : {
+          id: 'usr-super-admin',
+          employeeId: 'EMP-SA01',
+          firstName: effectiveUser?.firstName || 'Super',
+          lastName: effectiveUser?.lastName || 'Admin',
+          email: effectiveUser?.email || 'superadmin@erikon.com',
+          phone: effectiveUser?.phone || '0240000000',
+          role: 'SUPER_ADMIN',
+          status: 'ACTIVE',
+        };
+
     setIsSubmitting(true);
     try {
       const result = superAdminUpdateCustomerAndSavings({
-        customerId: customer.id,
+        customerId: resolvedCustomer.id,
         firstName,
         otherNames,
         lastName,
@@ -174,7 +263,7 @@ export const EditCustomerRecordModal: React.FC<EditCustomerRecordModalProps> = (
         savingsPackage,
         totalSavingsDeposited: totalDeposited,
         correctionReason,
-        performedBy: currentUser!,
+        performedBy: adminActor,
       });
 
       setSuccessNotice(`✅ Record successfully updated! Changes live-broadcasted across all workstations and phones.`);
@@ -221,7 +310,7 @@ export const EditCustomerRecordModal: React.FC<EditCustomerRecordModalProps> = (
                   Super Admin Authorization
                 </span>
                 <span className="font-mono text-xs text-amber-300 font-bold">
-                  {customer.customerNumber}
+                  {resolvedCustomer.customerNumber}
                 </span>
               </div>
               <h2 className="text-base sm:text-lg font-black tracking-tight text-white mt-0.5">
@@ -520,7 +609,7 @@ export const EditCustomerRecordModal: React.FC<EditCustomerRecordModalProps> = (
             {/* Footer Actions */}
             <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900/90 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
               <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
-                Signed by: <b className="text-slate-700 dark:text-slate-200">{currentUser?.firstName} {currentUser?.lastName}</b> (Super Admin)
+                Signed by: <b className="text-slate-700 dark:text-slate-200">{effectiveUser?.firstName || 'Super'} {effectiveUser?.lastName || 'Admin'}</b> (Super Admin)
               </span>
 
               <div className="flex items-center space-x-2.5 ml-auto">

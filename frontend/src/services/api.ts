@@ -204,17 +204,53 @@ export const getStoredCustomers = (): Customer[] => {
   } catch {}
 
   const deletedIds = getDeletedCustomerIds();
-  return parsed.filter((c) => !deletedIds.includes(c.id) && !deletedIds.includes(c.customerNumber || ''));
+  const seenIds = new Set<string>();
+  const seenCustNos = new Set<string>();
+  const seenCards = new Set<string>();
+  const deduped: Customer[] = [];
+
+  for (const c of parsed) {
+    if (!c || !c.id) continue;
+    if (deletedIds.includes(c.id) || (c.customerNumber && deletedIds.includes(c.customerNumber))) continue;
+    if (seenIds.has(c.id)) continue;
+    if (c.customerNumber && seenCustNos.has(c.customerNumber)) continue;
+    if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0' && seenCards.has(c.ghanaCardNumber)) continue;
+
+    seenIds.add(c.id);
+    if (c.customerNumber) seenCustNos.add(c.customerNumber);
+    if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0') seenCards.add(c.ghanaCardNumber);
+    deduped.push(c);
+  }
+
+  if (deduped.length !== parsed.length) {
+    localStorage.setItem('erikon_customers', JSON.stringify(deduped));
+  }
+
+  return deduped;
 };
 
 export const saveStoredCustomers = (customers: Customer[], skipBroadcast = false) => {
   const currentDeleted = getDeletedCustomerIds();
-  const sanitized = customers
-    .filter((c) => !currentDeleted.includes(c.id) && !currentDeleted.includes(c.customerNumber || ''))
-    .map((c) => {
-      const { accounts: _, ...rest } = c;
-      return rest as Customer;
-    });
+  const seenIds = new Set<string>();
+  const seenCustNos = new Set<string>();
+  const seenCards = new Set<string>();
+  const sanitized: Customer[] = [];
+
+  for (const c of customers) {
+    if (!c || !c.id) continue;
+    if (currentDeleted.includes(c.id) || (c.customerNumber && currentDeleted.includes(c.customerNumber))) continue;
+    if (seenIds.has(c.id)) continue;
+    if (c.customerNumber && seenCustNos.has(c.customerNumber)) continue;
+    if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0' && seenCards.has(c.ghanaCardNumber)) continue;
+
+    seenIds.add(c.id);
+    if (c.customerNumber) seenCustNos.add(c.customerNumber);
+    if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0') seenCards.add(c.ghanaCardNumber);
+
+    const { accounts: _, ...rest } = c;
+    sanitized.push(rest as Customer);
+  }
+
   localStorage.setItem('erikon_customers', JSON.stringify(sanitized));
   if (!skipBroadcast) {
     broadcastRealtimeEvent('CUSTOMER_REGISTERED', sanitized);
@@ -231,7 +267,23 @@ export const getStoredAccounts = (): Account[] => {
     } catch {}
   }
   const deletedIds = getDeletedCustomerIds();
-  parsed = parsed.filter((a) => !deletedIds.includes(a.customerId) && !deletedIds.includes(a.id));
+  const seenAccIds = new Set<string>();
+  const seenAccNos = new Set<string>();
+  const dedupedAccs: Account[] = [];
+
+  for (const a of parsed) {
+    if (!a || !a.id) continue;
+    if (deletedIds.includes(a.customerId) || deletedIds.includes(a.id)) continue;
+    if (a.customer?.id && deletedIds.includes(a.customer.id)) continue;
+    if (a.customer?.customerNumber && deletedIds.includes(a.customer.customerNumber)) continue;
+    if (seenAccIds.has(a.id)) continue;
+    if (a.accountNumber && seenAccNos.has(a.accountNumber)) continue;
+
+    seenAccIds.add(a.id);
+    if (a.accountNumber) seenAccNos.add(a.accountNumber);
+    dedupedAccs.push(a);
+  }
+  parsed = dedupedAccs;
 
   const customers = getStoredCustomers();
   let rawTxs: Transaction[] = [];
@@ -241,6 +293,41 @@ export const getStoredAccounts = (): Account[] => {
   } catch {}
 
   let splitsUpdated = false;
+
+  // Auto-recover any account attached to stored transactions
+  rawTxs.forEach((t) => {
+    if (t.account && t.account.id) {
+      const a = t.account;
+      if (deletedIds.includes(a.customerId) || deletedIds.includes(a.id)) return;
+      if (a.customer?.id && deletedIds.includes(a.customer.id)) return;
+      if (seenAccIds.has(a.id)) return;
+      if (a.accountNumber && seenAccNos.has(a.accountNumber)) return;
+
+      seenAccIds.add(a.id);
+      if (a.accountNumber) seenAccNos.add(a.accountNumber);
+      dedupedAccs.push(a);
+      splitsUpdated = true;
+    }
+  });
+
+  // Auto-recover any account on customer.accounts
+  customers.forEach((c) => {
+    if (c.accounts && Array.isArray(c.accounts)) {
+      c.accounts.forEach((a) => {
+        if (!a || !a.id) return;
+        if (deletedIds.includes(a.customerId) || deletedIds.includes(a.id)) return;
+        if (seenAccIds.has(a.id)) return;
+        if (a.accountNumber && seenAccNos.has(a.accountNumber)) return;
+
+        seenAccIds.add(a.id);
+        if (a.accountNumber) seenAccNos.add(a.accountNumber);
+        dedupedAccs.push(a);
+        splitsUpdated = true;
+      });
+    }
+  });
+
+  parsed = dedupedAccs;
 
   parsed.forEach((acc) => {
     if (!acc.customer && acc.customerId) {
@@ -261,15 +348,50 @@ export const getStoredAccounts = (): Account[] => {
 
     let cycleDeposits = (acc.dailyCycles || []).reduce((sum, c) => sum + (c.totalDeposited || 0), 0);
 
-    // If transactions have more deposits than cycle totalDeposited, sync active cycle
-    if (totalDepositTxSum > cycleDeposits && acc.dailyCycles && acc.dailyCycles.length > 0) {
-      const activeC = acc.dailyCycles[0];
-      const pkg = activeC.dailyTargetAmount || acc.savingsPackage || 20;
-      const diff = totalDepositTxSum - cycleDeposits;
-      activeC.totalDeposited = toDecimal(activeC.totalDeposited + diff);
-      activeC.currentDayCount = Math.floor(activeC.totalDeposited / pkg);
+    const activeC = (acc.dailyCycles && acc.dailyCycles.length > 0) ? acc.dailyCycles[0] : null;
+    const pkg = activeC?.dailyTargetAmount || acc.savingsPackage || 20;
+
+    if (!activeC && totalDepositTxSum > 0) {
+      const count = Math.floor(totalDepositTxSum / pkg);
+      acc.dailyCycles = [{
+        id: `cyc-${Date.now()}`,
+        cycleNumber: 1,
+        startDate: acc.openingDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+        dailyTargetAmount: pkg,
+        totalDeposited: totalDepositTxSum,
+        currentDayCount: count,
+        feeDeducted: count >= 31,
+        companyFeeAmount: count >= 31 ? pkg : 0,
+        isCompleted: count >= 31,
+        dailySplits: Array.from({ length: count }, (_, i) => ({
+          dayNumber: i + 1,
+          date: new Date().toISOString().split('T')[0],
+          amount: pkg,
+          receiptNo: `RCP-REC-${i + 1}`,
+          isCompanyFee: i + 1 === 31,
+        })),
+      }];
       cycleDeposits = totalDepositTxSum;
       splitsUpdated = true;
+    } else if (activeC) {
+      // If transactions have more deposits than cycle totalDeposited, sync active cycle
+      if (totalDepositTxSum > cycleDeposits) {
+        const diff = totalDepositTxSum - cycleDeposits;
+        activeC.totalDeposited = toDecimal(activeC.totalDeposited + diff);
+        activeC.currentDayCount = Math.floor(activeC.totalDeposited / pkg);
+        cycleDeposits = totalDepositTxSum;
+        splitsUpdated = true;
+      }
+      if (activeC.currentDayCount > 0 && (!activeC.dailySplits || activeC.dailySplits.length === 0)) {
+        activeC.dailySplits = Array.from({ length: activeC.currentDayCount }, (_, i) => ({
+          dayNumber: i + 1,
+          date: activeC.startDate || new Date().toISOString().split('T')[0],
+          amount: pkg,
+          receiptNo: `RCP-REC-${i + 1}`,
+          isCompanyFee: i + 1 === 31,
+        }));
+        splitsUpdated = true;
+      }
     }
 
     const totalDepositedAll = Math.max(cycleDeposits, totalDepositTxSum);

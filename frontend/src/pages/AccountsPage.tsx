@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getStoredAccounts, getStoredTransactions, deleteCustomerRecord, startNewCycleForAccount } from '../services/api';
+import { getStoredAccounts, getStoredCustomers, getStoredTransactions, deleteCustomerRecord, startNewCycleForAccount } from '../services/api';
 import { useRealtimeSync } from '../services/realtimeSync';
 import { useAuth } from '../contexts/AuthContext';
 import { addSystemNotification } from '../components/ui/NotificationsModal';
@@ -38,6 +38,12 @@ export const AccountsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const isSuperAdmin = 
+    currentUser?.role === 'SUPER_ADMIN' || 
+    (currentUser?.role as string)?.toUpperCase() === 'SUPER_ADMIN' ||
+    currentUser?.email?.toLowerCase().includes('superadmin') || 
+    currentUser?.email === 'nanaquasi1992nk@gmail.com';
   const matrixRef = useRef<HTMLDivElement>(null);
 
   const handleSelectAccount = (acc: Account) => {
@@ -326,13 +332,15 @@ export const AccountsPage: React.FC = () => {
                         <span>Record Withdrawal</span>
                       </button>
 
-                      {currentUser?.role === 'SUPER_ADMIN' && (
+                      {isSuperAdmin && (
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (selectedAccount.customer) {
-                              setCustomerToEdit(selectedAccount.customer);
+                            const cust = selectedAccount.customer || 
+                              getStoredCustomers().find(c => c.id === selectedAccount.customerId || c.customerNumber === selectedAccount.customerId);
+                            if (cust) {
+                              setCustomerToEdit(cust);
                               setIsEditModalOpen(true);
                             }
                           }}
