@@ -114,22 +114,9 @@ export class AuthService {
     });
 
     if (existing) {
-      const isApproved = existing.role === RoleName.SUPER_ADMIN || existing.isApproved;
-      const payload = {
-        sub: existing.id,
-        email: existing.email,
-        role: existing.role,
-        branchId: existing.branchId,
-        branchName: existing.branch?.name || 'Accra Central Main Branch',
-        isApproved,
-      };
-      return {
-        accessToken: this.jwtService.sign(payload),
-        user: {
-          ...existing,
-          isApproved,
-        },
-      };
+      throw new ConflictException(
+        `This email address (${cleanEmail}) already exists in the system (registered as ${existing.role.replace(/_/g, ' ')}). The same email cannot be used to create a new user role.`
+      );
     }
 
     // Ensure branch exists

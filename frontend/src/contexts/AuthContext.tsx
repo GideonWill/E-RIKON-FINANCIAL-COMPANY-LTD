@@ -170,11 +170,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // 1. Fast Local Validation (Instant <50ms response time)
     const localUsers = getRegisteredUsers();
-    const match = localUsers.find((u) => u.email.toLowerCase() === cleanEmail);
+    const match = localUsers.find((u) => (u.email || '').toLowerCase() === cleanEmail);
 
     if (match) {
-      if (match.password && match.password !== cleanPass) {
+      // Strict Designated Role Credential Enforcement
+      if (role && match.role !== role) {
+        return {
+          success: false,
+          error: `Access Denied: This account (${cleanEmail}) is registered as "${formatRoleLabel(match.role)}", not "${formatRoleLabel(role)}". Please switch to the ${formatRoleLabel(match.role)} workstation tab to sign in with these credentials.`,
+        };
+      }
+
+      const expectedPassword = match.password || 'erikon2026';
+      if (cleanPass !== expectedPassword) {
         return { success: false, error: 'Incorrect password for this account. Please verify and try again.' };
+      }
+
+      if (match.isBlocked) {
+        return { success: false, error: 'This account has been suspended or blocked. Please contact the Super Administrator.' };
       }
 
       // Auto-activate user so they are immediately authorized to work
@@ -214,7 +227,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (role && data.user.role !== role) {
           return {
             success: false,
-            error: `Access Denied: This account is registered as "${formatRoleLabel(data.user.role)}", not "${formatRoleLabel(role)}". Please switch to the ${formatRoleLabel(data.user.role)} role tab to sign in.`,
+            error: `Access Denied: This account (${cleanEmail}) is registered as "${formatRoleLabel(data.user.role)}", not "${formatRoleLabel(role)}". Please switch to the ${formatRoleLabel(data.user.role)} workstation tab to sign in with these credentials.`,
           };
         }
 
@@ -277,6 +290,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     employeeId?: string;
     password?: string;
   }) => {
+    const cleanEmail = data.email.trim().toLowerCase();
+    const localUsers = getRegisteredUsers();
+    const duplicateUser = localUsers.find((u) => (u.email || '').trim().toLowerCase() === cleanEmail);
+    if (duplicateUser) {
+      const roleLabel = formatRoleLabel(duplicateUser.role);
+      throw new Error(`The email address "${cleanEmail}" already exists in the system (registered as ${roleLabel}). The same email cannot be used to create a new user role.`);
+    }
+
     const res = await registerNewUserRole(data);
     pushLocalToCloud().catch(() => {});
     return res;

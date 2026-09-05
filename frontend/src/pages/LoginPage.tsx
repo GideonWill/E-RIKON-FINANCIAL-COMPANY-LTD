@@ -20,7 +20,8 @@ import {
   CheckCircleIcon,
   TrashIcon,
   ChevronRightIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 
 export const LoginPage: React.FC = () => {
@@ -63,10 +64,10 @@ export const LoginPage: React.FC = () => {
     pullCloudToLocal().catch(() => {});
   }, []);
 
-  // Auto-dismiss error & alert messages after 4 seconds
+  // Auto-dismiss error & alert messages after 8 seconds
   useEffect(() => {
     if (errorMsg) {
-      const timer = setTimeout(() => setErrorMsg(''), 4000);
+      const timer = setTimeout(() => setErrorMsg(''), 8000);
       return () => clearTimeout(timer);
     }
   }, [errorMsg]);
@@ -355,15 +356,35 @@ export const LoginPage: React.FC = () => {
 
               {/* Error Alert Notification */}
               {errorMsg && (
-                <div className="mb-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs flex items-center justify-between gap-2 shadow-xs animate-pulse">
-                  <span className="flex-1 font-medium">{errorMsg}</span>
-                  <button
-                    type="button"
-                    onClick={() => setErrorMsg('')}
-                    className="text-rose-500 hover:text-rose-800 font-mono text-xs cursor-pointer"
-                  >
-                    ✕
-                  </button>
+                <div className="mb-2.5 p-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 text-xs shadow-xs space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2">
+                      <ExclamationTriangleIcon className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                      <span className="font-semibold text-rose-800 leading-relaxed">{errorMsg}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setErrorMsg('')}
+                      className="text-rose-400 hover:text-rose-700 font-bold text-sm leading-none cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {/* Quick Action Button for Duplicate Email */}
+                  {errorMsg.toLowerCase().includes('already exist') && activeTab === 'signup' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail(signupEmail);
+                        setActiveTab('signin');
+                        setErrorMsg('');
+                      }}
+                      className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 w-fit shadow-xs"
+                    >
+                      <span>Switch to Sign In with this Email</span>
+                      <ChevronRightIcon className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               )}
 

@@ -1913,17 +1913,33 @@ export const registerNewUserRole = async (signupData: {
   // Auto-approve newly created staff accounts so the user can sign in immediately
   const isAutoApproved = true;
 
+  const cleanEmail = signupData.email.trim().toLowerCase();
+
+  // 1. Strict Duplicate Email Prevention (Local Vault)
+  const existingUsers = getRegisteredUsers();
+  const duplicateUser = existingUsers.find(
+    (u) => (u.email || '').trim().toLowerCase() === cleanEmail
+  );
+
+  if (duplicateUser) {
+    const roleLabel = duplicateUser.role ? duplicateUser.role.replace(/_/g, ' ') : 'Staff';
+    throw new Error(
+      `The email "${cleanEmail}" already exists in the system (registered as ${roleLabel}). The same email cannot be used to create a new user role.`
+    );
+  }
+
   // Ensure email is cleared from any prior deletion tombstones
-  removeDeletedUserEmail(signupData.email);
+  removeDeletedUserEmail(cleanEmail);
 
   let backendUserId = `user-${Date.now()}`;
   let backendEmployeeId = signupData.employeeId || `EMP-${Date.now().toString().slice(-4)}`;
 
+  // 2. Strict Duplicate Email Prevention (Authoritative Backend Vault)
   try {
     const { data } = await apiClient.post('/auth/register', {
       firstName: signupData.firstName,
       lastName: signupData.lastName,
-      email: signupData.email,
+      email: cleanEmail,
       phone: signupData.phone,
       ghanaCard: signupData.ghanaCard,
       role: signupData.role,
@@ -1935,6 +1951,18 @@ export const registerNewUserRole = async (signupData: {
       backendEmployeeId = data.user.employeeId || backendEmployeeId;
     }
   } catch (err: any) {
+    const msg = err?.response?.data?.message || err?.message;
+    if (
+      err?.response?.status === 409 ||
+      err?.response?.status === 400 ||
+      (typeof msg === 'string' && (msg.toLowerCase().includes('already exist') || msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('conflict')))
+    ) {
+      throw new Error(
+        typeof msg === 'string'
+          ? msg
+          : `The email "${cleanEmail}" already exists in the system. The same email cannot be used to create a new user role.`
+      );
+    }
     console.warn('Backend registration notice:', err?.response?.data || err.message);
   }
 
@@ -1943,7 +1971,7 @@ export const registerNewUserRole = async (signupData: {
     employeeId: backendEmployeeId,
     firstName: signupData.firstName,
     lastName: signupData.lastName,
-    email: signupData.email,
+    email: cleanEmail,
     phone: signupData.phone,
     role: signupData.role,
     password: signupData.password || 'erikon2026',
@@ -1953,8 +1981,7 @@ export const registerNewUserRole = async (signupData: {
     status: isAutoApproved ? 'ACTIVE' : 'PENDING_APPROVAL',
   };
 
-  const existingUsers = getRegisteredUsers();
-  const updatedUsers = [newUser, ...existingUsers.filter((u) => u.email.toLowerCase() !== newUser.email.toLowerCase())];
+  const updatedUsers = [newUser, ...existingUsers.filter((u) => (u.email || '').trim().toLowerCase() !== cleanEmail)];
   saveRegisteredUsers(updatedUsers);
 
   const approvalItem: ApprovalRequest = {
