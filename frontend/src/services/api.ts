@@ -686,6 +686,10 @@ export const purgeReversedNotificationsStorage = () => {
     reversedRefs.add('TX-DEP-33653262');
     reversedRcps.add('33653262');
     reversedRcps.add('RCP-33653262');
+    reversedRefs.add('33991724');
+    reversedRefs.add('TX-DEP-33991724');
+    reversedRcps.add('33991724');
+    reversedRcps.add('RCP-33991724');
 
     // 1. Clean dynamic notifications
     const dynamicStr = localStorage.getItem('erikon_dynamic_notifications');
@@ -719,7 +723,11 @@ export const purgeReversedNotificationsStorage = () => {
       'tx-33653262',
       'tx-DEP-33653262',
       'tx-TX-DEP-33653262',
-      'tx-RCP-33653262'
+      'tx-RCP-33653262',
+      'tx-33991724',
+      'tx-DEP-33991724',
+      'tx-TX-DEP-33991724',
+      'tx-RCP-33991724'
     ];
     const updatedCleared = Array.from(new Set([...cleared, ...reversedNotifIds]));
     localStorage.setItem('erikon_cleared_notifications', JSON.stringify(updatedCleared));
@@ -741,60 +749,45 @@ export const reconcileVincentTransactionsBaseline = () => {
     if (!vkmAcc) return;
 
     let modified = false;
-    const updatedTxs = rawTxs.map((t) => {
-      const isVincentTx = t.accountId === vkmAcc.id || t.account?.id === vkmAcc.id || t.account?.customer?.lastName?.toLowerCase().includes('mensah');
-      if (isVincentTx && !t.isReversed) {
-        // Reverse test transactions like TX-DEP-33653262
-        if (t.referenceNo?.includes('33653262') || t.receiptNo?.includes('33653262')) {
-          modified = true;
-          return {
-            ...t,
-            isReversed: true,
-            reversedAt: new Date().toISOString(),
-            reversedBy: {
-              id: 'super-admin-01',
-              firstName: 'Eric',
-              lastName: 'Kwasi Annor',
-              role: 'SUPER_ADMIN' as RoleName,
-              email: 'superadmin@erikon.com',
-            } as User,
-            reversalReason: 'Reversed by Super Admin (Rollback of test transactions to baseline GH₵ 930.00)',
-          };
-        }
-      }
-      return t;
+
+    // 1. Completely delete any test deposit transactions matching 33653262, 33991724, or excess test deposits
+    const filteredTxs = rawTxs.filter((t) => {
+      const isTestTx =
+        t.referenceNo?.includes('33653262') ||
+        t.receiptNo?.includes('33653262') ||
+        t.referenceNo?.includes('33991724') ||
+        t.receiptNo?.includes('33991724') ||
+        (t.reversalReason?.includes('Rollback of test transactions') && (t.accountId === vkmAcc.id || t.account?.id === vkmAcc.id));
+      return !isTestTx;
     });
 
+    if (filteredTxs.length !== rawTxs.length) {
+      modified = true;
+    }
+
     // Check if total non-reversed deposits on Vincent exceed 930
-    const nonReversedVincentDeposits = updatedTxs.filter(
+    const nonReversedVincentDeposits = filteredTxs.filter(
       (t) => (t.accountId === vkmAcc.id || t.account?.id === vkmAcc.id) && t.type === 'DEPOSIT' && !t.isReversed
     );
     const sumDeposits = nonReversedVincentDeposits.reduce((acc, t) => acc + (t.amount || 0), 0);
 
+    let finalTxs = filteredTxs;
     if (sumDeposits > 930) {
       let excess = sumDeposits - 930;
-      for (const t of updatedTxs) {
-        if (excess <= 0) break;
+      finalTxs = filteredTxs.filter((t) => {
+        if (excess <= 0) return true;
         const isVincentDeposit = (t.accountId === vkmAcc.id || t.account?.id === vkmAcc.id) && t.type === 'DEPOSIT' && !t.isReversed;
         if (isVincentDeposit && !t.referenceNo?.includes('vkm-dep-01') && !t.referenceNo?.includes('vkm-dep-02') && !t.referenceNo?.includes('vkm-dep-03')) {
-          t.isReversed = true;
-          t.reversedAt = new Date().toISOString();
-          t.reversedBy = {
-            id: 'super-admin-01',
-            firstName: 'Eric',
-            lastName: 'Kwasi Annor',
-            role: 'SUPER_ADMIN' as RoleName,
-            email: 'superadmin@erikon.com',
-          } as User;
-          t.reversalReason = 'Reversed by Super Admin (Rollback of test transactions to baseline GH₵ 930.00)';
           excess -= (t.amount || 0);
           modified = true;
+          return false;
         }
-      }
+        return true;
+      });
     }
 
     if (modified || vkmAcc.availableBalance !== 900 || vkmAcc.currentBalance !== 930) {
-      saveStoredTransactions(updatedTxs);
+      saveStoredTransactions(finalTxs);
 
       vkmAcc.savingsPackage = 10;
       vkmAcc.currentBalance = 930;

@@ -146,6 +146,10 @@ export const purgeReversedNotifications = () => {
     reversedRefs.add('TX-DEP-33653262');
     reversedRcps.add('33653262');
     reversedRcps.add('RCP-33653262');
+    reversedRefs.add('33991724');
+    reversedRefs.add('TX-DEP-33991724');
+    reversedRcps.add('33991724');
+    reversedRcps.add('RCP-33991724');
 
     // 1. Purge from dynamic notifications
     const dynamic = getStoredDynamicNotifications();
@@ -177,7 +181,11 @@ export const purgeReversedNotifications = () => {
       'tx-33653262',
       'tx-DEP-33653262',
       'tx-TX-DEP-33653262',
-      'tx-RCP-33653262'
+      'tx-RCP-33653262',
+      'tx-33991724',
+      'tx-DEP-33991724',
+      'tx-TX-DEP-33991724',
+      'tx-RCP-33991724'
     ];
     const updatedCleared = Array.from(new Set([...currentCleared, ...reversedNotifIds]));
     if (updatedCleared.length !== currentCleared.length) {

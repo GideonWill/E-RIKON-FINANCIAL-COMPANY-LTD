@@ -82,6 +82,7 @@ export const ReportsPage: React.FC = () => {
   const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
   const [selectedCycleNumber, setSelectedCycleNumber] = useState<number>(1);
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
+  const [showReversedInStatement, setShowReversedInStatement] = useState(false);
   const [isStatementPdfModalOpen, setIsStatementPdfModalOpen] = useState(false);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [emailRecipient, setEmailRecipient] = useState<string>('');
@@ -369,6 +370,9 @@ export const ReportsPage: React.FC = () => {
 
   // Transactions belonging strictly to the selected client and selected month
   const monthlyClientTransactions: Transaction[] = transactions.filter((t) => {
+    // Exclude reversed transactions from official financial statement view by default
+    if (!showReversedInStatement && t.isReversed) return false;
+
     let isClient = true;
     if (isCompanyVault) {
       isClient = t.type === 'COMPANY_INTEREST_WITHDRAWAL' || t.type === 'COMPANY_FEE_DEDUCTION' || t.accountId === 'acc-company-vault';
@@ -835,13 +839,30 @@ export const ReportsPage: React.FC = () => {
               <CalendarIcon className="w-4 h-4 text-[#0d9488]" />
               <span>Records for: <b className="text-[#0d9488] font-mono">{getMonthTitle(selectedMonth)}</b></span>
             </span>
-            <span className="text-[11px] text-slate-400 font-mono">
-              {monthlyClientTransactions.length > 0 
-                ? `${monthlyClientTransactions.length} transaction(s) found`
-                : monthlyDailySplits.length > 0
-                ? `${monthlyDailySplits.length} daily contribution(s) found`
-                : '0 records in this month'}
-            </span>
+            <div className="flex items-center gap-2">
+              {currentUser?.role === 'SUPER_ADMIN' && (
+                <button
+                  type="button"
+                  onClick={() => setShowReversedInStatement(!showReversedInStatement)}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all border flex items-center gap-1 cursor-pointer ${
+                    showReversedInStatement
+                      ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:border-rose-800'
+                      : 'bg-slate-100 text-slate-500 hover:text-slate-700 border-slate-200 dark:bg-slate-800 dark:border-slate-700'
+                  }`}
+                  title="Toggle display of reversed transactions for audit inspection"
+                >
+                  <ArrowUturnLeftIcon className="w-3 h-3" />
+                  <span>{showReversedInStatement ? 'Hide Reversed' : 'Audit Reversed'}</span>
+                </button>
+              )}
+              <span className="text-[11px] text-slate-400 font-mono">
+                {monthlyClientTransactions.length > 0 
+                  ? `${monthlyClientTransactions.length} transaction(s) found`
+                  : monthlyDailySplits.length > 0
+                  ? `${monthlyDailySplits.length} daily contribution(s) found`
+                  : '0 records in this month'}
+              </span>
+            </div>
           </div>
 
           <table className="w-full text-left border-collapse text-xs">
