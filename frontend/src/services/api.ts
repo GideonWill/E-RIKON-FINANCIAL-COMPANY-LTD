@@ -173,31 +173,7 @@ export const getStoredCustomers = (): Customer[] => {
       }
     }
 
-    // 2. Recover from transactions (Only if not explicitly deleted)
-    const rawTxsStr = localStorage.getItem('erikon_transactions');
-    if (rawTxsStr) {
-      const txs = JSON.parse(rawTxsStr);
-      if (Array.isArray(txs)) {
-        txs.forEach((tx: any) => {
-          const cust = tx.account?.customer || tx.customer;
-          if (cust && cust.id && !custMap.has(cust.id)) {
-            const { accounts: _, ...cleanCust } = cust;
-            const txCustId = tx.customerId || tx.account?.customerId;
-            if (
-              !deletedIds.includes(cleanCust.id) &&
-              !deletedIds.includes(cleanCust.customerNumber || '') &&
-              (!txCustId || !deletedIds.includes(txCustId))
-            ) {
-              custMap.set(cleanCust.id, cleanCust as Customer);
-              if (cleanCust.customerNumber) custMap.set(cleanCust.customerNumber, cleanCust as Customer);
-              parsed.push(cleanCust as Customer);
-              recoveredAny = true;
-            }
-          }
-        });
-      }
-    }
-
+    // (Ghost customer auto-recovery from transactions removed to prevent old deleted test records from resurrecting)
     if (recoveredAny) {
       localStorage.setItem('erikon_customers', JSON.stringify(parsed));
     }
@@ -294,21 +270,7 @@ export const getStoredAccounts = (): Account[] => {
 
   let splitsUpdated = false;
 
-  // Auto-recover any account attached to stored transactions
-  rawTxs.forEach((t) => {
-    if (t.account && t.account.id) {
-      const a = t.account;
-      if (deletedIds.includes(a.customerId) || deletedIds.includes(a.id)) return;
-      if (a.customer?.id && deletedIds.includes(a.customer.id)) return;
-      if (seenAccIds.has(a.id)) return;
-      if (a.accountNumber && seenAccNos.has(a.accountNumber)) return;
-
-      seenAccIds.add(a.id);
-      if (a.accountNumber) seenAccNos.add(a.accountNumber);
-      dedupedAccs.push(a);
-      splitsUpdated = true;
-    }
-  });
+  // (Ghost account auto-recovery from transactions removed to prevent old deleted records from mixing)
 
   // Auto-recover any account on customer.accounts
   customers.forEach((c) => {
@@ -487,11 +449,29 @@ export const getStoredTransactions = (): Transaction[] => {
     } catch {}
   }
   const deletedIds = getDeletedCustomerIds();
+  const currentCustomers = getStoredCustomers();
+  const currentCustIds = new Set(currentCustomers.map((c) => c.id));
+  const currentCustNos = new Set(currentCustomers.map((c) => c.customerNumber).filter(Boolean));
 
   return parsed.filter((t) => {
     if (deletedIds.includes(t.id) || (t.receiptNo && deletedIds.includes(t.receiptNo))) return false;
-    const txCustId = t.account?.customerId || t.account?.customer?.id;
+    const txCustId = (t as any).customerId || t.account?.customerId || t.account?.customer?.id;
+    const txCustNo = (t as any).customer?.customerNumber || t.account?.customer?.customerNumber;
     if (txCustId && deletedIds.includes(txCustId)) return false;
+    if (txCustNo && deletedIds.includes(txCustNo)) return false;
+
+    // Filter out transactions belonging to deleted or non-existent customers
+    if (txCustId && currentCustomers.length > 0 && !currentCustIds.has(txCustId)) return false;
+    if (txCustNo && currentCustomers.length > 0 && !currentCustNos.has(txCustNo)) return false;
+
+    // Filter out company interest withdrawal transactions if no approved withdrawal exists in vault
+    if (t.type === 'COMPANY_INTEREST_WITHDRAWAL') {
+      const approvedWds = getStoredCompanyWithdrawals().filter((w) => w.status === 'APPROVED');
+      if (approvedWds.length === 0) return false;
+      const hasMatch = approvedWds.some((w) => Math.abs(w.amount - t.amount) < 0.01);
+      if (!hasMatch) return false;
+    }
+
     return true;
   });
 };

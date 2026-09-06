@@ -256,7 +256,50 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       }
     }
 
-    // 3. Merged Authoritative Customers Sync (Lossless Merge + Self-healing from accounts/transactions)
+    // Authoritative direct replacement (clears any stale test transactions or old deleted records)
+    if (cloudData.authoritative) {
+      if (Array.isArray(cloudData.customers)) {
+        saveStoredCustomers(cloudData.customers, true);
+      }
+      if (Array.isArray(cloudData.accounts)) {
+        saveStoredAccounts(cloudData.accounts);
+      }
+      if (Array.isArray(cloudData.transactions)) {
+        saveStoredTransactions(cloudData.transactions);
+      }
+      if (Array.isArray(cloudData.loans)) {
+        saveStoredLoans(cloudData.loans);
+      }
+      if (Array.isArray(cloudData.companyInterest)) {
+        saveStoredCompanyInterest(cloudData.companyInterest);
+      }
+      if (Array.isArray(cloudData.companyWithdrawals)) {
+        saveStoredCompanyWithdrawals(cloudData.companyWithdrawals);
+      }
+      if (Array.isArray(cloudData.approvals)) {
+        const cleanCloudApprovals = cloudData.approvals.filter(
+          (a) => !deletedCustIds.includes(a.targetId || '') && 
+                 !deletedUserEmails.includes((a.targetId || '').toLowerCase()) &&
+                 !deletedUserEmails.includes((a.details?.email || '').toLowerCase())
+        );
+        saveStoredApprovals(cleanCloudApprovals);
+      }
+      if (Array.isArray(cloudData.auditLogs)) {
+        saveStoredAuditLogs(cloudData.auditLogs);
+      }
+      localStorage.setItem('erikon_dynamic_notifications', JSON.stringify([]));
+      localStorage.setItem('erikon_read_notifications', JSON.stringify([]));
+
+      broadcastRealtimeEvent('MANUAL_SYNC', { source: 'REMOTE_CLOUD_AUTHORITATIVE' }, 'remote');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('erikon_realtime_update', { detail: { type: 'MANUAL_SYNC', origin: 'remote' } }));
+        window.dispatchEvent(new CustomEvent('erikon_cloud_synced', { detail: { timestamp: new Date().toISOString() } }));
+      }
+      lastSyncTimestamp = new Date().toLocaleTimeString();
+      return true;
+    }
+
+    // 3. Merged Customers Sync
     let cleanCloudCust: any[] = [];
     if (Array.isArray(cloudData.customers)) {
       cleanCloudCust = cloudData.customers.filter(
@@ -264,25 +307,12 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       );
     }
 
-    // Auto-harvest customers embedded in accounts
+    // Auto-harvest customers embedded in accounts only
     if (Array.isArray(cloudData.accounts)) {
       cloudData.accounts.forEach((acc: any) => {
         if (acc.customer && acc.customer.id && !deletedCustIds.includes(acc.customer.id)) {
           if (!cleanCloudCust.some((c) => c.id === acc.customer.id || c.customerNumber === acc.customer.customerNumber)) {
             const { accounts: _, ...cleanCust } = acc.customer;
-            cleanCloudCust.push(cleanCust);
-          }
-        }
-      });
-    }
-
-    // Auto-harvest customers embedded in transactions
-    if (Array.isArray(cloudData.transactions)) {
-      cloudData.transactions.forEach((tx: any) => {
-        const cust = tx.account?.customer || tx.customer;
-        if (cust && cust.id && !deletedCustIds.includes(cust.id)) {
-          if (!cleanCloudCust.some((c) => c.id === cust.id || c.customerNumber === cust.customerNumber)) {
-            const { accounts: _, ...cleanCust } = cust;
             cleanCloudCust.push(cleanCust);
           }
         }

@@ -43,6 +43,44 @@ export class SyncService {
   }
 
   updateVault(incoming: Partial<CloudVaultPayload>): CloudVaultPayload {
+    // Immediate authoritative replacement (clears old test data and prevents re-merging)
+    if (incoming.authoritative) {
+      if (Array.isArray(incoming.customers)) {
+        this.vault.customers = incoming.customers;
+      }
+      if (Array.isArray(incoming.accounts)) {
+        this.vault.accounts = incoming.accounts;
+      }
+      if (Array.isArray(incoming.transactions)) {
+        this.vault.transactions = incoming.transactions;
+      }
+      if (Array.isArray(incoming.loans)) {
+        this.vault.loans = incoming.loans;
+      }
+      if (Array.isArray(incoming.companyInterest)) {
+        this.vault.companyInterest = incoming.companyInterest;
+      }
+      if (Array.isArray(incoming.companyWithdrawals)) {
+        this.vault.companyWithdrawals = incoming.companyWithdrawals;
+      }
+      if (Array.isArray(incoming.auditLogs)) {
+        this.vault.auditLogs = incoming.auditLogs;
+      }
+      if (Array.isArray(incoming.registeredUsers)) {
+        this.vault.registeredUsers = incoming.registeredUsers;
+      }
+      this.vault.deletedCustomerIds = [];
+      this.vault.approvals = (incoming.approvals || this.vault.approvals || []).filter((a) => a.type === 'STAFF_ROLE_SIGNUP');
+      this.vault.updatedAt = new Date().toISOString();
+
+      this.eventsService.broadcast('MANUAL_SYNC', {
+        source: 'LIVE_BACKEND_SYNC',
+        updatedAt: this.vault.updatedAt,
+        deletedCustomerIds: [],
+      });
+      return this.vault;
+    }
+
     // 0. Process & persist deleted user and customer tombstones
     if (Array.isArray(incoming.deletedUserEmails)) {
       const existingUserDel = new Set((this.vault.deletedUserEmails || []).map((e) => e.toLowerCase()));
