@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   getStoredCompanyInterest, 
   getStoredCompanyWithdrawals, 
+  saveStoredCompanyWithdrawals,
   requestCompanyInterestWithdrawal, 
   getStoredAccounts,
   emptyVaultBalance
 } from '../services/api';
 import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
-import { pushLocalToCloud } from '../services/cloudSync';
+import { pushLocalToCloud, pullCloudToLocal } from '../services/cloudSync';
 import { CompanyInterestRecord, CompanyInterestWithdrawal } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -39,6 +40,17 @@ export const CompanyInterestPage: React.FC = () => {
   const [withdrawals, setWithdrawals] = useState<CompanyInterestWithdrawal[]>(getStoredCompanyWithdrawals());
   const [accounts, setAccounts] = useState(getStoredAccounts());
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Ensure authoritative clean figures across all mobile & desktop screens
+  useEffect(() => {
+    saveStoredCompanyWithdrawals([]);
+    setWithdrawals([]);
+    pullCloudToLocal().then(() => {
+      setInterestRecords(getStoredCompanyInterest());
+      setWithdrawals(getStoredCompanyWithdrawals());
+      setAccounts(getStoredAccounts());
+    }).catch(() => {});
+  }, []);
 
   // Real-time multi-device subscription
   useRealtimeSync(() => {

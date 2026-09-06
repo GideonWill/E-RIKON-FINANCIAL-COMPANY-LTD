@@ -22,17 +22,17 @@ import { GlobalErrorBoundary } from './components/layout/GlobalErrorBoundary';
 
 const queryClient = new QueryClient();
 
-// Ensure clean state and instant cloud sync across all devices on version 5
+// Ensure clean state and zero corporate test withdrawals across all devices
 if (typeof window !== 'undefined') {
-  const purgeKey = 'erikon_purge_legacy_test_data_v5';
+  localStorage.setItem('erikon_company_withdrawals', JSON.stringify([]));
+  localStorage.setItem('erikon_loans', JSON.stringify([]));
+  const purgeKey = 'erikon_purge_legacy_test_data_v6';
   if (!localStorage.getItem(purgeKey)) {
     const keysToPurge = [
       'erikon_customers',
       'erikon_accounts',
       'erikon_transactions',
       'erikon_company_interest',
-      'erikon_company_withdrawals',
-      'erikon_loans',
       'erikon_approvals',
       'erikon_dynamic_notifications',
       'erikon_read_notifications',

@@ -668,7 +668,10 @@ export const getStoredCompanyWithdrawals = (): CompanyInterestWithdrawal[] => {
   const data = localStorage.getItem('erikon_company_withdrawals');
   if (!data) return [];
   try {
-    return JSON.parse(data);
+    const list = JSON.parse(data);
+    if (!Array.isArray(list)) return [];
+    // Only return live non-test corporate withdrawals
+    return list.filter((w: any) => w && w.id && !w.referenceNo?.includes('TEST') && !w.id?.includes('legacy'));
   } catch {
     return [];
   }

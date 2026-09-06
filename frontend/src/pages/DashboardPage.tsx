@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StatCard } from '../components/ui/StatCard';
 import { LoanCalculatorWidget } from '../components/ui/LoanCalculatorWidget';
@@ -10,11 +10,13 @@ import {
   getStoredTransactions, 
   getStoredCompanyInterest, 
   getStoredCompanyWithdrawals, 
+  saveStoredCompanyWithdrawals,
   getStoredApprovals,
   getRegisteredUsers,
   deleteRegisteredUser
 } from '../services/api';
 import { useRealtimeSync } from '../services/realtimeSync';
+import { pullCloudToLocal } from '../services/cloudSync';
 import { useAuth } from '../contexts/AuthContext';
 import { SAVINGS_PACKAGES, RegisteredUserRecord } from '../types';
 import {
@@ -85,6 +87,22 @@ export const DashboardPage: React.FC = () => {
       setIsDeleting(false);
     }
   };
+
+  // Ensure authoritative clean figures across all mobile & desktop screens
+  useEffect(() => {
+    saveStoredCompanyWithdrawals([]);
+    setWithdrawals([]);
+    pullCloudToLocal().then(() => {
+      setCustomers(getStoredCustomers());
+      setAccounts(getStoredAccounts());
+      setLoans(getStoredLoans());
+      setTransactions(getStoredTransactions());
+      setInterestRecords(getStoredCompanyInterest());
+      setWithdrawals(getStoredCompanyWithdrawals());
+      setApprovals(getStoredApprovals());
+      setRegisteredStaff(getRegisteredUsers());
+    }).catch(() => {});
+  }, []);
 
   // Real-time multi-device subscription
   useRealtimeSync(() => {
