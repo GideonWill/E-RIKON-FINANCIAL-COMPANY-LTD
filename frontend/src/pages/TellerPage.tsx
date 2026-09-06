@@ -403,7 +403,7 @@ export const TellerPage: React.FC = () => {
           {currentUser && (
             <div className="flex items-center space-x-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-3 py-1.5 rounded-xl border border-amber-500/30 text-xs font-bold">
               <ShieldCheckIcon className="w-4 h-4 text-amber-500 shrink-0" />
-              <span>Officer: <b>{currentUser.firstName} {currentUser.lastName}</b> ({currentUser.role.replace(/_/g, ' ')})</span>
+              <span>Officer: <b>{currentUser.firstName} {currentUser.lastName}</b> ({(currentUser.role || 'TELLER').replace(/_/g, ' ')})</span>
             </div>
           )}
           <div className="flex items-center space-x-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-xl border border-emerald-500/20 text-xs font-mono font-bold w-fit shrink-0 shadow-xs">

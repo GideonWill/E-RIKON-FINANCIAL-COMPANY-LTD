@@ -654,7 +654,7 @@ export const AppWalkthroughModal: React.FC<AppWalkthroughModalProps> = ({ isOpen
             <img src={logoImg} alt="E-RiKON Logo" className="h-7 w-auto object-contain" />
             <div>
               <span className="text-[10px] font-mono text-[#0d9488] font-bold block uppercase tracking-wider">
-                {currentUser.role.replace(/_/g, ' ')} WORKSTATION GUIDE
+                {(currentUser?.role || 'OFFICER').replace(/_/g, ' ')} WORKSTATION GUIDE
               </span>
               <span className="text-xs font-black text-slate-900 dark:text-white">
                 Step {currentStep + 1} of {steps.length}

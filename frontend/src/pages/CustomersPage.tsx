@@ -466,7 +466,7 @@ export const CustomersPage: React.FC = () => {
               amount: chosenPackage,
               receiptNo: `RCP-INIT-${Date.now().toString().slice(-4)}-${i + 1}`,
               isCompanyFee: i + 1 === 31,
-              recordedBy: currentUser ? `${currentUser.firstName} ${currentUser.lastName} (${currentUser.role.replace(/_/g, ' ')})` : 'Gideon Ogunu (SUPER ADMIN)',
+              recordedBy: currentUser ? `${currentUser.firstName} ${currentUser.lastName} (${(currentUser?.role || 'SUPER_ADMIN').replace(/_/g, ' ')})` : 'Gideon Ogunu (SUPER ADMIN)',
               recordedAt: new Date().toISOString(),
               batchTxRef: `TX-INIT-${Date.now().toString().slice(-8)}`,
             }))

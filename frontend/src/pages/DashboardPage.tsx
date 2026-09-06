@@ -159,7 +159,7 @@ export const DashboardPage: React.FC = () => {
           <h2 className="text-2xl font-extrabold tracking-tight flex items-center gap-2">
             Executive Financial & Governance Overview
             <span className="text-xs bg-amber-500/20 text-amber-300 font-bold px-2.5 py-0.5 rounded-full border border-amber-500/30">
-              ROLE: {currentUser?.role.replace(/_/g, ' ')}
+              ROLE: {(currentUser?.role || 'USER').replace(/_/g, ' ')}
             </span>
           </h2>
           <p className="text-xs text-slate-400">
@@ -495,7 +495,7 @@ export const DashboardPage: React.FC = () => {
                               ? 'bg-[#0a3866] text-white border border-[#0e4b85]' 
                               : 'bg-teal-50 text-[#0d9488] border border-teal-200'
                           }`}>
-                            {staff.role.replace(/_/g, ' ')}
+                            {(staff.role || 'STAFF').replace(/_/g, ' ')}
                           </span>
                         </td>
 

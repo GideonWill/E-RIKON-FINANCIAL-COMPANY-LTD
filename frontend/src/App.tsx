@@ -22,6 +22,16 @@ import { GlobalErrorBoundary } from './components/layout/GlobalErrorBoundary';
 
 const queryClient = new QueryClient();
 
+// Ensure legacy test company withdrawals and test loans are purged from client storage
+if (typeof window !== 'undefined') {
+  const purgeKey = 'erikon_purge_legacy_withdrawals_v3';
+  if (!localStorage.getItem(purgeKey)) {
+    localStorage.setItem('erikon_company_withdrawals', JSON.stringify([]));
+    localStorage.setItem('erikon_loans', JSON.stringify([]));
+    localStorage.setItem(purgeKey, 'true');
+  }
+}
+
 export const App: React.FC = () => {
   return (
     <GlobalErrorBoundary>

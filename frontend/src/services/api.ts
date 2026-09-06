@@ -1503,7 +1503,7 @@ export const recordPackageDeposit = (
   }
 
   const txReferenceNo = `TX-DEP-${Date.now().toString().slice(-8)}`;
-  const officerNameTag = officerUser ? `${officerUser.firstName} ${officerUser.lastName} (${officerUser.role.replace(/_/g, ' ')})` : 'Authorized Officer';
+  const officerNameTag = officerUser ? `${officerUser.firstName} ${officerUser.lastName} (${(officerUser.role || 'OFFICER').replace(/_/g, ' ')})` : 'Authorized Officer';
 
   const daysToDeposit = Math.floor(amountPaid / packageRate);
   const remainingInActiveCycle = Math.max(0, 31 - activeCycle.currentDayCount);
@@ -1669,7 +1669,7 @@ export const recordPackageDeposit = (
 
   // Log directly into Immutable Audit Trail
   const auditLogs = getStoredAuditLogs();
-  const officerTag = officerUser ? `${officerUser.firstName} ${officerUser.lastName} (${officerUser.role.replace(/_/g, ' ')})` : 'Gideon Ogunu (SUPER ADMIN)';
+  const officerTag = officerUser ? `${officerUser.firstName} ${officerUser.lastName} (${(officerUser.role || 'SUPER_ADMIN').replace(/_/g, ' ')})` : 'Gideon Ogunu (SUPER ADMIN)';
   const custName = acc.customer ? `${acc.customer.firstName} ${acc.customer.lastName}` : 'Kwame Djan';
   
   const depositAuditLog: AuditLog = {
@@ -1680,7 +1680,7 @@ export const recordPackageDeposit = (
     branchName: officerUser?.branch?.name || 'Accra Central Main Branch',
     action: 'PHYSICAL_CASH_DEPOSIT_RECORDED',
     resource: 'TRANSACTION',
-    newValue: `Physical Cash Deposit of GH₵ ${amountPaid.toFixed(2)} [Ref: ${newTx.referenceNo}, Receipt: ${newTx.receiptNo}] recorded for customer ${custName} (Acc: ${acc.accountNumber}) covering ${splitResult.daysCovered} day(s) on GH₵ ${packageRate}/Day package (Days ${splitResult.startDay} to ${splitResult.endDay}). Available Balance: GH₵ ${acc.availableBalance.toFixed(2)}. Cashier: ${officerTag}.`,
+    newValue: `Physical Cash Deposit of GH₵ ${Number(amountPaid || 0).toFixed(2)} [Ref: ${newTx.referenceNo}, Receipt: ${newTx.receiptNo}] recorded for customer ${custName} (Acc: ${acc.accountNumber}) covering ${splitResult.daysCovered} day(s) on GH₵ ${packageRate}/Day package (Days ${splitResult.startDay} to ${splitResult.endDay}). Available Balance: GH₵ ${Number(acc.availableBalance || 0).toFixed(2)}. Cashier: ${officerTag}.`,
     ipAddress: '127.0.0.1',
     createdAt: newTx.createdAt,
   };
@@ -1769,7 +1769,7 @@ export const startNewCycleForAccount = (
   // Add immutable audit log
   const auditLogs = getStoredAuditLogs();
   const officerTag = officerUser
-    ? `${officerUser.firstName} ${officerUser.lastName} (${officerUser.role.replace(/_/g, ' ')})`
+    ? `${officerUser.firstName} ${officerUser.lastName} (${(officerUser.role || 'SUPER_ADMIN').replace(/_/g, ' ')})`
     : 'Gideon Ogunu (SUPER ADMIN)';
   const custName = acc.customer ? `${acc.customer.firstName} ${acc.customer.lastName}` : 'Client';
 
@@ -1781,7 +1781,7 @@ export const startNewCycleForAccount = (
     branchName: officerUser?.branch?.name || 'Accra Central Main Branch',
     action: 'NEW_SAVINGS_CYCLE_STARTED',
     resource: 'ACCOUNT',
-    newValue: `Cycle #${nextCycleNo} initialized for customer ${custName} (Acc: ${acc.accountNumber}) on GH₵ ${acc.savingsPackage}/Day package. Previous cycles retained in history. Current Active Balance: GH₵ ${acc.availableBalance.toFixed(2)}. Initiated by ${officerTag}.`,
+    newValue: `Cycle #${nextCycleNo} initialized for customer ${custName} (Acc: ${acc.accountNumber}) on GH₵ ${acc.savingsPackage}/Day package. Previous cycles retained in history. Current Active Balance: GH₵ ${Number(acc.availableBalance || 0).toFixed(2)}. Initiated by ${officerTag}.`,
     ipAddress: '127.0.0.1',
     createdAt: new Date().toISOString(),
   };
@@ -1824,7 +1824,7 @@ export const requestCompanyInterestWithdrawal = (
     id: `appr-${Date.now()}`,
     type: 'COMPANY_INTEREST_WITHDRAWAL',
     title: `Company Interest Withdrawal Request (GHS ${amount.toFixed(2)})`,
-    description: `Request to disburse GHS ${amount.toFixed(2)} piled up interest to ${destinationType.replace(/_/g, ' ')} (${destinationDetails}).`,
+    description: `Request to disburse GHS ${amount.toFixed(2)} piled up interest to ${(destinationType || 'VAULT_CASH').replace(/_/g, ' ')} (${destinationDetails}).`,
     targetId: newWithdrawal.id,
     requestedById: user.id,
     requestedByName: `${user.firstName} ${user.lastName}`,
@@ -2175,8 +2175,8 @@ export const registerNewUserRole = async (signupData: {
   const approvalItem: ApprovalRequest = {
     id: `appr-${Date.now()}`,
     type: 'STAFF_ROLE_SIGNUP',
-    title: `New ${signupData.role.replace(/_/g, ' ')} Registration: ${signupData.firstName} ${signupData.lastName}`,
-    description: `Application received for ${signupData.role.replace(/_/g, ' ')} position. Contact: ${signupData.phone} | Ghana Card: ${signupData.ghanaCard}`,
+    title: `New ${(signupData.role || 'STAFF').replace(/_/g, ' ')} Registration: ${signupData.firstName} ${signupData.lastName}`,
+    description: `Application received for ${(signupData.role || 'STAFF').replace(/_/g, ' ')} position. Contact: ${signupData.phone} | Ghana Card: ${signupData.ghanaCard}`,
     targetId: newUser.id,
     requestedById: newUser.id,
     requestedByName: `${signupData.firstName} ${signupData.lastName}`,

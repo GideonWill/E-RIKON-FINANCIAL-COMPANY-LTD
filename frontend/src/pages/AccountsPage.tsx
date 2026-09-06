@@ -235,7 +235,7 @@ export const AccountsPage: React.FC = () => {
                       <h4 className={`font-extrabold text-sm mt-0.5 ${isSelected ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
                         {acc.customer?.firstName} {acc.customer?.lastName}
                       </h4>
-                      <div className={`text-[11px] ${isSelected ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>{acc.type.replace(/_/g, ' ')} • GH₵ {acc.savingsPackage || 20}/Day</div>
+                      <div className={`text-[11px] ${isSelected ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>{((acc as any).type || (acc as any).accountType || 'SAVINGS').replace(/_/g, ' ')} • GH₵ {acc.savingsPackage || 20}/Day</div>
                     </div>
 
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">

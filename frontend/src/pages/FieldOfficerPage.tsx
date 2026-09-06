@@ -485,7 +485,7 @@ export const FieldOfficerPage: React.FC = () => {
                 >
                   <CheckCircleIcon className="w-5 h-5" />
                   <span>
-                    Record GHS {numAmount.toFixed(2)} Payment & Generate Paperless Receipt
+                    Record GHS {Number(numAmount || 0).toFixed(2)} Payment & Generate Paperless Receipt
                   </span>
                 </button>
 

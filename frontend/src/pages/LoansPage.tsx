@@ -520,7 +520,7 @@ export const LoansPage: React.FC = () => {
                         ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
                         : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
                     }`}>
-                      {loan.status.replace('_', ' ')}
+                      {(loan.status || 'PENDING').replace(/_/g, ' ')}
                     </span>
                   </div>
 
@@ -532,7 +532,7 @@ export const LoansPage: React.FC = () => {
                     <div>
                       <span className="text-[10px] text-slate-400 block">Outstanding Bal</span>
                       <span className={`font-extrabold ${loan.outstandingBal === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        GHS {loan.outstandingBal.toFixed(2)}
+                        GHS {Number(loan.outstandingBal || 0).toFixed(2)}
                       </span>
                     </div>
                     <div className="text-right">
@@ -603,7 +603,7 @@ export const LoansPage: React.FC = () => {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
                 <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800">
                   <span className="text-[10px] text-slate-400 uppercase block">Approved Principal</span>
-                  <span className="font-extrabold text-slate-900 dark:text-white text-sm">GHS {selectedLoan.amountApproved.toFixed(2)}</span>
+                  <span className="font-extrabold text-slate-900 dark:text-white text-sm">GHS {Number(selectedLoan.amountApproved || selectedLoan.amountRequested || 0).toFixed(2)}</span>
                 </div>
                 <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800">
                   <span className="text-[10px] text-slate-400 uppercase block">Tenor Interest Rate</span>
@@ -611,12 +611,12 @@ export const LoansPage: React.FC = () => {
                 </div>
                 <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800">
                   <span className="text-[10px] text-slate-400 uppercase block">Total Repayable</span>
-                  <span className="font-extrabold text-emerald-500 text-sm">GHS {selectedLoan.totalRepayable.toFixed(2)}</span>
+                  <span className="font-extrabold text-emerald-500 text-sm">GHS {Number(selectedLoan.totalRepayable || 0).toFixed(2)}</span>
                 </div>
                 <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800">
                   <span className="text-[10px] text-slate-400 uppercase block">Actual Balance Left</span>
                   <span className={`font-extrabold text-sm ${selectedLoan.outstandingBal === 0 ? 'text-emerald-500 font-black' : 'text-rose-500'}`}>
-                    GHS {selectedLoan.outstandingBal.toFixed(2)}
+                    GHS {Number(selectedLoan.outstandingBal || 0).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -641,9 +641,9 @@ export const LoansPage: React.FC = () => {
                         <tr key={sch.id}>
                           <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">#{sch.installmentNo}</td>
                           <td className="py-3 px-3 text-slate-400">{sch.dueDate}</td>
-                          <td className="py-3 px-3 text-right">GHS {sch.principalDue.toFixed(2)}</td>
-                          <td className="py-3 px-3 text-right text-amber-500">GHS {sch.interestDue.toFixed(2)}</td>
-                          <td className="py-3 px-3 text-right font-bold text-slate-900 dark:text-white">GHS {sch.totalDue.toFixed(2)}</td>
+                          <td className="py-3 px-3 text-right">GHS {Number(sch.principalDue || 0).toFixed(2)}</td>
+                          <td className="py-3 px-3 text-right text-amber-500">GHS {Number(sch.interestDue || 0).toFixed(2)}</td>
+                          <td className="py-3 px-3 text-right font-bold text-slate-900 dark:text-white">GHS {Number(sch.totalDue || 0).toFixed(2)}</td>
                           <td className="py-3 px-3 text-center">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               sch.isPaid ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
@@ -693,7 +693,7 @@ export const LoansPage: React.FC = () => {
                   {selectedLoan.customer?.firstName} {selectedLoan.customer?.lastName}
                 </div>
                 <div className="text-[11px] text-slate-500 font-mono">
-                  Current Outstanding: GHS {selectedLoan.outstandingBal.toFixed(2)}
+                  Current Outstanding: GHS {Number(selectedLoan.outstandingBal || 0).toFixed(2)}
                 </div>
               </div>
 
@@ -716,7 +716,7 @@ export const LoansPage: React.FC = () => {
               <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex justify-between font-mono text-xs">
                 <span className="text-slate-400">New Balance Left After Payment:</span>
                 <span className="font-extrabold text-emerald-400">
-                  GHS {Math.max(0, selectedLoan.outstandingBal - Number(repayAmount || 0)).toFixed(2)}
+                  GHS {Math.max(0, Number(selectedLoan.outstandingBal || 0) - Number(repayAmount || 0)).toFixed(2)}
                 </span>
               </div>
 

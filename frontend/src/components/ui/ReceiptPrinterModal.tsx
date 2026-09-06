@@ -20,7 +20,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
 
   const staff = transaction.recordedBy || currentUser;
   const staffName = staff ? `${staff.firstName || ''} ${staff.lastName || ''}`.trim() || staff.email : 'Authorized Officer';
-  const staffRole = staff?.role ? staff.role.replace(/_/g, ' ') : 'OFFICER';
+  const staffRole = staff?.role ? String(staff.role).replace(/_/g, ' ') : 'OFFICER';
   const staffEmpId = staff?.employeeId ? `[${staff.employeeId}]` : '';
 
   const handlePrint = () => {
@@ -116,12 +116,12 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
 
             <div className="flex justify-between">
               <span className="text-slate-400">Transaction Type:</span>
-              <span className="font-bold text-amber-500">{transaction.type.replace('_', ' ')}</span>
+              <span className="font-bold text-amber-500">{(transaction.type || 'TRANSACTION').replace(/_/g, ' ')}</span>
             </div>
 
             <div className="flex justify-between">
               <span className="text-slate-400">Payment Mode:</span>
-              <span>{transaction.paymentMode.replace('_', ' ')}</span>
+              <span>{(transaction.paymentMode || 'CASH').replace(/_/g, ' ')}</span>
             </div>
 
             {/* Deposited / Withdrawn By Transactor Details */}

@@ -181,8 +181,8 @@ export const ApprovalsPage: React.FC = () => {
             apprMap.set(newAppId, {
               id: newAppId,
               type: 'STAFF_ROLE_SIGNUP',
-              title: `New ${user.role.replace(/_/g, ' ')} Registration: ${user.firstName} ${user.lastName}`,
-              description: `Application received for ${user.role.replace(/_/g, ' ')} position. Contact: ${user.phone || 'N/A'} | Ghana Card: ${user.ghanaCard || 'N/A'}`,
+              title: `New ${(user.role || 'STAFF').replace(/_/g, ' ')} Registration: ${user.firstName} ${user.lastName}`,
+              description: `Application received for ${(user.role || 'STAFF').replace(/_/g, ' ')} position. Contact: ${user.phone || 'N/A'} | Ghana Card: ${user.ghanaCard || 'N/A'}`,
               targetId: user.id,
               requestedById: user.id,
               requestedByName: `${user.firstName} ${user.lastName}`,
@@ -932,7 +932,7 @@ export const ApprovalsPage: React.FC = () => {
                               ? 'bg-[#0a3866] text-white border border-[#0e4b85]' 
                               : 'bg-teal-50 dark:bg-teal-950/40 text-[#0d9488] border border-teal-200'
                           }`}>
-                            {staff.role.replace(/_/g, ' ')}
+                            {(staff.role || 'STAFF').replace(/_/g, ' ')}
                           </span>
                         </td>
 
@@ -1214,7 +1214,7 @@ export const ApprovalsPage: React.FC = () => {
                 <div className="pt-2 font-mono text-xs text-white space-y-0.5">
                   <div><strong>Name:</strong> {userToBlock.firstName} {userToBlock.lastName}</div>
                   <div><strong>Email:</strong> {userToBlock.email}</div>
-                  <div><strong>Role:</strong> {userToBlock.role.replace(/_/g, ' ')}</div>
+                  <div><strong>Role:</strong> {(userToBlock.role || 'STAFF').replace(/_/g, ' ')}</div>
                   <div><strong>Ghana Card:</strong> {userToBlock.ghanaCard || 'N/A'}</div>
                 </div>
               </div>

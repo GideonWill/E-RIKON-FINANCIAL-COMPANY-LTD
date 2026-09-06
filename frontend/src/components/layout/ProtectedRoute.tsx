@@ -26,12 +26,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
   }
 
   // 2. If user is not Super Admin and is not approved, lock access completely
-  const isApproved = currentUser.isApproved ?? (currentUser.role === 'SUPER_ADMIN');
-  if (!isApproved && currentUser.role !== 'SUPER_ADMIN') {
+  const isApproved = currentUser.isApproved ?? (currentUser?.role === 'SUPER_ADMIN');
+  if (!isApproved && currentUser?.role !== 'SUPER_ADMIN') {
     return <PendingApprovalScreen />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
+  if (allowedRoles && (!currentUser?.role || !allowedRoles.includes(currentUser.role))) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center text-center p-6 space-y-4">
         <div className="p-4 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20">
@@ -42,7 +42,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
             Access Denied (Unauthorized Workstation)
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Your current role (<span className="font-bold text-amber-500">{currentUser.role.replace(/_/g, ' ')}</span>) does not have permission to view this module.
+            Your current role (<span className="font-bold text-amber-500">{(currentUser?.role || 'OFFICER').replace(/_/g, ' ')}</span>) does not have permission to view this module.
           </p>
         </div>
         <button

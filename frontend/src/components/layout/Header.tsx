@@ -152,7 +152,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               title="Click to view Staff Profile & Permissions"
             >
               <span className="text-[11px] font-black uppercase tracking-wider">
-                {currentUser.role.replace(/_/g, ' ')} WORKSTATION
+                {(currentUser?.role || 'OFFICER').replace(/_/g, ' ')} WORKSTATION
               </span>
             </button>
 
@@ -215,15 +215,15 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                 title="View Staff Identity Profile"
               >
                 <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-[#0a3866] via-[#0d9488] to-[#166534] flex items-center justify-center text-white text-[11px] sm:text-xs font-black shadow-xs ring-2 ring-teal-500/30 group-hover:ring-[#0d9488] shrink-0">
-                  {currentUser.firstName[0]}{currentUser.lastName[0]}
+                  {(currentUser?.firstName || 'S')[0]}{(currentUser?.lastName || '')[0]}
                 </div>
                 <div className="hidden md:block text-left">
                   <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1 group-hover:text-[#0d9488] transition-colors leading-tight">
-                    {currentUser.firstName} {currentUser.lastName}
+                    {currentUser?.firstName || 'Staff'} {currentUser?.lastName || ''}
                     <ShieldCheckIcon className="w-3 h-3 text-emerald-500 inline" />
                   </div>
                   <div className="text-[9px] text-[#0d9488] dark:text-teal-400 font-extrabold tracking-wider uppercase leading-tight">
-                    {currentUser.role.replace(/_/g, ' ')}
+                    {(currentUser?.role || 'OFFICER').replace(/_/g, ' ')}
                   </div>
                 </div>
               </div>

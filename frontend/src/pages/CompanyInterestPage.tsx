@@ -370,7 +370,14 @@ export const CompanyInterestPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
-              {withdrawals.map((wd) => (
+              {withdrawals.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-slate-400 font-sans">
+                    No corporate interest payouts have occurred. Available interest vault remains at 100% (GH₵ 30.00).
+                  </td>
+                </tr>
+              ) : (
+                withdrawals.map((wd) => (
                 <tr key={wd.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="py-3 px-3 font-bold text-amber-500">{wd.referenceNo}</td>
                   <td className="py-3 px-3 font-sans">
@@ -378,12 +385,12 @@ export const CompanyInterestPage: React.FC = () => {
                       {wd.destinationType === 'COMPANY_BANK_ACCOUNT' && <BuildingOffice2Icon className="w-3.5 h-3.5 text-blue-400" />}
                       {wd.destinationType === 'MTN_MOMO_MERCHANT' && <DevicePhoneMobileIcon className="w-3.5 h-3.5 text-amber-400" />}
                       {wd.destinationType === 'VAULT_CASH' && <BanknotesIcon className="w-3.5 h-3.5 text-emerald-400" />}
-                      <span>{wd.destinationType.replace(/_/g, ' ')}</span>
+                      <span>{(wd.destinationType || 'VAULT_CASH').replace(/_/g, ' ')}</span>
                     </div>
                     <div className="text-[11px] text-slate-400">{wd.destinationDetails}</div>
                   </td>
                   <td className="py-3 px-3 font-sans text-slate-400">
-                    {wd.requestedBy.name} ({wd.requestedBy.role})
+                    {wd.requestedBy?.name || 'Staff'} ({(wd.requestedBy?.role || 'STAFF').replace(/_/g, ' ')})
                   </td>
                   <td className="py-3 px-3 font-sans text-slate-400">
                     {wd.approvedBy ? `${wd.approvedBy.name} (SUPER_ADMIN)` : <span className="text-amber-400 italic">Pending Super Admin Review</span>}
@@ -404,7 +411,7 @@ export const CompanyInterestPage: React.FC = () => {
                   </td>
                   <td className="py-3 px-3 text-slate-400">{wd.requestedAt.slice(0, 10)}</td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

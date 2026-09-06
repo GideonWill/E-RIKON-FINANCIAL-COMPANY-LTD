@@ -123,7 +123,7 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
         <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 text-white border border-slate-800 space-y-4 shadow-xl">
           <div className="flex items-center space-x-4">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center text-white text-2xl font-extrabold ring-4 ring-amber-500/30 shadow-lg">
-              {user.firstName[0]}{user.lastName[0]}
+              {(user?.firstName || 'S')[0]}{(user?.lastName || '')[0]}
             </div>
 
             <div>
@@ -134,7 +134,7 @@ export const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, us
                 {user.firstName} {user.lastName}
               </h4>
               <span className="inline-block mt-1 px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500 text-slate-950">
-                {user.role.replace(/_/g, ' ')}
+                {(user?.role || 'STAFF').replace(/_/g, ' ')}
               </span>
             </div>
           </div>

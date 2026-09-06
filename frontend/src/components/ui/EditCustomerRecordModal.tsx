@@ -581,7 +581,7 @@ const EditCustomerRecordModalContent: React.FC<EditCustomerRecordModalProps> = (
                       Available Balance
                     </span>
                     <span className="text-sm font-black font-mono text-emerald-500">
-                      GH₵ {computedAvailableBalance.toFixed(2)}
+                      GH₵ {Number(computedAvailableBalance || 0).toFixed(2)}
                     </span>
                   </div>
                 </div>

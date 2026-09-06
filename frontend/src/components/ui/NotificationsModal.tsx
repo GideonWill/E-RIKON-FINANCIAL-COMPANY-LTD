@@ -106,7 +106,7 @@ export const getSystemNotifications = (role: RoleName): NotificationItem[] => {
     ? pendingApprovals.map((a) => ({
         id: `appr-${a.id}`,
         title: `Pending Clearance: ${a.title}`,
-        message: `${a.description} • Requester: ${a.requestedByName} (${a.requestedRole.replace(/_/g, ' ')})`,
+        message: `${a.description} • Requester: ${a.requestedByName} (${(a.requestedRole || 'STAFF').replace(/_/g, ' ')})`,
         time: a.createdAt ? new Date(a.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
         type: a.type === 'STAFF_ROLE_SIGNUP' ? 'AUDIT' : a.type === 'LOAN_APPROVAL' ? 'LOAN' : 'CYCLE',
         targetRoute: '/approvals',
@@ -307,7 +307,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-1.5">
                 Workstation Alerts
                 <span className="text-[10px] bg-teal-50 text-[#0d9488] font-black px-2 py-0.5 rounded-full border border-teal-200 uppercase">
-                  {activeRole.replace(/_/g, ' ')}
+                  {(activeRole || 'STAFF').replace(/_/g, ' ')}
                 </span>
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">

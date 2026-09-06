@@ -152,7 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               Workstation Scope
             </div>
             <div className="text-xs text-[#0d9488] font-black mt-0.5">
-              Role: {activeRole.replace(/_/g, ' ')}
+              Role: {(activeRole || 'STAFF').replace(/_/g, ' ')}
             </div>
           </div>
           {onClose && (
@@ -168,7 +168,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <div className="space-y-4">
           {navSections.map((sec) => {
-            const visibleItems = sec.items.filter((item) => item.roles.includes(activeRole));
+            const visibleItems = sec.items.filter((item) => item.roles.includes(activeRole || ''));
             if (visibleItems.length === 0) return null;
 
             return (

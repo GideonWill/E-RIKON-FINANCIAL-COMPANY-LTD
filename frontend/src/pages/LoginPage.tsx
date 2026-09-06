@@ -161,7 +161,7 @@ export const LoginPage: React.FC = () => {
 
       setActiveTab('signin');
       setSignupSuccessMsg(
-        `🎉 ${signupRoleType.replace(/_/g, ' ')} account registered for ${user.firstName} ${user.lastName}! Your credentials have been filled in below. Click "Login" to sign in immediately.`
+        `🎉 ${(signupRoleType || 'STAFF').replace(/_/g, ' ')} account registered for ${user.firstName} ${user.lastName}! Your credentials have been filled in below. Click "Login" to sign in immediately.`
       );
 
       setSignupFirstName('');
@@ -191,7 +191,7 @@ export const LoginPage: React.FC = () => {
     <>
       {isLoading && (
         <LoadingScreen 
-          message={`Authenticating ${selectedRole.replace(/_/g, ' ')} Workstation...`}
+          message={`Authenticating ${(selectedRole || 'STAFF').replace(/_/g, ' ')} Workstation...`}
         />
       )}
 
@@ -349,7 +349,7 @@ export const LoginPage: React.FC = () => {
                 <div className="flex items-center space-x-2">
                   <img src={logoImg} alt="E-RIKON GROUP Financial Services" className="h-7 w-auto object-contain" />
                   <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#0a3866] text-white uppercase tracking-wider">
-                    {selectedRole.replace(/_/g, ' ')}
+                    {(selectedRole || 'STAFF').replace(/_/g, ' ')}
                   </span>
                 </div>
               </div>

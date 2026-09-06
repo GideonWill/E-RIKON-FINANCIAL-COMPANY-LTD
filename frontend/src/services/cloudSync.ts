@@ -267,15 +267,11 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       if (Array.isArray(cloudData.transactions)) {
         saveStoredTransactions(cloudData.transactions);
       }
-      if (Array.isArray(cloudData.loans)) {
-        saveStoredLoans(cloudData.loans);
-      }
+      saveStoredLoans(Array.isArray(cloudData.loans) ? cloudData.loans : []);
       if (Array.isArray(cloudData.companyInterest)) {
         saveStoredCompanyInterest(cloudData.companyInterest);
       }
-      if (Array.isArray(cloudData.companyWithdrawals)) {
-        saveStoredCompanyWithdrawals(cloudData.companyWithdrawals);
-      }
+      saveStoredCompanyWithdrawals(Array.isArray(cloudData.companyWithdrawals) ? cloudData.companyWithdrawals : []);
       if (Array.isArray(cloudData.approvals)) {
         const cleanCloudApprovals = cloudData.approvals.filter(
           (a) => !deletedCustIds.includes(a.targetId || '') && 
@@ -471,20 +467,8 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     // 7. Merged Authoritative Company Interest Sync
     if (Array.isArray(cloudData.companyInterest)) {
       const localInt = getStoredCompanyInterest();
-      const intMap = new Map<string, any>();
-      localInt.forEach((i) => {
-        const key = `${i.accountNumber || i.accountId || i.customerId}-cyc-${i.cycleNumber}`;
-        intMap.set(key, i);
-      });
-      cloudData.companyInterest.forEach((i) => {
-        const key = `${i.accountNumber || i.accountId || i.customerId}-cyc-${i.cycleNumber}`;
-        const existing = intMap.get(key);
-        intMap.set(key, { ...existing, ...i });
-      });
-
-      const mergedInt = Array.from(intMap.values());
-      if (mergedInt.length !== localInt.length || JSON.stringify(mergedInt) !== JSON.stringify(localInt)) {
-        saveStoredCompanyInterest(mergedInt);
+      if (JSON.stringify(cloudData.companyInterest) !== JSON.stringify(localInt)) {
+        saveStoredCompanyInterest(cloudData.companyInterest);
         hasUpdates = true;
       }
     }
@@ -492,22 +476,8 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     // 8. Merged Authoritative Company Withdrawals Sync
     if (Array.isArray(cloudData.companyWithdrawals)) {
       const localWd = getStoredCompanyWithdrawals();
-      const wdMap = new Map<string, any>();
-      localWd.forEach((w) => {
-        if (w.id) wdMap.set(w.id, w);
-      });
-      cloudData.companyWithdrawals.forEach((w) => {
-        const existing = wdMap.get(w.id);
-        if (existing && (existing.status === 'APPROVED' || existing.status === 'REJECTED') && w.status === 'PENDING_SUPER_ADMIN_APPROVAL') {
-          wdMap.set(w.id, existing);
-        } else {
-          wdMap.set(w.id, { ...existing, ...w });
-        }
-      });
-
-      const mergedWd = Array.from(wdMap.values());
-      if (mergedWd.length !== localWd.length || JSON.stringify(mergedWd) !== JSON.stringify(localWd)) {
-        saveStoredCompanyWithdrawals(mergedWd);
+      if (JSON.stringify(cloudData.companyWithdrawals) !== JSON.stringify(localWd)) {
+        saveStoredCompanyWithdrawals(cloudData.companyWithdrawals);
         hasUpdates = true;
       }
     }

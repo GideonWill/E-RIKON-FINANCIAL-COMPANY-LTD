@@ -291,7 +291,7 @@ export const EndOfDayPage: React.FC = () => {
         t.receiptNo || '—',
         t.referenceNo || '—',
         t.type,
-        t.amount.toFixed(2),
+        Number(t.amount || 0).toFixed(2),
         t.paymentMode || 'Physical Cash',
         `"${getCustomerNameForTx(t)}"`,
         t.account?.accountNumber || '—',
@@ -584,7 +584,7 @@ export const EndOfDayPage: React.FC = () => {
                       </td>
                       <td className="py-2.5 px-3 font-sans text-slate-500">{tx.paymentMode || 'Physical Cash'}</td>
                       <td className="py-2.5 px-3 text-right font-black text-slate-900 dark:text-white">
-                        GHS {tx.amount.toFixed(2)}
+                        GHS {Number(tx.amount || 0).toFixed(2)}
                       </td>
                       <td className="py-2.5 px-3 font-sans font-semibold text-slate-700 dark:text-slate-200">
                         {getOfficerNameForTx(tx)}
@@ -647,7 +647,7 @@ export const EndOfDayPage: React.FC = () => {
                       </td>
                       <td className="py-2.5 px-3 text-[#0d9488]">GH₵ {split.savingsPackage}/Day</td>
                       <td className="py-2.5 px-3 text-right font-black text-slate-900 dark:text-white">
-                        GHS {split.amount.toFixed(2)}
+                        GHS {Number(split.amount || 0).toFixed(2)}
                       </td>
                       <td className="py-2.5 px-3">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -722,9 +722,9 @@ export const EndOfDayPage: React.FC = () => {
                       <td className="py-2.5 px-3 font-sans font-bold text-slate-900 dark:text-white">
                         {l.customer ? `${l.customer.firstName} ${l.customer.lastName}` : 'Client'}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-black">GHS {l.amountRequested.toFixed(2)}</td>
-                      <td className="py-2.5 px-3 text-right font-bold">GHS {l.totalRepayable.toFixed(2)}</td>
-                      <td className="py-2.5 px-3 text-right font-bold text-rose-600">GHS {l.outstandingBal.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right font-black">GHS {Number(l.amountRequested || 0).toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right font-bold">GHS {Number(l.totalRepayable || 0).toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right font-bold text-rose-600">GHS {Number(l.outstandingBal || 0).toFixed(2)}</td>
                       <td className="py-2.5 px-3">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                           l.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'
@@ -779,7 +779,7 @@ export const EndOfDayPage: React.FC = () => {
                     <tr key={appr.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
                       <td className="py-2.5 px-3 font-sans font-bold text-slate-900 dark:text-white">{appr.title}</td>
                       <td className="py-2.5 px-3 font-sans text-slate-600 dark:text-slate-300">
-                        {appr.requestedByName} ({appr.requestedRole.replace(/_/g, ' ')})
+                        {appr.requestedByName} ({(appr.requestedRole || 'STAFF').replace(/_/g, ' ')})
                       </td>
                       <td className="py-2.5 px-3">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -924,7 +924,7 @@ export const EndOfDayPage: React.FC = () => {
                           {getCustomerNameForTx(tx)}
                         </td>
                         <td className="py-1.5 px-2 font-sans">{tx.paymentMode || 'Cash'}</td>
-                        <td className="py-1.5 px-2 text-right font-black">GHS {tx.amount.toFixed(2)}</td>
+                        <td className="py-1.5 px-2 text-right font-black">GHS {Number(tx.amount || 0).toFixed(2)}</td>
                         <td className="py-1.5 px-2 font-sans">
                           {getOfficerNameForTx(tx)}
                         </td>
@@ -945,7 +945,7 @@ export const EndOfDayPage: React.FC = () => {
             <div className="pt-4 border-t-2 border-slate-900 flex flex-col sm:flex-row justify-between items-end gap-6 text-xs font-mono">
               <div className="space-y-1">
                 <div className="font-bold">Prepared By: {currentUser?.firstName} {currentUser?.lastName}</div>
-                <div className="text-[10px] text-slate-500">Designation: {currentUser?.role.replace(/_/g, ' ')}</div>
+                <div className="text-[10px] text-slate-500">Designation: {(currentUser?.role || 'STAFF').replace(/_/g, ' ')}</div>
               </div>
 
               <div className="space-y-1 text-right">

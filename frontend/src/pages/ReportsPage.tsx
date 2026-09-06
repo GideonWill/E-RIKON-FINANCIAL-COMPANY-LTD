@@ -173,7 +173,7 @@ export const ReportsPage: React.FC = () => {
     ? (selectedAccount.savingsPackage 
         ? `GH₵ ${selectedAccount.savingsPackage}.00 / Day`
         : selectedAccount.type 
-        ? selectedAccount.type.replace(/_/g, ' ') 
+        ? String(selectedAccount.type).replace(/_/g, ' ') 
         : 'Standard Account')
     : 'No Account Selected';
 
@@ -411,13 +411,13 @@ export const ReportsPage: React.FC = () => {
           DateTime: tx.createdAt ? new Date(tx.createdAt).toLocaleString('en-GB') : '—',
           ReceiptNo: tx.receiptNo || '—',
           ReferenceNo: tx.referenceNo || '—',
-          Description: tx.type ? tx.type.replace('_', ' ') : 'Transaction',
-          PaymentMode: tx.paymentMode ? tx.paymentMode.replace('_', ' ') : 'Cash',
+          Description: tx.type ? String(tx.type).replace(/_/g, ' ') : 'Transaction',
+          PaymentMode: tx.paymentMode ? String(tx.paymentMode).replace(/_/g, ' ') : 'Cash',
           Amount: tx.amount,
           PreviousBalance: tx.previousBal || 0,
           NewBalance: tx.newBal || 0,
           RecordedBy: tx.recordedBy ? `${tx.recordedBy.firstName || ''} ${tx.recordedBy.lastName || ''}`.trim() || 'Staff Officer' : 'Staff Officer',
-          StaffRole: tx.recordedBy?.role ? tx.recordedBy.role.replace(/_/g, ' ') : 'OFFICER',
+          StaffRole: tx.recordedBy?.role ? String(tx.recordedBy.role).replace(/_/g, ' ') : 'OFFICER',
           Transactor: tx.transactor?.fullName || 'Self (Client)',
           Customer: custName,
           AccountNo: selectedAccount.accountNumber || '—',
@@ -446,7 +446,7 @@ export const ReportsPage: React.FC = () => {
       alert('Selected customer has no registered phone number.');
       return;
     }
-    const phoneDigits = selectedAccount.customer.phone.replace(/[^0-9]/g, '');
+    const phoneDigits = (selectedAccount.customer?.phone || '').replace(/[^0-9]/g, '');
     const message = encodeURIComponent(
       `📊 *E-RiKON Financial Company PLC*\n` +
       `*Monthly Statement - ${getMonthTitle(selectedMonth)}*\n\n` +
@@ -473,7 +473,7 @@ export const ReportsPage: React.FC = () => {
       rowsText = monthlyClientTransactions
         .map((tx, idx) => {
           const dt = tx.createdAt ? new Date(tx.createdAt).toLocaleString('en-GB') : '—';
-          const desc = tx.type === 'COMPANY_FEE_DEDUCTION' ? 'Day 31 Company Fee Retained' : tx.type?.replace('_', ' ') || 'Transaction';
+          const desc = tx.type === 'COMPANY_FEE_DEDUCTION' ? 'Day 31 Company Fee Retained' : (tx.type ? String(tx.type).replace(/_/g, ' ') : 'Transaction');
           return `${idx + 1}. [${dt}] ${tx.receiptNo || '—'} | ${desc} | GHS ${tx.amount.toFixed(2)} | Bal: GHS ${(tx.newBal || 0).toFixed(2)}`;
         })
         .join('\n');
@@ -869,7 +869,7 @@ export const ReportsPage: React.FC = () => {
                             ? 'Day 31 Company Fee Retained' 
                             : tx.type === 'COMPANY_INTEREST_WITHDRAWAL'
                             ? 'Company Vault Interest Payout'
-                            : tx.type?.replace('_', ' ') || 'Transaction'}
+                            : (tx.type ? String(tx.type).replace(/_/g, ' ') : 'Transaction')}
                         </span>
                       </td>
                       <td className="py-2.5 px-3 font-sans">
@@ -880,7 +880,7 @@ export const ReportsPage: React.FC = () => {
                           </span>
                           <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-0.5">
                             <span className="font-mono uppercase bg-teal-50 dark:bg-teal-950/60 text-[#0d9488] font-bold px-1.5 py-0.2 rounded border border-teal-200 dark:border-teal-800">
-                              {tx.recordedBy?.role ? tx.recordedBy.role.replace(/_/g, ' ') : 'OFFICER'}
+                              {tx.recordedBy?.role ? String(tx.recordedBy.role).replace(/_/g, ' ') : 'OFFICER'}
                             </span>
                             {tx.transactor?.fullName && (
                               <span className="text-amber-600 dark:text-amber-400 font-medium truncate max-w-[110px]" title={`Transactor/Rep: ${tx.transactor.fullName} (${tx.transactor.relationship || 'Rep'})`}>
@@ -891,7 +891,7 @@ export const ReportsPage: React.FC = () => {
                         </div>
                       </td>
                       <td className="py-2.5 px-3 font-sans text-slate-500">
-                        {tx.paymentMode ? tx.paymentMode.replace('_', ' ') : 'Cash'}
+                        {tx.paymentMode ? String(tx.paymentMode).replace(/_/g, ' ') : 'Cash'}
                       </td>
                       <td className="py-2.5 px-3 text-right font-black text-slate-900 dark:text-white">
                         {tx.type === 'COMPANY_INTEREST_WITHDRAWAL' ? (
@@ -1025,7 +1025,7 @@ export const ReportsPage: React.FC = () => {
                           <span>{tx.recordedBy ? `${tx.recordedBy.firstName || ''} ${tx.recordedBy.lastName || ''}`.trim() || 'Staff Officer' : 'Staff Officer'}</span>
                         </span>
                         <span className="text-[10px] font-mono text-slate-400">
-                          {tx.recordedBy?.role ? tx.recordedBy.role.replace(/_/g, ' ') : 'OFFICER'}
+                          {tx.recordedBy?.role ? String(tx.recordedBy.role).replace(/_/g, ' ') : 'OFFICER'}
                         </span>
                       </div>
                     </td>
@@ -1155,9 +1155,9 @@ export const ReportsPage: React.FC = () => {
                           <td className="py-1.5 px-2 text-[#0d9488] font-bold">{tx.receiptNo || '—'}</td>
                           <td className="py-1.5 px-2 text-slate-600">{tx.referenceNo || '—'}</td>
                           <td className="py-1.5 px-2 font-sans font-medium">
-                            {tx.type === 'COMPANY_FEE_DEDUCTION' ? 'Day 31 Company Fee Retained' : tx.type?.replace('_', ' ') || 'Transaction'}
+                            {tx.type === 'COMPANY_FEE_DEDUCTION' ? 'Day 31 Company Fee Retained' : (tx.type ? String(tx.type).replace(/_/g, ' ') : 'Transaction')}
                           </td>
-                          <td className="py-1.5 px-2 text-slate-600 font-sans">{tx.paymentMode ? tx.paymentMode.replace('_', ' ') : 'Cash'}</td>
+                          <td className="py-1.5 px-2 text-slate-600 font-sans">{tx.paymentMode ? String(tx.paymentMode).replace(/_/g, ' ') : 'Cash'}</td>
                           <td className="py-1.5 px-2 text-right font-black">GHS {tx.amount.toFixed(2)}</td>
                           <td className="py-1.5 px-2 text-right font-bold text-emerald-600">GHS {(tx.newBal || 0).toFixed(2)}</td>
                         </tr>

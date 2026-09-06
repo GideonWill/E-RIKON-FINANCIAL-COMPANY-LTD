@@ -106,7 +106,7 @@ export const StaffInfoPopupModal: React.FC<StaffInfoPopupModalProps> = ({ staffN
               </h4>
               <div className="flex items-center gap-2 mt-1">
                 <span className="px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500 text-slate-950">
-                  {fallbackStaff.role.replace('_', ' ')}
+                  {(fallbackStaff.role || 'STAFF').replace(/_/g, ' ')}
                 </span>
                 <span className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
                   {getRoleIcon(fallbackStaff.role)}
