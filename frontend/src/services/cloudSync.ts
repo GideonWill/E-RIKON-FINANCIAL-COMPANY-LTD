@@ -90,7 +90,7 @@ const getSyncEndpoints = (): string[] => {
  * Pushes all local storage state to Firebase Realtime Database and HTTP endpoints.
  * Guards against pushing during remote updates to eliminate echo loops.
  */
-export const pushLocalToCloud = async (authoritative = false): Promise<boolean> => {
+export const pushLocalToCloud = async (authoritative = true): Promise<boolean> => {
   if (isApplyingRemoteUpdate) {
     return false;
   }
