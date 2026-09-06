@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getStoredApprovals } from '../../services/api';
 import { useRealtimeSync } from '../../services/realtimeSync';
+import { subscribeFirebaseConnection, isRealtimeCloudConnected } from '../../services/firebase';
 import { 
   Squares2X2Icon, 
   UsersIcon, 
@@ -33,6 +34,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { currentUser } = useAuth();
   const [approvals, setApprovals] = useState(getStoredApprovals());
+  const [isCloudConnected, setIsCloudConnected] = useState(isRealtimeCloudConnected());
+
+  useEffect(() => {
+    const unsub = subscribeFirebaseConnection((connected) => {
+      setIsCloudConnected(connected);
+    });
+    return unsub;
+  }, []);
 
   const refreshApprovals = () => {
     setApprovals(getStoredApprovals());
@@ -155,15 +164,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
               Role: {(activeRole || 'STAFF').replace(/_/g, ' ')}
             </div>
           </div>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              title="Close Drawer"
+          <div className="flex items-center gap-2">
+            <div 
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-tight border transition-all ${
+                isCloudConnected 
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/40' 
+                  : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/40'
+              }`}
+              title={isCloudConnected ? "Google Firebase Realtime Database: Connected (<30ms live sync)" : "Connecting to Google Cloud..."}
             >
-              <XMarkIcon className="w-5 h-5" />
-            </button>
-          )}
+              <span className={`w-1.5 h-1.5 rounded-full ${isCloudConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
+              <span>{isCloudConnected ? 'Live Sync Active' : 'Connecting...'}</span>
+            </div>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Close Drawer"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -214,8 +236,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Footer Info Box */}
       <div className="p-3.5 rounded-2xl bg-gradient-to-br from-teal-50/90 to-emerald-50/90 dark:from-slate-800/80 dark:to-slate-800/50 border border-teal-200/80 dark:border-slate-700/60 text-xs space-y-1">
-        <div className="font-black text-slate-900 dark:text-white">
-          E-RiKON <span className="text-[#0d9488]">Financial Company PLC</span>
+        <div className="flex items-center justify-between font-black text-slate-900 dark:text-white">
+          <span>E-RiKON <span className="text-[#0d9488]">Financial PLC</span></span>
+          <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-mono font-bold flex items-center gap-1">
+            <span className={`w-1.5 h-1.5 rounded-full ${isCloudConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
+            {isCloudConnected ? 'Live Synced' : 'Syncing...'}
+          </span>
         </div>
         <p className="text-[11px] text-slate-500 dark:text-slate-400">RBAC Workstation Clearance Active</p>
         <div className="pt-1.5 text-[10px] text-[#166534] dark:text-teal-400 font-mono font-bold">
