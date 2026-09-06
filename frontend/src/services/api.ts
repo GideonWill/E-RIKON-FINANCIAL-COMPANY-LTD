@@ -474,6 +474,16 @@ export const getStoredTransactions = (): Transaction[] => {
       }
     }
 
+    // Exclude test deposit transactions RCP-33653262 and RCP-33991724
+    if (
+      t.referenceNo?.includes('33653262') ||
+      t.receiptNo?.includes('33653262') ||
+      t.referenceNo?.includes('33991724') ||
+      t.receiptNo?.includes('33991724')
+    ) {
+      return false;
+    }
+
     return true;
   });
 };

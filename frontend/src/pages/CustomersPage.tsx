@@ -176,14 +176,24 @@ export const CustomersPage: React.FC = () => {
       : cycles[0];
 
     // Customer transactions & withdrawals
-    const customerTransactions = transactions.filter(
-      (t) => (acc?.id && t.accountId === acc.id) || 
-             t.account?.customerId === cust.id || 
-             t.account?.customerId === cust.customerNumber ||
-             t.account?.customer?.id === cust.id || 
-             t.account?.customer?.customerNumber === cust.customerNumber ||
-             (t.account?.id && acc?.id && t.account.id === acc.id)
-    );
+    const customerTransactions = transactions
+      .filter((t) => !t.isReversed)
+      .filter(
+        (t) =>
+          !t.referenceNo?.includes('33653262') &&
+          !t.receiptNo?.includes('33653262') &&
+          !t.referenceNo?.includes('33991724') &&
+          !t.receiptNo?.includes('33991724')
+      )
+      .filter(
+        (t) =>
+          (acc?.id && t.accountId === acc.id) ||
+          t.account?.customerId === cust.id ||
+          t.account?.customerId === cust.customerNumber ||
+          t.account?.customer?.id === cust.id ||
+          t.account?.customer?.customerNumber === cust.customerNumber ||
+          (t.account?.id && acc?.id && t.account.id === acc.id)
+      );
     const customerDeposits = customerTransactions.filter((t) => t.type === 'DEPOSIT');
     const totalDepositTxSum = customerDeposits.reduce((sum, t) => sum + t.amount, 0);
     const customerWithdrawals = customerTransactions.filter((t) => t.type === 'WITHDRAWAL');
