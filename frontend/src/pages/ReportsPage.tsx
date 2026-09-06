@@ -6,11 +6,13 @@ import {
   getStoredAccounts, 
   getStoredCompanyInterest,
   clearAllFinancialReceipts,
-  clearStoredTransactions
+  clearStoredTransactions,
+  reverseTransaction
 } from '../services/api';
 import { pushLocalToCloud } from '../services/cloudSync';
 import { useRealtimeSync } from '../services/realtimeSync';
 import { Transaction, Account, DailySplitEntry, DailyCollectionCycle } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
 import logoImg from '../assets/logo.png';
 import {
@@ -38,14 +40,24 @@ import {
   ShieldCheckIcon,
   ExclamationCircleIcon,
   UserIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  ArrowUturnLeftIcon,
+  ExclamationTriangleIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 
 export const ReportsPage: React.FC = () => {
+  const { currentUser } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>(getStoredTransactions());
   const [loans, setLoans] = useState(getStoredLoans());
   const [accounts, setAccounts] = useState<Account[]>(getStoredAccounts());
   const [selectedTxForReceipt, setSelectedTxForReceipt] = useState<Transaction | null>(null);
+
+  // Super Admin Reversal State
+  const [txToReverse, setTxToReverse] = useState<Transaction | null>(null);
+  const [reversalReason, setReversalReason] = useState<string>('');
+  const [reversalError, setReversalError] = useState<string | null>(null);
+  const [isReversing, setIsReversing] = useState<boolean>(false);
 
   // Real-time synchronization
   useRealtimeSync(() => {
@@ -227,6 +239,31 @@ export const ReportsPage: React.FC = () => {
       setTransactions([]);
       setAccounts(getStoredAccounts());
       setDispatchStatus('✅ All financial statement receipts and transaction histories have been cleared successfully.');
+    }
+  };
+
+  const handleExecuteReversal = () => {
+    if (!txToReverse || !currentUser) return;
+    if (!reversalReason.trim()) {
+      setReversalError('Please provide a reason for reversing this transaction.');
+      return;
+    }
+
+    setIsReversing(true);
+    setReversalError(null);
+
+    const result = reverseTransaction(txToReverse.id, currentUser, reversalReason.trim());
+    setIsReversing(false);
+
+    if (result.success) {
+      setTransactions(getStoredTransactions());
+      setAccounts(getStoredAccounts());
+      setTxToReverse(null);
+      setReversalReason('');
+      setDispatchStatus(`✅ ${result.message}`);
+      setTimeout(() => setDispatchStatus(null), 4000);
+    } else {
+      setReversalError(result.message);
     }
   };
 
@@ -845,7 +882,7 @@ export const ReportsPage: React.FC = () => {
                     : 'Registered Client';
 
                   return (
-                    <tr key={tx.id} id={`statement-row-${tx.id}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                    <tr key={tx.id} id={`statement-row-${tx.id}`} className={`hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors ${tx.isReversed ? 'bg-rose-50/20 dark:bg-rose-950/10 opacity-75' : ''}`}>
                       <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">{idx + 1}</td>
                       <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 font-bold flex items-center gap-1.5">
                         <ClockIcon className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
@@ -870,6 +907,11 @@ export const ReportsPage: React.FC = () => {
                             : tx.type === 'COMPANY_INTEREST_WITHDRAWAL'
                             ? 'Company Vault Interest Payout'
                             : (tx.type ? String(tx.type).replace(/_/g, ' ') : 'Transaction')}
+                          {tx.isReversed && (
+                            <span className="ml-1.5 text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase">
+                              (REVERSED)
+                            </span>
+                          )}
                         </span>
                       </td>
                       <td className="py-2.5 px-3 font-sans">
@@ -893,9 +935,9 @@ export const ReportsPage: React.FC = () => {
                       <td className="py-2.5 px-3 font-sans text-slate-500">
                         {tx.paymentMode ? String(tx.paymentMode).replace(/_/g, ' ') : 'Cash'}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-black text-slate-900 dark:text-white">
+                      <td className={`py-2.5 px-3 text-right font-black ${tx.isReversed ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
                         {tx.type === 'COMPANY_INTEREST_WITHDRAWAL' ? (
-                          <span className="text-rose-600 dark:text-rose-400 font-black">- GHS {tx.amount.toFixed(2)}</span>
+                          <span className={tx.isReversed ? 'line-through text-slate-400' : 'text-rose-600 dark:text-rose-400 font-black'}>- GHS {tx.amount.toFixed(2)}</span>
                         ) : (
                           <span>GHS {tx.amount.toFixed(2)}</span>
                         )}
@@ -904,14 +946,41 @@ export const ReportsPage: React.FC = () => {
                         GHS {(tx.newBal || 0).toFixed(2)}
                       </td>
                       <td className="py-2.5 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedTxForReceipt(tx)}
-                          className="px-2 py-0.5 rounded bg-teal-50 hover:bg-[#0d9488] text-[#0d9488] hover:text-white font-bold text-[11px] transition-all cursor-pointer inline-flex items-center gap-1"
-                        >
-                          <PrinterIcon className="w-3 h-3" />
-                          <span>Receipt</span>
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedTxForReceipt(tx)}
+                            className="px-2 py-0.5 rounded bg-teal-50 hover:bg-[#0d9488] text-[#0d9488] hover:text-white font-bold text-[11px] transition-all cursor-pointer inline-flex items-center gap-1"
+                          >
+                            <PrinterIcon className="w-3 h-3" />
+                            <span>Receipt</span>
+                          </button>
+
+                          {currentUser?.role === 'SUPER_ADMIN' && (
+                            tx.isReversed ? (
+                              <span 
+                                className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200 dark:border-rose-900 shadow-2xs"
+                                title={`Reversed by ${tx.reversedBy?.firstName || 'Super Admin'}: ${tx.reversalReason || 'No reason provided'}`}
+                              >
+                                Reversed
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTxToReverse(tx);
+                                  setReversalReason('');
+                                  setReversalError(null);
+                                }}
+                                className="px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900 font-bold text-[11px] transition-all cursor-pointer inline-flex items-center gap-1"
+                                title="Reverse this transaction (Super Admin clearance)"
+                              >
+                                <ArrowUturnLeftIcon className="w-3 h-3" />
+                                <span>Reverse</span>
+                              </button>
+                            )
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1006,8 +1075,8 @@ export const ReportsPage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
               {transactions.length > 0 ? (
-                transactions.slice(0, 10).map((tx) => (
-                  <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                transactions.slice(0, 15).map((tx) => (
+                  <tr key={tx.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors ${tx.isReversed ? 'bg-rose-50/20 dark:bg-rose-950/10 opacity-75' : ''}`}>
                     <td className="py-2.5 px-3 font-bold text-[#0d9488]">{tx.receiptNo || '—'}</td>
                     <td className="py-2.5 px-3 text-slate-500">{tx.referenceNo || '—'}</td>
                     <td className="py-2.5 px-3 font-bold font-sans text-slate-900 dark:text-white">
@@ -1017,6 +1086,11 @@ export const ReportsPage: React.FC = () => {
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                         {tx.type}
                       </span>
+                      {tx.isReversed && (
+                        <span className="ml-1.5 text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase">
+                          (REVERSED)
+                        </span>
+                      )}
                     </td>
                     <td className="py-2.5 px-3 font-sans">
                       <div className="flex flex-col min-w-[120px]">
@@ -1029,18 +1103,46 @@ export const ReportsPage: React.FC = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="py-2.5 px-3 text-right font-black text-slate-900 dark:text-white">
+                    <td className={`py-2.5 px-3 text-right font-black ${tx.isReversed ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
                       GHS {tx.amount.toFixed(2)}
                     </td>
                     <td className="py-2.5 px-3 text-slate-400">{tx.createdAt ? new Date(tx.createdAt).toLocaleString('en-GB') : '—'}</td>
                     <td className="py-2.5 px-3 text-center">
-                      <button
-                        onClick={() => setSelectedTxForReceipt(tx)}
-                        className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-[#0d9488] text-[#0d9488] hover:text-white font-bold transition-all cursor-pointer inline-flex items-center gap-1"
-                      >
-                        <PrinterIcon className="w-3.5 h-3.5" />
-                        <span>Receipt</span>
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTxForReceipt(tx)}
+                          className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-[#0d9488] text-[#0d9488] hover:text-white font-bold transition-all cursor-pointer inline-flex items-center gap-1"
+                        >
+                          <PrinterIcon className="w-3.5 h-3.5" />
+                          <span>Receipt</span>
+                        </button>
+
+                        {currentUser?.role === 'SUPER_ADMIN' && (
+                          tx.isReversed ? (
+                            <span 
+                              className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200 dark:border-rose-900 shadow-2xs"
+                              title={`Reversed by ${tx.reversedBy?.firstName || 'Super Admin'}: ${tx.reversalReason || 'No reason provided'}`}
+                            >
+                              Reversed
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTxToReverse(tx);
+                                setReversalReason('');
+                                setReversalError(null);
+                              }}
+                              className="px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900 font-bold text-[11px] transition-all cursor-pointer inline-flex items-center gap-1"
+                              title="Reverse this transaction (Super Admin clearance)"
+                            >
+                              <ArrowUturnLeftIcon className="w-3 h-3" />
+                              <span>Reverse</span>
+                            </button>
+                          )
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -1331,6 +1433,144 @@ export const ReportsPage: React.FC = () => {
               >
                 {isEmailCopied ? <CheckIcon className="w-4 h-4 text-emerald-400" /> : <DocumentDuplicateIcon className="w-4 h-4" />}
                 <span>{isEmailCopied ? 'Copied' : 'Copy Statement'}</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Super Admin Transaction Reversal Modal */}
+      {txToReverse && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto animate-fadeIn">
+          <div className="max-w-lg w-full p-6 sm:p-7 rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xl border border-rose-200 dark:border-rose-900/60 space-y-5 my-auto">
+            
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-200 dark:border-rose-900">
+                  <ArrowUturnLeftIcon className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 mb-1">
+                    <span>Super Admin Only</span>
+                  </div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight">
+                    Reverse Transaction
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Rollback entry & rebalance active ledger
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isReversing) {
+                    setTxToReverse(null);
+                    setReversalReason('');
+                    setReversalError(null);
+                  }
+                }}
+                disabled={isReversing}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Transaction Summary Card */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-2.5 text-xs font-mono">
+              <div className="flex justify-between items-center py-1 border-b border-slate-200/60 dark:border-slate-700/40">
+                <span className="text-slate-500 font-sans font-medium">Receipt / Ref:</span>
+                <span className="font-bold text-[#0d9488]">{txToReverse.receiptNo || txToReverse.referenceNo || '—'}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-200/60 dark:border-slate-700/40">
+                <span className="text-slate-500 font-sans font-medium">Customer:</span>
+                <span className="font-bold font-sans text-slate-900 dark:text-white">
+                  {txToReverse.account?.customer ? `${txToReverse.account.customer.firstName} ${txToReverse.account.customer.lastName}` : 'Client'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-200/60 dark:border-slate-700/40">
+                <span className="text-slate-500 font-sans font-medium">Transaction Type:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">{txToReverse.type}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-200/60 dark:border-slate-700/40">
+                <span className="text-slate-500 font-sans font-medium">Amount:</span>
+                <span className="font-black text-rose-600 dark:text-rose-400 text-sm">GHS {txToReverse.amount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center py-1">
+                <span className="text-slate-500 font-sans font-medium">Recorded By:</span>
+                <span className="text-slate-700 dark:text-slate-300 font-sans">
+                  {txToReverse.recordedBy ? `${txToReverse.recordedBy.firstName || ''} ${txToReverse.recordedBy.lastName || ''}`.trim() : 'Staff Officer'}
+                </span>
+              </div>
+            </div>
+
+            {/* Caution Banner */}
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex items-start gap-2.5">
+              <ExclamationTriangleIcon className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed font-sans">
+                <strong>Attention:</strong> Reversing this transaction will deduct/restore this amount from the account balance, recalculate cycle day contributions, sync across all devices, and permanently record your admin reversal reason in the audit logs.
+              </p>
+            </div>
+
+            {/* Error Banner */}
+            {reversalError && (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 text-xs font-medium">
+                {reversalError}
+              </div>
+            )}
+
+            {/* Reason Input */}
+            <div className="space-y-1.5 font-sans">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Mandatory Reversal Reason / Justification <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                value={reversalReason}
+                onChange={(e) => {
+                  setReversalReason(e.target.value);
+                  setReversalError(null);
+                }}
+                disabled={isReversing}
+                placeholder="Specify why this transaction is being reversed (e.g. Accidental duplicate deposit, wrong customer chosen, customer cancelled)..."
+                className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white text-xs outline-none focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500 transition-all resize-none h-20 placeholder:text-slate-400"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setTxToReverse(null);
+                  setReversalReason('');
+                  setReversalError(null);
+                }}
+                disabled={isReversing}
+                className="py-2.5 px-4 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs text-slate-700 dark:text-slate-300 transition-all cursor-pointer disabled:opacity-50"
+              >
+                No, Keep Transaction
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExecuteReversal}
+                disabled={isReversing || !reversalReason.trim()}
+                className="py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isReversing ? (
+                  <>
+                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                    <span>Reversing...</span>
+                  </>
+                ) : (
+                  <>
+                    <ArrowUturnLeftIcon className="w-4 h-4" />
+                    <span>Yes, Reverse Transaction</span>
+                  </>
+                )}
               </button>
             </div>
 

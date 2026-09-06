@@ -42,7 +42,8 @@ export type TransactionType =
   | 'INTEREST_CHARGE'
   | 'COMPANY_FEE_DEDUCTION'
   | 'COMPANY_INTEREST_WITHDRAWAL'
-  | 'PENALTY_FEE';
+  | 'PENALTY_FEE'
+  | 'TRANSACTION_REVERSAL';
 
 export type PaymentMode = 'PHYSICAL_CASH' | 'MTN_MOBILE_MONEY' | 'BANK_TRANSFER';
 
@@ -320,6 +321,10 @@ export interface Transaction {
   remarks?: string;
   createdAt: string;
   transactor?: TransactorInfo;
+  isReversed?: boolean;
+  reversedAt?: string;
+  reversedBy?: User;
+  reversalReason?: string;
 }
 
 export interface AuditLog {

@@ -60,6 +60,19 @@ export const TellerPage: React.FC = () => {
   const [printedTx, setPrintedTx] = useState<Transaction | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Confirmation Dialogue State
+  const [pendingConfirmation, setPendingConfirmation] = useState<{
+    type: 'DEPOSIT' | 'WITHDRAWAL';
+    amount: number;
+    account: Account;
+    paymentMode: PaymentMode;
+    remarks: string;
+    transactorInfo: TransactorInfo;
+    chosenPackage: SavingsPackage;
+    splitPreview?: any;
+    loanInfo?: any;
+  } | null>(null);
+
   // Transactor Information State (Person Depositing or Withdrawing)
   const [isThirdParty, setIsThirdParty] = useState<boolean>(false);
   const [transactorName, setTransactorName] = useState<string>('');
@@ -200,7 +213,6 @@ export const TellerPage: React.FC = () => {
         setTransactorError('Please enter a valid 10-digit Ghana phone number for the representative (e.g. 0241234567).');
         return;
       }
-      
     }
 
     const transactorInfo: TransactorInfo = {
@@ -209,17 +221,6 @@ export const TellerPage: React.FC = () => {
       phone: isThirdParty ? transactorPhone.trim() : (selectedAccount.customer?.phone || ''),
       ghanaCard: isThirdParty ? undefined : selectedAccount.customer?.ghanaCardNumber,
       relationship: isThirdParty ? transactorRelationship : 'Self / Account Holder',
-    };
-
-    const tellerUser: User = currentUser || {
-      id: 'staff-active',
-      employeeId: 'EMP-OFFICER',
-      firstName: 'Authorized',
-      lastName: 'Teller',
-      email: 'teller@erikon.com',
-      phone: '0240000000',
-      role: 'TELLER',
-      branchId: 'br-01',
     };
 
     if (operationType === 'DEPOSIT') {
@@ -232,46 +233,6 @@ export const TellerPage: React.FC = () => {
         alert(`❌ Deposit amount (GH₵ ${numAmount.toFixed(2)}) must be an exact multiple of the GH₵ ${chosenPackage}.00 package (e.g. GH₵ ${chosenPackage}, GH₵ ${chosenPackage * 2}, GH₵ ${chosenPackage * 3}) to split evenly across days.`);
         return;
       }
-
-      // Ensure account package matches chosen package
-      const allAccs = getStoredAccounts();
-      const currentAccIndex = allAccs.findIndex((a) => a.id === selectedAccount.id);
-      if (currentAccIndex !== -1) {
-        allAccs[currentAccIndex].savingsPackage = chosenPackage;
-        saveStoredAccounts(allAccs);
-      }
-
-      const { updatedAccount, transaction, splitResult } = recordPackageDeposit(
-        selectedAccount.id,
-        numAmount,
-        tellerUser,
-        remarks || `Teller deposit on GH₵ ${chosenPackage}/day package`,
-        undefined,
-        chosenPackage,
-        transactorInfo
-      );
-
-      setSelectedAccount(updatedAccount);
-      setAccounts(getStoredAccounts());
-      setPrintedTx(transaction);
-      broadcastRealtimeEvent('PACKAGE_DEPOSIT_RECORDED', { accountId: selectedAccount.id, amount: numAmount });
-      pushLocalToCloud().catch(() => {});
-
-      const custId = selectedAccount.customerId || selectedAccount.customer?.id;
-      const depMonth = transaction.createdAt ? transaction.createdAt.slice(0, 7) : new Date().toISOString().slice(0, 7);
-      addSystemNotification({
-        title: `Deposit Recorded: GH₵ ${numAmount.toFixed(2)}`,
-        message: `GH₵ ${numAmount.toFixed(2)} deposited for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship}).`,
-        type: 'DEPOSIT',
-        targetRoute: '/reports',
-        targetState: { accountId: selectedAccount.id, customerId: custId, month: depMonth, txId: transaction.id },
-        targetSectionId: `statement-row-${transaction.id}`,
-        roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
-      });
-
-      setSuccessMessage(
-        `🎉 DEPOSIT SUCCESSFUL! GH₵ ${numAmount.toFixed(2)} recorded for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}. Covered ${splitResult.daysCovered} day(s) on GH₵ ${chosenPackage}/day package.`
-      );
     } else {
       // Withdrawal as Savings-Backed Loan (Safeguards the 1-day retention fee)
       if (numAmount > loanInfo.maxLoanAmount) {
@@ -284,35 +245,116 @@ export const TellerPage: React.FC = () => {
         );
         return;
       }
+    }
 
-      const previousBal = selectedAccount.availableBalance;
-      const newBal = toDecimal(previousBal - numAmount);
+    // Open confirmation dialogue modal asking user to verify before execution
+    setPendingConfirmation({
+      type: operationType,
+      amount: numAmount,
+      account: selectedAccount,
+      paymentMode,
+      remarks,
+      transactorInfo,
+      chosenPackage,
+      splitPreview,
+      loanInfo,
+    });
+  };
+
+  const executeConfirmedTransaction = () => {
+    if (!pendingConfirmation) return;
+    const { 
+      type, 
+      amount: confirmedAmount, 
+      account: targetAccount, 
+      paymentMode: confirmedMode, 
+      remarks: confirmedRemarks, 
+      transactorInfo, 
+      chosenPackage: confirmedPkg, 
+      splitPreview: confirmedSplit, 
+      loanInfo: confirmedLoanInfo 
+    } = pendingConfirmation;
+
+    const tellerUser: User = currentUser || {
+      id: 'staff-active',
+      employeeId: 'EMP-OFFICER',
+      firstName: 'Authorized',
+      lastName: 'Teller',
+      email: 'teller@erikon.com',
+      phone: '0240000000',
+      role: 'TELLER',
+      branchId: 'br-01',
+    };
+
+    if (type === 'DEPOSIT') {
+      // Ensure account package matches chosen package
+      const allAccs = getStoredAccounts();
+      const currentAccIndex = allAccs.findIndex((a) => a.id === targetAccount.id);
+      if (currentAccIndex !== -1) {
+        allAccs[currentAccIndex].savingsPackage = confirmedPkg;
+        saveStoredAccounts(allAccs);
+      }
+
+      const { updatedAccount, transaction, splitResult } = recordPackageDeposit(
+        targetAccount.id,
+        confirmedAmount,
+        tellerUser,
+        confirmedRemarks || `Teller deposit on GH₵ ${confirmedPkg}/day package`,
+        undefined,
+        confirmedPkg,
+        transactorInfo
+      );
+
+      setSelectedAccount(updatedAccount);
+      setAccounts(getStoredAccounts());
+      setPrintedTx(transaction);
+      broadcastRealtimeEvent('PACKAGE_DEPOSIT_RECORDED', { accountId: targetAccount.id, amount: confirmedAmount });
+      pushLocalToCloud().catch(() => {});
+
+      const custId = targetAccount.customerId || targetAccount.customer?.id;
+      const depMonth = transaction.createdAt ? transaction.createdAt.slice(0, 7) : new Date().toISOString().slice(0, 7);
+      addSystemNotification({
+        title: `Deposit Recorded: GH₵ ${confirmedAmount.toFixed(2)}`,
+        message: `GH₵ ${confirmedAmount.toFixed(2)} deposited for ${targetAccount.customer?.firstName} ${targetAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship}).`,
+        type: 'DEPOSIT',
+        targetRoute: '/reports',
+        targetState: { accountId: targetAccount.id, customerId: custId, month: depMonth, txId: transaction.id },
+        targetSectionId: `statement-row-${transaction.id}`,
+        roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
+      });
+
+      setSuccessMessage(
+        `🎉 DEPOSIT SUCCESSFUL! GH₵ ${confirmedAmount.toFixed(2)} recorded for ${targetAccount.customer?.firstName} ${targetAccount.customer?.lastName}. Covered ${splitResult.daysCovered} day(s) on GH₵ ${confirmedPkg}/day package.`
+      );
+    } else {
+      const previousBal = targetAccount.availableBalance;
+      const newBal = toDecimal(previousBal - confirmedAmount);
 
       const updatedAcc = {
-        ...selectedAccount,
+        ...targetAccount,
         availableBalance: newBal,
-        currentBalance: toDecimal(selectedAccount.currentBalance - numAmount),
+        currentBalance: toDecimal(targetAccount.currentBalance - confirmedAmount),
       };
 
       const newTx: Transaction = {
         id: `tx-with-${Date.now()}`,
         referenceNo: `TX-WITH-${Date.now().toString().slice(-8)}`,
         receiptNo: `RCP-WITH-${Date.now().toString().slice(-8)}`,
-        accountId: selectedAccount.id,
+        accountId: targetAccount.id,
         account: updatedAcc,
         type: 'WITHDRAWAL',
-        paymentMode,
-        amount: numAmount,
+        paymentMode: confirmedMode,
+        amount: confirmedAmount,
         previousBal,
         newBal,
         recordedBy: tellerUser,
-        remarks: remarks || `Withdrawal loan against savings (Protected fee: GH₵ ${loanInfo.protectedRetentionFee.toFixed(2)})`,
+        remarks: confirmedRemarks || `Withdrawal loan against savings (Protected fee: GH₵ ${confirmedLoanInfo?.protectedRetentionFee?.toFixed(2) || '0.00'})`,
         createdAt: new Date().toISOString(),
         transactor: transactorInfo,
       };
 
       const freshAccs = getStoredAccounts();
-      const idx = freshAccs.findIndex((a) => a.id === selectedAccount.id);
+      const idx = freshAccs.findIndex((a) => a.id === targetAccount.id);
       if (idx !== -1) {
         freshAccs[idx] = updatedAcc;
         saveStoredAccounts(freshAccs);
@@ -327,24 +369,25 @@ export const TellerPage: React.FC = () => {
       broadcastRealtimeEvent('WITHDRAWAL_RECORDED', newTx);
       pushLocalToCloud().catch(() => {});
 
-      const custId = selectedAccount.customerId || selectedAccount.customer?.id;
+      const custId = targetAccount.customerId || targetAccount.customer?.id;
       const withMonth = newTx.createdAt ? newTx.createdAt.slice(0, 7) : new Date().toISOString().slice(0, 7);
       addSystemNotification({
-        title: `Withdrawal Executed: GH₵ ${numAmount.toFixed(2)}`,
-        message: `GH₵ ${numAmount.toFixed(2)} withdrawn for ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship}).`,
+        title: `Withdrawal Executed: GH₵ ${confirmedAmount.toFixed(2)}`,
+        message: `GH₵ ${confirmedAmount.toFixed(2)} withdrawn for ${targetAccount.customer?.firstName} ${targetAccount.customer?.lastName} by ${transactorInfo.fullName} (${transactorInfo.relationship}).`,
         type: 'WITHDRAWAL',
         targetRoute: '/reports',
-        targetState: { accountId: selectedAccount.id, customerId: custId, month: withMonth, txId: newTx.id },
+        targetState: { accountId: targetAccount.id, customerId: custId, month: withMonth, txId: newTx.id },
         targetSectionId: `statement-row-${newTx.id}`,
         roles: ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'],
       });
 
       setSuccessMessage(
-        `🎉 WITHDRAWAL SUCCESSFUL! GH₵ ${numAmount.toFixed(2)} has been successfully paid out to ${selectedAccount.customer?.firstName} ${selectedAccount.customer?.lastName}. Remaining balance: GH₵ ${newBal.toFixed(2)}.`
+        `🎉 WITHDRAWAL SUCCESSFUL! GH₵ ${confirmedAmount.toFixed(2)} has been successfully paid out to ${targetAccount.customer?.firstName} ${targetAccount.customer?.lastName}. Remaining balance: GH₵ ${newBal.toFixed(2)}.`
       );
     }
 
-    // Reset all form and representative fields to empty
+    // Close confirmation dialog & reset form fields
+    setPendingConfirmation(null);
     setAmount('');
     setRemarks('');
     setTransactorName('');
@@ -1012,6 +1055,118 @@ export const TellerPage: React.FC = () => {
         )}
 
       </div>
+
+      {/* Transaction Confirmation Dialogue Modal (Deposit & Withdrawal Verification) */}
+      {pendingConfirmation && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 select-none animate-in fade-in duration-150"
+          onClick={() => setPendingConfirmation(null)}
+        >
+          <div 
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center space-x-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className={`p-2.5 rounded-2xl ${
+                pendingConfirmation.type === 'DEPOSIT'
+                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/30'
+                  : 'bg-rose-500/10 text-rose-500 border border-rose-500/30'
+              }`}>
+                {pendingConfirmation.type === 'DEPOSIT' ? (
+                  <SparklesIcon className="w-6 h-6" />
+                ) : (
+                  <ArrowDownLeftIcon className="w-6 h-6" />
+                )}
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-1.5">
+                  {pendingConfirmation.type === 'DEPOSIT' ? 'Confirm Deposit Transaction' : 'Confirm Withdrawal Transaction'}
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Verification check before recording to ledger
+                </p>
+              </div>
+            </div>
+
+            {/* Prompt Question */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 text-xs">
+              <p className="text-slate-800 dark:text-slate-100 font-bold text-sm leading-relaxed">
+                {pendingConfirmation.type === 'DEPOSIT' ? (
+                  <>
+                    Are you sure you want to deposit{' '}
+                    <span className="text-amber-600 dark:text-amber-400 font-mono font-black text-base underline decoration-amber-500/40">
+                      GH₵ {pendingConfirmation.amount.toFixed(2)}
+                    </span>{' '}
+                    into{' '}
+                    <span className="text-slate-900 dark:text-white font-extrabold">
+                      {pendingConfirmation.account.customer?.firstName} {pendingConfirmation.account.customer?.lastName}
+                    </span>
+                    's account?
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to withdraw{' '}
+                    <span className="text-rose-600 dark:text-rose-400 font-mono font-black text-base underline decoration-rose-500/40">
+                      GH₵ {pendingConfirmation.amount.toFixed(2)}
+                    </span>{' '}
+                    from{' '}
+                    <span className="text-slate-900 dark:text-white font-extrabold">
+                      {pendingConfirmation.account.customer?.firstName} {pendingConfirmation.account.customer?.lastName}
+                    </span>
+                    's account?
+                  </>
+                )}
+              </p>
+
+              {/* Transaction Summary Details */}
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 space-y-1 text-[11px] text-slate-600 dark:text-slate-400 font-mono">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Account Number:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{pendingConfirmation.account.accountNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Transactor:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{pendingConfirmation.transactorInfo.fullName} ({pendingConfirmation.transactorInfo.relationship})</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Payment Mode:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{pendingConfirmation.paymentMode.replace(/_/g, ' ')}</span>
+                </div>
+                {pendingConfirmation.type === 'DEPOSIT' && pendingConfirmation.splitPreview && (
+                  <div className="flex justify-between text-amber-600 dark:text-amber-400">
+                    <span>Multi-Day Spread:</span>
+                    <span className="font-bold">{pendingConfirmation.splitPreview.daysCovered} day(s) on GH₵ {pendingConfirmation.chosenPackage}/day</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Yes and No Buttons */}
+            <div className="flex items-center space-x-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setPendingConfirmation(null)}
+                className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-xs cursor-pointer transition-all active:scale-95"
+              >
+                No, Cancel
+              </button>
+              <button
+                type="button"
+                onClick={executeConfirmedTransaction}
+                className={`flex-1 py-3 rounded-xl text-white font-black text-xs cursor-pointer shadow-lg transition-all flex items-center justify-center gap-1.5 active:scale-95 ${
+                  pendingConfirmation.type === 'DEPOSIT'
+                    ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20'
+                    : 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/20'
+                }`}
+              >
+                <CheckCircleIcon className="w-4 h-4" />
+                <span>Yes, Confirm & Record</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Receipt Modal */}
       <ReceiptPrinterModal

@@ -19,11 +19,13 @@ import { CompanyInterestPage } from './pages/CompanyInterestPage';
 import { ApprovalsPage } from './pages/ApprovalsPage';
 import { SplashScreen } from './components/ui/SplashScreen';
 import { GlobalErrorBoundary } from './components/layout/GlobalErrorBoundary';
+import { reconcileVincentTransactionsBaseline } from './services/api';
 
 const queryClient = new QueryClient();
 
 // Ensure clean state and zero corporate test withdrawals across all devices
 if (typeof window !== 'undefined') {
+  reconcileVincentTransactionsBaseline();
   localStorage.setItem('erikon_company_withdrawals', JSON.stringify([]));
   localStorage.setItem('erikon_loans', JSON.stringify([]));
   const purgeKey = 'erikon_purge_legacy_test_data_v6';

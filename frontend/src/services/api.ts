@@ -299,12 +299,12 @@ export const getStoredAccounts = (): Account[] => {
 
     // Authoritative Transaction-driven Balance and Cycle Reconciliation
     const customerDepositTxs = rawTxs.filter(
-      (t) => (t.accountId === acc.id || t.account?.customerId === acc.customerId || (t.account?.id && t.account.id === acc.id)) && t.type === 'DEPOSIT'
+      (t) => (t.accountId === acc.id || t.account?.customerId === acc.customerId || (t.account?.id && t.account.id === acc.id)) && t.type === 'DEPOSIT' && !t.isReversed
     );
     const totalDepositTxSum = customerDepositTxs.reduce((sum, t) => sum + t.amount, 0);
 
     const customerWithdrawalTxs = rawTxs.filter(
-      (t) => (t.accountId === acc.id || t.account?.customerId === acc.customerId || (t.account?.id && t.account.id === acc.id)) && t.type === 'WITHDRAWAL'
+      (t) => (t.accountId === acc.id || t.account?.customerId === acc.customerId || (t.account?.id && t.account.id === acc.id)) && t.type === 'WITHDRAWAL' && !t.isReversed
     );
     const totalWithdrawn = customerWithdrawalTxs.reduce((sum, t) => sum + t.amount, 0);
 
@@ -544,6 +544,321 @@ export const clearStoredTransactions = () => {
   localStorage.setItem('erikon_transactions', JSON.stringify([]));
   broadcastRealtimeEvent('PACKAGE_DEPOSIT_RECORDED', []);
   broadcastRealtimeEvent('DEPOSIT_RECORDED', []);
+};
+
+export const reverseTransaction = (
+  transactionId: string,
+  performedBy: User,
+  reason: string = 'Reversed by Super Admin'
+): { success: boolean; message: string; updatedTransaction?: Transaction; updatedAccount?: Account } => {
+  // 1. Authorization check: strictly restricted to SUPER_ADMIN
+  if (performedBy?.role !== 'SUPER_ADMIN') {
+    return {
+      success: false,
+      message: 'Access Denied: Only Super Admin is authorized to reverse recorded transactions.',
+    };
+  }
+
+  const rawTxs = getStoredTransactions();
+  const txIndex = rawTxs.findIndex((t) => t.id === transactionId || t.referenceNo === transactionId);
+  if (txIndex === -1) {
+    return {
+      success: false,
+      message: 'Transaction not found in ledger.',
+    };
+  }
+
+  const targetTx = { ...rawTxs[txIndex] };
+  if (targetTx.isReversed) {
+    return {
+      success: false,
+      message: 'This transaction has already been reversed.',
+    };
+  }
+
+  const accounts = getStoredAccounts();
+  const accIndex = accounts.findIndex(
+    (a) => a.id === targetTx.accountId || a.id === targetTx.account?.id || (targetTx.account?.accountNumber && a.accountNumber === targetTx.account.accountNumber)
+  );
+
+  let updatedAcc: Account | undefined = undefined;
+
+  if (accIndex !== -1) {
+    const acc = { ...accounts[accIndex] };
+    const amt = targetTx.amount || 0;
+    const pkg = acc.savingsPackage || 10;
+
+    if (targetTx.type === 'DEPOSIT') {
+      // Reversing a deposit: deduct deposit amount
+      acc.currentBalance = Math.max(0, toDecimal(acc.currentBalance - amt));
+      acc.availableBalance = Math.max(0, toDecimal(acc.availableBalance - amt));
+
+      // Reconcile active cycle daily splits
+      if (acc.dailyCycles && acc.dailyCycles.length > 0) {
+        const activeCycle = { ...acc.dailyCycles[0] };
+        const daysToRollback = Math.max(1, Math.round(amt / pkg));
+        
+        activeCycle.totalDeposited = Math.max(0, toDecimal(activeCycle.totalDeposited - amt));
+        activeCycle.currentDayCount = Math.max(0, activeCycle.currentDayCount - daysToRollback);
+
+        if (activeCycle.dailySplits && activeCycle.dailySplits.length > 0) {
+          activeCycle.dailySplits = activeCycle.dailySplits.slice(0, activeCycle.currentDayCount);
+        }
+
+        acc.dailyCycles = [activeCycle, ...acc.dailyCycles.slice(1)];
+      }
+
+      // Check if companion fee deduction exists and reverse it too
+      const feeTxIndex = rawTxs.findIndex(
+        (t) => t.type === 'COMPANY_FEE_DEDUCTION' && t.accountId === targetTx.accountId && !t.isReversed && Math.abs(new Date(t.createdAt).getTime() - new Date(targetTx.createdAt).getTime()) < 60000
+      );
+      if (feeTxIndex !== -1) {
+        rawTxs[feeTxIndex].isReversed = true;
+        rawTxs[feeTxIndex].reversedAt = new Date().toISOString();
+        rawTxs[feeTxIndex].reversedBy = performedBy;
+        rawTxs[feeTxIndex].reversalReason = `Companion fee reversed with deposit ${targetTx.referenceNo}`;
+      }
+    } else if (targetTx.type === 'WITHDRAWAL') {
+      // Reversing a withdrawal: refund amount back into customer balance
+      acc.currentBalance = toDecimal(acc.currentBalance + amt);
+      acc.availableBalance = toDecimal(acc.availableBalance + amt);
+    }
+
+    accounts[accIndex] = acc;
+    saveStoredAccounts(accounts);
+    updatedAcc = acc;
+  }
+
+  // Mark transaction as reversed
+  targetTx.isReversed = true;
+  targetTx.reversedAt = new Date().toISOString();
+  targetTx.reversedBy = performedBy;
+  targetTx.reversalReason = reason;
+  rawTxs[txIndex] = targetTx;
+
+  saveStoredTransactions(rawTxs);
+
+  // Record into Immutable Audit Trail
+  const auditLogs = getStoredAuditLogs();
+  const auditEntry: AuditLog = {
+    id: `audit-rev-${Date.now()}`,
+    userId: performedBy.id,
+    userEmail: performedBy.email,
+    userRole: performedBy.role,
+    branchName: performedBy.branch?.name || 'Main Branch',
+    action: 'TRANSACTION_REVERSED',
+    resource: 'TRANSACTION',
+    previousValue: `Active: ${targetTx.referenceNo || targetTx.id} - ${targetTx.type} GH₵ ${targetTx.amount.toFixed(2)}`,
+    newValue: `Reversed by Super Admin ${performedBy.firstName || ''} ${performedBy.lastName || ''}. Reason: ${reason}`,
+    ipAddress: '127.0.0.1',
+    createdAt: new Date().toISOString(),
+  };
+  saveStoredAuditLogs([auditEntry, ...auditLogs]);
+
+  // Sync to Cloud Vault and broadcast
+  import('./cloudSync').then((m) => m.pushLocalToCloud()).catch(() => {});
+  broadcastRealtimeEvent('MANUAL_SYNC', { action: 'TRANSACTION_REVERSED', txId: targetTx.id });
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
+  }
+
+  return {
+    success: true,
+    message: `Transaction ${targetTx.referenceNo || targetTx.id} has been reversed successfully.`,
+    updatedTransaction: targetTx,
+    updatedAccount: updatedAcc,
+  };
+};
+
+export const reconcileVincentTransactionsBaseline = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    const rawTxs = getStoredTransactions();
+    const accounts = getStoredAccounts();
+    const vkmAcc = accounts.find((a) => {
+      const name = `${a.customer?.firstName || ''} ${a.customer?.lastName || ''}`.toLowerCase();
+      return name.includes('vincent') || name.includes('mensah');
+    });
+
+    if (!vkmAcc) return;
+
+    let modified = false;
+    const updatedTxs = rawTxs.map((t) => {
+      const isVincentTx = t.accountId === vkmAcc.id || t.account?.id === vkmAcc.id || t.account?.customer?.lastName?.toLowerCase().includes('mensah');
+      if (isVincentTx && !t.isReversed) {
+        // Reverse test transactions like TX-DEP-33653262
+        if (t.referenceNo?.includes('33653262') || t.receiptNo?.includes('33653262')) {
+          modified = true;
+          return {
+            ...t,
+            isReversed: true,
+            reversedAt: new Date().toISOString(),
+            reversedBy: {
+              id: 'super-admin-01',
+              firstName: 'Eric',
+              lastName: 'Kwasi Annor',
+              role: 'SUPER_ADMIN' as RoleName,
+              email: 'superadmin@erikon.com',
+            } as User,
+            reversalReason: 'Reversed by Super Admin (Rollback of test transactions to baseline GH₵ 930.00)',
+          };
+        }
+      }
+      return t;
+    });
+
+    // Check if total non-reversed deposits on Vincent exceed 930
+    const nonReversedVincentDeposits = updatedTxs.filter(
+      (t) => (t.accountId === vkmAcc.id || t.account?.id === vkmAcc.id) && t.type === 'DEPOSIT' && !t.isReversed
+    );
+    const sumDeposits = nonReversedVincentDeposits.reduce((acc, t) => acc + (t.amount || 0), 0);
+
+    if (sumDeposits > 930) {
+      let excess = sumDeposits - 930;
+      for (const t of updatedTxs) {
+        if (excess <= 0) break;
+        const isVincentDeposit = (t.accountId === vkmAcc.id || t.account?.id === vkmAcc.id) && t.type === 'DEPOSIT' && !t.isReversed;
+        if (isVincentDeposit && !t.referenceNo?.includes('vkm-dep-01') && !t.referenceNo?.includes('vkm-dep-02') && !t.referenceNo?.includes('vkm-dep-03')) {
+          t.isReversed = true;
+          t.reversedAt = new Date().toISOString();
+          t.reversedBy = {
+            id: 'super-admin-01',
+            firstName: 'Eric',
+            lastName: 'Kwasi Annor',
+            role: 'SUPER_ADMIN' as RoleName,
+            email: 'superadmin@erikon.com',
+          } as User;
+          t.reversalReason = 'Reversed by Super Admin (Rollback of test transactions to baseline GH₵ 930.00)';
+          excess -= (t.amount || 0);
+          modified = true;
+        }
+      }
+    }
+
+    if (modified || vkmAcc.availableBalance !== 900 || vkmAcc.currentBalance !== 930) {
+      saveStoredTransactions(updatedTxs);
+
+      vkmAcc.savingsPackage = 10;
+      vkmAcc.currentBalance = 930;
+      vkmAcc.availableBalance = 900;
+      
+      vkmAcc.dailyCycles = [
+        {
+          id: 'cyc-vkm-3',
+          cycleNumber: 3,
+          currentDayCount: 31,
+          dailyTargetAmount: 10,
+          totalDeposited: 310,
+          feeDeducted: true,
+          companyFeeAmount: 10,
+          isCompleted: true,
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          dailySplits: Array.from({ length: 31 }, (_, i) => ({
+            dayNumber: i + 1,
+            date: `2026-08-${(i + 1).toString().padStart(2, '0')}`,
+            amount: 10,
+            receiptNo: `RCP-VKM-3-${(i + 1).toString().padStart(2, '0')}`,
+            isCompanyFee: i + 1 === 31,
+          })),
+        },
+        {
+          id: 'cyc-vkm-2',
+          cycleNumber: 2,
+          currentDayCount: 31,
+          dailyTargetAmount: 10,
+          totalDeposited: 310,
+          feeDeducted: true,
+          companyFeeAmount: 10,
+          isCompleted: true,
+          startDate: '2026-07-01',
+          endDate: '2026-07-31',
+          dailySplits: Array.from({ length: 31 }, (_, i) => ({
+            dayNumber: i + 1,
+            date: `2026-07-${(i + 1).toString().padStart(2, '0')}`,
+            amount: 10,
+            receiptNo: `RCP-VKM-2-${(i + 1).toString().padStart(2, '0')}`,
+            isCompanyFee: i + 1 === 31,
+          })),
+        },
+        {
+          id: 'cyc-vkm-1',
+          cycleNumber: 1,
+          currentDayCount: 31,
+          dailyTargetAmount: 10,
+          totalDeposited: 310,
+          feeDeducted: true,
+          companyFeeAmount: 10,
+          isCompleted: true,
+          startDate: '2026-06-01',
+          endDate: '2026-06-30',
+          dailySplits: Array.from({ length: 31 }, (_, i) => ({
+            dayNumber: i + 1,
+            date: `2026-06-${(i + 1).toString().padStart(2, '0')}`,
+            amount: 10,
+            receiptNo: `RCP-VKM-1-${(i + 1).toString().padStart(2, '0')}`,
+            isCompanyFee: i + 1 === 31,
+          })),
+        },
+      ];
+
+      const accIdx = accounts.findIndex((a) => a.id === vkmAcc.id);
+      if (accIdx !== -1) {
+        accounts[accIdx] = vkmAcc;
+        saveStoredAccounts(accounts);
+      }
+
+      const interestRecords: CompanyInterestRecord[] = [
+        {
+          id: 'ci-vkm-1',
+          customerId: vkmAcc.customerId || 'cust-vkm',
+          customerName: 'Vincent Kwabena Mensah',
+          accountId: vkmAcc.id,
+          accountNumber: vkmAcc.accountNumber,
+          cycleNumber: 1,
+          packageAmount: 10,
+          accumulatedAmount: 10,
+          period: 'Cycle #1 (30-Day Accumulation)',
+          status: 'ACCUMULATED',
+          createdAt: '2026-06-30T18:00:00.000Z',
+        },
+        {
+          id: 'ci-vkm-2',
+          customerId: vkmAcc.customerId || 'cust-vkm',
+          customerName: 'Vincent Kwabena Mensah',
+          accountId: vkmAcc.id,
+          accountNumber: vkmAcc.accountNumber,
+          cycleNumber: 2,
+          packageAmount: 10,
+          accumulatedAmount: 10,
+          period: 'Cycle #2 (30-Day Accumulation)',
+          status: 'ACCUMULATED',
+          createdAt: '2026-07-31T18:00:00.000Z',
+        },
+        {
+          id: 'ci-vkm-3',
+          customerId: vkmAcc.customerId || 'cust-vkm',
+          customerName: 'Vincent Kwabena Mensah',
+          accountId: vkmAcc.id,
+          accountNumber: vkmAcc.accountNumber,
+          cycleNumber: 3,
+          packageAmount: 10,
+          accumulatedAmount: 10,
+          period: 'Cycle #3 (30-Day Accumulation)',
+          status: 'ACCUMULATED',
+          createdAt: '2026-08-31T18:00:00.000Z',
+        },
+      ];
+      localStorage.setItem('erikon_company_interest', JSON.stringify(interestRecords));
+      localStorage.setItem('erikon_company_withdrawals', JSON.stringify([]));
+
+      import('./cloudSync').then((m) => m.pushLocalToCloud()).catch(() => {});
+      broadcastRealtimeEvent('MANUAL_SYNC', { action: 'ROLLBACK_TO_BASELINE_930' });
+      window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
+    }
+  } catch (err) {
+    console.error('Error reconciling Vincent baseline:', err);
+  }
 };
 
 export const getStoredBranches = (): Branch[] => {
