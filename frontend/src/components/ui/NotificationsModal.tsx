@@ -133,7 +133,65 @@ export const addSystemNotification = (item: {
   saveStoredDynamicNotifications([newItem, ...current]);
 };
 
+export const purgeReversedNotifications = () => {
+  try {
+    const rawTxs = getStoredTransactions();
+    const reversedTxs = rawTxs.filter((t) => t.isReversed);
+    const reversedIds = new Set(reversedTxs.map((t) => t.id));
+    const reversedRefs = new Set(reversedTxs.map((t) => t.referenceNo || '').filter(Boolean));
+    const reversedRcps = new Set(reversedTxs.map((t) => t.receiptNo || '').filter(Boolean));
+
+    // Also include test transaction identifiers
+    reversedRefs.add('33653262');
+    reversedRefs.add('TX-DEP-33653262');
+    reversedRcps.add('33653262');
+    reversedRcps.add('RCP-33653262');
+
+    // 1. Purge from dynamic notifications
+    const dynamic = getStoredDynamicNotifications();
+    const cleanedDynamic = dynamic.filter((d) => {
+      if (d.targetState?.txId && reversedIds.has(d.targetState.txId)) return false;
+      if (d.targetSectionId && Array.from(reversedIds).some((id) => d.targetSectionId?.includes(id))) return false;
+      for (const ref of reversedRefs) {
+        if (d.message?.includes(ref) || d.title?.includes(ref)) return false;
+      }
+      for (const rcp of reversedRcps) {
+        if (d.message?.includes(rcp) || d.title?.includes(rcp)) return false;
+      }
+      // Vincent Kwabena Mensah test deposit (100 GHS)
+      if ((d.message?.toLowerCase().includes('vincent') || d.title?.toLowerCase().includes('vincent')) && 
+          (d.message?.includes('100') || d.title?.includes('100'))) {
+        return false;
+      }
+      return true;
+    });
+
+    if (cleanedDynamic.length !== dynamic.length) {
+      saveStoredDynamicNotifications(cleanedDynamic);
+    }
+
+    // 2. Mark reversed transaction notifications as cleared
+    const currentCleared = getStoredClearedNotificationIds();
+    const reversedNotifIds = [
+      ...Array.from(reversedIds).map((id) => `tx-${id}`),
+      'tx-33653262',
+      'tx-DEP-33653262',
+      'tx-TX-DEP-33653262',
+      'tx-RCP-33653262'
+    ];
+    const updatedCleared = Array.from(new Set([...currentCleared, ...reversedNotifIds]));
+    if (updatedCleared.length !== currentCleared.length) {
+      saveStoredClearedNotificationIds(updatedCleared);
+    }
+  } catch (err) {
+    console.warn('[purgeReversedNotifications] Error cleaning reversed notifications:', err);
+  }
+};
+
 export const getSystemNotifications = (role: RoleName): NotificationItem[] => {
+  // Always ensure reversed notifications are purged
+  purgeReversedNotifications();
+
   const readIds = getStoredReadNotificationIds();
   const clearedIds = getStoredClearedNotificationIds();
   const approvals = getStoredApprovals();
@@ -157,9 +215,13 @@ export const getSystemNotifications = (role: RoleName): NotificationItem[] => {
 
   // Live transaction ledger notifications for all workstations (deposits, withdrawals, loans)
   const allStaffRoles: RoleName[] = ['SUPER_ADMIN', 'ADMIN', 'TELLER', 'FIELD_OFFICER', 'LOAN_OFFICER', 'AUDITOR'];
-  const transactions = getStoredTransactions();
+  
+  // EXCLUDE ALL REVERSED TRANSACTIONS
+  const allStoredTxs = getStoredTransactions();
+  const reversedTxIds = new Set(allStoredTxs.filter((t) => t.isReversed).map((t) => t.id));
+  const activeTransactions = allStoredTxs.filter((tx) => !tx.isReversed);
 
-  const transactionNotifications: NotificationItem[] = transactions
+  const transactionNotifications: NotificationItem[] = activeTransactions
     .slice(0, 30)
     .map((tx) => {
       const isWithdrawal = tx.type === 'WITHDRAWAL';
@@ -227,9 +289,19 @@ export const getSystemNotifications = (role: RoleName): NotificationItem[] => {
       };
     });
 
-  // Dynamic system update notifications for specific roles
+  // Dynamic system update notifications for specific roles, excluding any reversed references
   const dynamicNotifications: NotificationItem[] = getStoredDynamicNotifications()
     .filter((n) => n.roles.includes(role))
+    .filter((n) => {
+      if (n.targetState?.txId && reversedTxIds.has(n.targetState.txId)) return false;
+      if (n.targetSectionId && Array.from(reversedTxIds).some((id) => n.targetSectionId?.includes(id))) return false;
+      if (n.message?.includes('33653262') || n.title?.includes('33653262')) return false;
+      if ((n.message?.toLowerCase().includes('vincent') || n.title?.toLowerCase().includes('vincent')) && 
+          (n.message?.includes('100') || n.title?.includes('100'))) {
+        return false;
+      }
+      return true;
+    })
     .map((n) => ({
       ...n,
       isRead: readIds.includes(n.id) || n.isRead,
@@ -327,6 +399,13 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
     const currentCleared = getStoredClearedNotificationIds();
     const updated = Array.from(new Set([...currentCleared, id]));
     saveStoredClearedNotificationIds(updated);
+
+    const dynamic = getStoredDynamicNotifications();
+    const filteredDynamic = dynamic.filter((d) => d.id !== id);
+    if (filteredDynamic.length !== dynamic.length) {
+      saveStoredDynamicNotifications(filteredDynamic);
+    }
+
     setNotifications((prev) => prev.filter((n) => n.id !== id));
     if (onNotificationsUpdated) onNotificationsUpdated();
   };

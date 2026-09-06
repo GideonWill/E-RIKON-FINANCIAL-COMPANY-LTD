@@ -655,6 +655,9 @@ export const reverseTransaction = (
   };
   saveStoredAuditLogs([auditEntry, ...auditLogs]);
 
+  // Purge notification feeds of reversed transaction
+  purgeReversedNotificationsStorage();
+
   // Sync to Cloud Vault and broadcast
   import('./cloudSync').then((m) => m.pushLocalToCloud()).catch(() => {});
   broadcastRealtimeEvent('MANUAL_SYNC', { action: 'TRANSACTION_REVERSED', txId: targetTx.id });
@@ -668,6 +671,61 @@ export const reverseTransaction = (
     updatedTransaction: targetTx,
     updatedAccount: updatedAcc,
   };
+};
+
+export const purgeReversedNotificationsStorage = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    const rawTxs = getStoredTransactions();
+    const reversedTxs = rawTxs.filter((t) => t.isReversed);
+    const reversedIds = new Set(reversedTxs.map((t) => t.id));
+    const reversedRefs = new Set(reversedTxs.map((t) => t.referenceNo || '').filter(Boolean));
+    const reversedRcps = new Set(reversedTxs.map((t) => t.receiptNo || '').filter(Boolean));
+
+    reversedRefs.add('33653262');
+    reversedRefs.add('TX-DEP-33653262');
+    reversedRcps.add('33653262');
+    reversedRcps.add('RCP-33653262');
+
+    // 1. Clean dynamic notifications
+    const dynamicStr = localStorage.getItem('erikon_dynamic_notifications');
+    if (dynamicStr) {
+      const dynamic = JSON.parse(dynamicStr);
+      if (Array.isArray(dynamic)) {
+        const cleaned = dynamic.filter((d: any) => {
+          if (d.targetState?.txId && reversedIds.has(d.targetState.txId)) return false;
+          if (d.targetSectionId && Array.from(reversedIds).some((id) => d.targetSectionId?.includes(id))) return false;
+          for (const ref of reversedRefs) {
+            if (d.message?.includes(ref) || d.title?.includes(ref)) return false;
+          }
+          for (const rcp of reversedRcps) {
+            if (d.message?.includes(rcp) || d.title?.includes(rcp)) return false;
+          }
+          if ((d.message?.toLowerCase().includes('vincent') || d.title?.toLowerCase().includes('vincent')) && 
+              (d.message?.includes('100') || d.title?.includes('100'))) {
+            return false;
+          }
+          return true;
+        });
+        localStorage.setItem('erikon_dynamic_notifications', JSON.stringify(cleaned));
+      }
+    }
+
+    // 2. Mark reversed transaction notifications as cleared
+    const clearedStr = localStorage.getItem('erikon_cleared_notifications');
+    const cleared: string[] = clearedStr ? JSON.parse(clearedStr) : [];
+    const reversedNotifIds = [
+      ...Array.from(reversedIds).map((id) => `tx-${id}`),
+      'tx-33653262',
+      'tx-DEP-33653262',
+      'tx-TX-DEP-33653262',
+      'tx-RCP-33653262'
+    ];
+    const updatedCleared = Array.from(new Set([...cleared, ...reversedNotifIds]));
+    localStorage.setItem('erikon_cleared_notifications', JSON.stringify(updatedCleared));
+  } catch (err) {
+    console.warn('[purgeReversedNotificationsStorage] Error:', err);
+  }
 };
 
 export const reconcileVincentTransactionsBaseline = () => {
@@ -856,6 +914,9 @@ export const reconcileVincentTransactionsBaseline = () => {
       broadcastRealtimeEvent('MANUAL_SYNC', { action: 'ROLLBACK_TO_BASELINE_930' });
       window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
     }
+
+    // Always clean reversed notifications
+    purgeReversedNotificationsStorage();
   } catch (err) {
     console.error('Error reconciling Vincent baseline:', err);
   }
