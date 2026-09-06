@@ -159,7 +159,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
           <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">AMOUNT PAID:</span>
             <span className="text-lg font-black text-emerald-500">
-              GHS {transaction.amount.toFixed(2)}
+              GHS {Number(transaction.amount || 0).toFixed(2)}
             </span>
           </div>
 
@@ -167,11 +167,11 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
           <div className="space-y-1 text-[11px] pt-1 border-t border-dashed border-slate-300 dark:border-slate-800">
             <div className="flex justify-between">
               <span className="text-slate-400">Previous Balance:</span>
-              <span>GHS {transaction.previousBal.toFixed(2)}</span>
+              <span>GHS {Number(transaction.previousBal ?? 0).toFixed(2)}</span>
             </div>
             <div className="flex justify-between font-bold">
               <span className="text-slate-400">New Balance:</span>
-              <span className="text-emerald-500 dark:text-emerald-400">GHS {transaction.newBal.toFixed(2)}</span>
+              <span className="text-emerald-500 dark:text-emerald-400">GHS {Number(transaction.newBal ?? (transaction as any).balanceAfter ?? transaction.amount ?? 0).toFixed(2)}</span>
             </div>
           </div>
 

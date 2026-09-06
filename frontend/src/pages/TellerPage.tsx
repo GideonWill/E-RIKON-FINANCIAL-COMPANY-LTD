@@ -495,7 +495,7 @@ export const TellerPage: React.FC = () => {
                         </h4>
                       </div>
                       <span className="font-mono text-xs font-extrabold text-emerald-500">
-                        GHS {acc.availableBalance.toFixed(2)}
+                        GHS {Number(acc.availableBalance || 0).toFixed(2)}
                       </span>
                     </div>
 
@@ -544,21 +544,21 @@ export const TellerPage: React.FC = () => {
                       <div className="px-2 border-r border-slate-200 dark:border-slate-800">
                         <span className="text-[9px] uppercase font-bold text-blue-500 block">Total Savings</span>
                         <span className="text-xs font-black text-blue-500 font-mono">
-                          GHS {targetTotalSavings.toFixed(2)}
+                          GHS {Number(targetTotalSavings || 0).toFixed(2)}
                         </span>
                       </div>
 
                       <div className="px-2 border-r border-slate-200 dark:border-slate-800">
                         <span className="text-[9px] uppercase font-bold text-rose-500 block">Withdrawals</span>
                         <span className="text-xs font-black text-rose-500 font-mono">
-                          GHS {targetWithdrawn.toFixed(2)}
+                          GHS {Number(targetWithdrawn || 0).toFixed(2)}
                         </span>
                       </div>
 
                       <div className="px-2">
                         <span className="text-[9px] uppercase font-bold text-emerald-500 block">Net Balance</span>
                         <div className="text-base font-extrabold text-emerald-500 font-mono">
-                          GHS {selectedAccount.availableBalance.toFixed(2)}
+                          GHS {Number(selectedAccount.availableBalance || 0).toFixed(2)}
                         </div>
                       </div>
                     </div>
@@ -712,7 +712,7 @@ export const TellerPage: React.FC = () => {
                     </div>
 
                     <span className="font-mono text-xs font-black text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-800 w-fit shadow-xs">
-                      Max Withdrawable: <b className="text-amber-500">GH₵ {loanInfo.maxLoanAmount.toFixed(2)}</b>
+                      Max Withdrawable: <b className="text-amber-500">GH₵ {Number(loanInfo.maxLoanAmount || 0).toFixed(2)}</b>
                     </span>
                   </div>
 
@@ -720,17 +720,17 @@ export const TellerPage: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
                     <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">Total Savings Balance</span>
-                      <span className="font-mono font-black text-slate-900 dark:text-slate-100 text-sm mt-0.5 block">GH₵ {selectedAccount.availableBalance.toFixed(2)}</span>
+                      <span className="font-mono font-black text-slate-900 dark:text-slate-100 text-sm mt-0.5 block">GH₵ {Number(selectedAccount.availableBalance || 0).toFixed(2)}</span>
                     </div>
 
                     <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">Protected 1-Day Fee</span>
-                      <span className="font-mono font-black text-slate-500 dark:text-slate-400 text-sm mt-0.5 block">- GH₵ {loanInfo.protectedRetentionFee.toFixed(2)}</span>
+                      <span className="font-mono font-black text-slate-500 dark:text-slate-400 text-sm mt-0.5 block">- GH₵ {Number(loanInfo.protectedRetentionFee || 0).toFixed(2)}</span>
                     </div>
 
                     <div className="p-3 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 shadow-2xs">
                       <span className="text-[10px] text-amber-700 dark:text-amber-300 block font-medium">Max Loan Available</span>
-                      <span className="font-mono font-black text-amber-600 dark:text-amber-400 text-sm mt-0.5 block">GH₵ {loanInfo.maxLoanAmount.toFixed(2)}</span>
+                      <span className="font-mono font-black text-amber-600 dark:text-amber-400 text-sm mt-0.5 block">GH₵ {Number(loanInfo.maxLoanAmount || 0).toFixed(2)}</span>
                     </div>
                   </div>
 
@@ -743,7 +743,7 @@ export const TellerPage: React.FC = () => {
                       onClick={() => setAmount(String(loanInfo.maxLoanAmount))}
                       className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-40 font-mono font-bold text-xs border border-slate-800 dark:border-slate-700 cursor-pointer transition-all shadow-xs"
                     >
-                      Max Allowable Loan (GH₵ {loanInfo.maxLoanAmount.toFixed(2)})
+                      Max Allowable Loan (GH₵ {Number(loanInfo.maxLoanAmount || 0).toFixed(2)})
                     </button>
                     {loanInfo.maxLoanAmount >= 100 && (
                       <button
@@ -751,7 +751,7 @@ export const TellerPage: React.FC = () => {
                         onClick={() => setAmount(String(Math.floor(loanInfo.maxLoanAmount / 2)))}
                         className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-amber-500 text-xs font-mono font-bold text-slate-700 dark:text-slate-200 cursor-pointer transition-all shadow-xs"
                       >
-                        50% (GH₵ {Math.floor(loanInfo.maxLoanAmount / 2).toFixed(2)})
+                        50% (GH₵ {Number(Math.floor((loanInfo.maxLoanAmount || 0) / 2)).toFixed(2)})
                       </button>
                     )}
                   </div>
@@ -760,7 +760,7 @@ export const TellerPage: React.FC = () => {
                   <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] flex items-start gap-2.5 text-slate-600 dark:text-slate-300 shadow-2xs">
                     <ShieldCheckIcon className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     <div className="leading-relaxed">
-                      <b className="text-slate-900 dark:text-white">Retention Protection Rule:</b> When a client withdraws early as a loan against their savings, the 1-day retention fee (<b>GH₵ {loanInfo.protectedRetentionFee.toFixed(2)}</b>) is never eaten into and remains safely reserved in the vault.
+                      <b className="text-slate-900 dark:text-white">Retention Protection Rule:</b> When a client withdraws early as a loan against their savings, the 1-day retention fee (<b>GH₵ {Number(loanInfo.protectedRetentionFee || 0).toFixed(2)}</b>) is never eaten into and remains safely reserved in the vault.
                     </div>
                   </div>
                 </div>

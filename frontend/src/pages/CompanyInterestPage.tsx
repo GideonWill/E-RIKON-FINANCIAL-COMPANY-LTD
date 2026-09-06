@@ -220,7 +220,7 @@ export const CompanyInterestPage: React.FC = () => {
             </div>
           </div>
           <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-            GHS {totalPiledUp.toFixed(2)}
+            GHS {Number(totalPiledUp || 0).toFixed(2)}
           </div>
           <div className="text-[11px] text-emerald-500 font-semibold flex items-center gap-1">
             <SparklesIcon className="w-3 h-3" /> Accumulated across active cycles
@@ -235,7 +235,7 @@ export const CompanyInterestPage: React.FC = () => {
             </div>
           </div>
           <div className="text-2xl font-black text-emerald-500 font-mono">
-            GHS {availableVaultBalance.toFixed(2)}
+            GHS {Number(availableVaultBalance || 0).toFixed(2)}
           </div>
           <div className="text-[11px] text-slate-400 font-mono">
             Net Liquidity in Company Vault
@@ -250,7 +250,7 @@ export const CompanyInterestPage: React.FC = () => {
             </div>
           </div>
           <div className="text-2xl font-black text-blue-500 font-mono">
-            GHS {totalApprovedWithdrawn.toFixed(2)}
+            GHS {Number(totalApprovedWithdrawn || 0).toFixed(2)}
           </div>
           <div className="text-[11px] text-slate-400 font-mono">
             Disbursed to Bank / MoMo
@@ -321,12 +321,12 @@ export const CompanyInterestPage: React.FC = () => {
                   <td className="py-3 px-3 text-slate-500">{rec.accountNumber}</td>
                   <td className="py-3 px-3">
                     <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20">
-                      GH₵ {rec.packageAmount.toFixed(2)}/day
+                      GH₵ {Number(rec.packageAmount ?? (rec as any).packageRate ?? 10).toFixed(2)}/day
                     </span>
                   </td>
                   <td className="py-3 px-3 text-slate-400 font-sans">{rec.period}</td>
                   <td className="py-3 px-3 text-right font-black text-emerald-500">
-                    +GHS {rec.accumulatedAmount.toFixed(2)}
+                    +GHS {Number(rec.accumulatedAmount || 0).toFixed(2)}
                   </td>
                   <td className="py-3 px-3 text-center">
                     <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
@@ -389,7 +389,7 @@ export const CompanyInterestPage: React.FC = () => {
                     {wd.approvedBy ? `${wd.approvedBy.name} (SUPER_ADMIN)` : <span className="text-amber-400 italic">Pending Super Admin Review</span>}
                   </td>
                   <td className="py-3 px-3 text-right font-black text-slate-900 dark:text-white">
-                    GHS {wd.amount.toFixed(2)}
+                    GHS {Number(wd.amount || 0).toFixed(2)}
                   </td>
                   <td className="py-3 px-3 text-center">
                     <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
@@ -456,7 +456,7 @@ export const CompanyInterestPage: React.FC = () => {
                 <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Available Vault Balance</span>
               </div>
               <span className="text-base font-black font-mono text-emerald-400">
-                GH₵ {availableVaultBalance.toFixed(2)}
+                GH₵ {Number(availableVaultBalance || 0).toFixed(2)}
               </span>
             </div>
 
@@ -625,7 +625,7 @@ export const CompanyInterestPage: React.FC = () => {
             <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
               <div className="flex justify-between text-slate-400">
                 <span>Current Vault Balance:</span>
-                <span className="font-extrabold text-amber-400 font-mono">GHS {availableVaultBalance.toFixed(2)}</span>
+                <span className="font-extrabold text-amber-400 font-mono">GHS {Number(availableVaultBalance || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-slate-400">
                 <span>Target Vault Balance:</span>

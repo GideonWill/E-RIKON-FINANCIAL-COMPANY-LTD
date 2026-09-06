@@ -679,13 +679,13 @@ export const CustomersPage: React.FC = () => {
                   Package: GH₵ {successBanner.packageRate}.00/Day
                 </span>
                 <span className="bg-blue-500/20 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md font-black">
-                  Amount Started With: GH₵ {successBanner.amountStartedWith.toFixed(2)} ({successBanner.daysCovered} Days Spread)
+                  Amount Started With: GH₵ {Number(successBanner.amountStartedWith || 0).toFixed(2)} ({successBanner.daysCovered} Days Spread)
                 </span>
                 <span className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md font-black">
-                  Available Savings: GH₵ {successBanner.availableSavings.toFixed(2)}
+                  Available Savings: GH₵ {Number(successBanner.availableSavings || 0).toFixed(2)}
                 </span>
                 <span className="bg-purple-500/20 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-md font-bold">
-                  1-Day Fee: GH₵ {successBanner.companyFee.toFixed(2)}
+                  1-Day Fee: GH₵ {Number(successBanner.companyFee || 0).toFixed(2)}
                 </span>
               </div>
             </div>
@@ -927,7 +927,7 @@ export const CustomersPage: React.FC = () => {
                       <ArrowTrendingUpIcon className="w-3 h-3 text-blue-500" /> Total Savings
                     </span>
                     <div className="font-mono font-black text-blue-600 dark:text-blue-400 text-xs">
-                      GH₵ {fin.totalDepositedAcrossCycles.toFixed(2)}
+                      GH₵ {Number(fin.totalDepositedAcrossCycles || 0).toFixed(2)}
                     </div>
                     <div className="text-[9px] text-slate-400 font-mono">
                       Cycle #{fin.cycleNumber} ({fin.daysPaid}/31 Days)
@@ -939,7 +939,7 @@ export const CustomersPage: React.FC = () => {
                       <ArrowDownLeftIcon className="w-3 h-3 text-rose-500" /> Total Withdrawals
                     </span>
                     <div className="font-mono font-black text-rose-600 dark:text-rose-400 text-xs">
-                      GH₵ {fin.totalWithdrawn.toFixed(2)}
+                      GH₵ {Number(fin.totalWithdrawn || 0).toFixed(2)}
                     </div>
                     <div className="text-[9px] text-slate-400 font-mono">
                       {fin.customerWithdrawals.length} Withdrawal(s)
@@ -951,7 +951,7 @@ export const CustomersPage: React.FC = () => {
                       <WalletIcon className="w-3 h-3 text-emerald-500" /> Net Balance
                     </span>
                     <div className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-xs">
-                      GH₵ {fin.availableSavings.toFixed(2)}
+                      GH₵ {Number(fin.availableSavings || 0).toFixed(2)}
                     </div>
                     <div className="text-[9px] text-emerald-500 font-mono font-bold">
                       Available in Vault
@@ -1223,7 +1223,7 @@ export const CustomersPage: React.FC = () => {
                     <ArrowTrendingUpIcon className="w-3 h-3 text-blue-500 shrink-0" /> Total Savings
                   </span>
                   <div className="text-base sm:text-xl font-black font-mono text-blue-500">
-                    GH₵ {fin.totalDepositedAcrossCycles.toFixed(2)}
+                    GH₵ {Number(fin.totalDepositedAcrossCycles || 0).toFixed(2)}
                   </div>
                   <p className="text-[9px] sm:text-[10px] text-slate-500 truncate">Gross (All Cycles)</p>
                 </div>
@@ -1234,7 +1234,7 @@ export const CustomersPage: React.FC = () => {
                     <ArrowDownLeftIcon className="w-3 h-3 text-rose-500 shrink-0" /> Withdrawals
                   </span>
                   <div className="text-base sm:text-xl font-black font-mono text-rose-500">
-                    GH₵ {fin.totalWithdrawn.toFixed(2)}
+                    GH₵ {Number(fin.totalWithdrawn || 0).toFixed(2)}
                   </div>
                   <p className="text-[9px] sm:text-[10px] text-slate-500 truncate">{fin.customerWithdrawals.length} Record(s)</p>
                 </div>
@@ -1245,7 +1245,7 @@ export const CustomersPage: React.FC = () => {
                     <WalletIcon className="w-3 h-3 text-emerald-500 shrink-0" /> Net Balance
                   </span>
                   <div className="text-base sm:text-xl font-black font-mono text-emerald-500">
-                    GH₵ {fin.availableSavings.toFixed(2)}
+                    GH₵ {Number(fin.availableSavings || 0).toFixed(2)}
                   </div>
                   <p className="text-[9px] sm:text-[10px] text-emerald-500 font-bold truncate">Available in Vault</p>
                 </div>
@@ -1271,7 +1271,7 @@ export const CustomersPage: React.FC = () => {
                     </span>
                   ) : (
                     <span>
-                      Completed <b>{fin.daysPaid} of 31 days</b> (Deposited: <b>GH₵ {fin.totalDeposited.toFixed(2)}</b>). On Day 31, 1 day's package (<b>GH₵ {fin.packageRate}.00</b>) is retained.
+                      Completed <b>{fin.daysPaid} of 31 days</b> (Deposited: <b>GH₵ {Number(fin.totalDeposited || 0).toFixed(2)}</b>). On Day 31, 1 day's package (<b>GH₵ {fin.packageRate}.00</b>) is retained.
                     </span>
                   )}
                 </p>
@@ -1374,10 +1374,10 @@ export const CustomersPage: React.FC = () => {
                             <div className={`font-mono font-black text-[11px] sm:text-xs ${
                               isWithdrawal ? 'text-rose-500' : isFee ? 'text-purple-500' : 'text-emerald-500'
                             }`}>
-                              {isWithdrawal ? '-' : '+'}GH₵ {tx.amount.toFixed(2)}
+                              {isWithdrawal ? '-' : '+'}GH₵ {(tx.amount || 0).toFixed(2)}
                             </div>
                             <div className="text-[8px] sm:text-[9px] font-mono text-slate-400">
-                              Bal: GH₵ {tx.newBal.toFixed(2)}
+                              Bal: GH₵ {((tx.newBal ?? (tx as any).balanceAfter ?? tx.amount) || 0).toFixed(2)}
                             </div>
                           </div>
                         </div>

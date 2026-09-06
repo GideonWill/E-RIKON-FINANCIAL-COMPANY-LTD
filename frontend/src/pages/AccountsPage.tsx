@@ -248,18 +248,18 @@ export const AccountsPage: React.FC = () => {
                     <div>
                       <span className="text-[9px] text-slate-400 block">Total Savings</span>
                       <span className="font-extrabold text-blue-400">
-                        GHS {((acc.dailyCycles || []).reduce((sum, c) => sum + (c.totalDeposited || 0), 0) || acc.currentBalance).toFixed(2)}
+                        GHS {Number(((acc.dailyCycles || []).reduce((sum, c) => sum + (c.totalDeposited || 0), 0) || acc.currentBalance || 0)).toFixed(2)}
                       </span>
                     </div>
                     <div>
                       <span className="text-[9px] text-slate-400 block">Withdrawals</span>
                       <span className="font-extrabold text-rose-400">
-                        GHS {getStoredTransactions().filter((t) => (t.accountId === acc.id || t.account?.id === acc.id) && t.type === 'WITHDRAWAL').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}
+                        GHS {Number(getStoredTransactions().filter((t) => (t.accountId === acc.id || t.account?.id === acc.id) && t.type === 'WITHDRAWAL').reduce((sum, t) => sum + (t.amount || 0), 0) || 0).toFixed(2)}
                       </span>
                     </div>
                     <div className="text-right">
                       <span className="text-[9px] text-slate-400 block">Net Balance</span>
-                      <span className="font-extrabold text-emerald-400">GHS {acc.availableBalance.toFixed(2)}</span>
+                      <span className="font-extrabold text-emerald-400">GHS {Number(acc.availableBalance || 0).toFixed(2)}</span>
                     </div>
                   </div>
 
@@ -292,7 +292,7 @@ export const AccountsPage: React.FC = () => {
               const selectedWithdrawn = allTxs
                 .filter((t) => (t.accountId === selectedAccount.id || t.account?.id === selectedAccount.id) && t.type === 'WITHDRAWAL')
                 .reduce((sum, t) => sum + t.amount, 0);
-              const selectedTotalSavings = cycles.reduce((sum, c) => sum + (c.totalDeposited || 0), 0) || selectedAccount.currentBalance;
+              const selectedTotalSavings = Number(cycles.reduce((sum, c) => sum + (c.totalDeposited || 0), 0) || selectedAccount.currentBalance || 0);
 
               return (
                 <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
@@ -356,19 +356,19 @@ export const AccountsPage: React.FC = () => {
                         <div className="px-2 border-r border-slate-200 dark:border-slate-800">
                           <div className="text-[9px] text-blue-500 uppercase font-bold">Total Savings</div>
                           <div className="text-xs font-black text-blue-500 font-mono">
-                            GHS {selectedTotalSavings.toFixed(2)}
+                            GHS {Number(selectedTotalSavings || 0).toFixed(2)}
                           </div>
                         </div>
                         <div className="px-2 border-r border-slate-200 dark:border-slate-800">
                           <div className="text-[9px] text-rose-500 uppercase font-bold">Withdrawals</div>
                           <div className="text-xs font-black text-rose-500 font-mono">
-                            GHS {selectedWithdrawn.toFixed(2)}
+                            GHS {Number(selectedWithdrawn || 0).toFixed(2)}
                           </div>
                         </div>
                         <div className="px-2">
                           <div className="text-[9px] text-emerald-500 uppercase font-bold">Net Balance</div>
                           <div className="text-sm font-black text-emerald-500 font-mono">
-                            GHS {selectedAccount.availableBalance.toFixed(2)}
+                            GHS {Number(selectedAccount.availableBalance || 0).toFixed(2)}
                           </div>
                         </div>
                       </div>

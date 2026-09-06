@@ -301,7 +301,7 @@ export const FieldOfficerPage: React.FC = () => {
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">
                     <span className="font-mono">Cycle #{accCycleNo} • Day {currentCount}/31</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-slate-200">GHS {acc.currentBalance.toFixed(2)}</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-slate-200">GHS {Number(acc.currentBalance || 0).toFixed(2)}</span>
                   </div>
                   <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 truncate">
                     <MapPinIcon className="w-3 h-3 text-rose-500 flex-shrink-0" /> {acc.customer?.address}
@@ -338,7 +338,7 @@ export const FieldOfficerPage: React.FC = () => {
                 <div className="text-right flex sm:flex-col items-center sm:items-end justify-between">
                   <span className="text-[10px] uppercase font-bold text-slate-400">Total Client Savings</span>
                   <div className="text-2xl font-black text-amber-500 font-mono">
-                    GHS {selectedAccount.availableBalance.toFixed(2)}
+                    GHS {Number(selectedAccount.availableBalance || 0).toFixed(2)}
                   </div>
                 </div>
               </div>
@@ -448,7 +448,7 @@ export const FieldOfficerPage: React.FC = () => {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-xs pt-1">
                       <div>
                         <span className="text-[10px] text-slate-400 block">Package Rate</span>
-                        <span className="font-bold">GH₵ {splitPreview.packageAmount.toFixed(2)}/day</span>
+                        <span className="font-bold">GH₵ {Number(splitPreview.packageAmount || 0).toFixed(2)}/day</span>
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-400 block">Days Sequence</span>
@@ -456,12 +456,12 @@ export const FieldOfficerPage: React.FC = () => {
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-400 block">Total Deposited</span>
-                        <span className="font-bold">GHS {splitPreview.totalPaid.toFixed(2)}</span>
+                        <span className="font-bold">GHS {Number(splitPreview.totalPaid || 0).toFixed(2)}</span>
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-400 block">Company Day 31 Fee</span>
                         <span className="font-bold text-emerald-400">
-                          {splitPreview.isDay31Included ? `GHS ${splitPreview.companyFeeIncluded.toFixed(2)} (Retained)` : 'GHS 0.00'}
+                          {splitPreview.isDay31Included ? `GHS ${Number(splitPreview.companyFeeIncluded || 0).toFixed(2)} (Retained)` : 'GHS 0.00'}
                         </span>
                       </div>
                     </div>

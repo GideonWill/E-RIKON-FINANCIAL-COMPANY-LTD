@@ -18,16 +18,18 @@ import { AuditPage } from './pages/AuditPage';
 import { CompanyInterestPage } from './pages/CompanyInterestPage';
 import { ApprovalsPage } from './pages/ApprovalsPage';
 import { SplashScreen } from './components/ui/SplashScreen';
+import { GlobalErrorBoundary } from './components/layout/GlobalErrorBoundary';
 
 const queryClient = new QueryClient();
 
 export const App: React.FC = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AuthProvider>
-          <SplashScreen minDuration={1800} />
-          <BrowserRouter>
+    <GlobalErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <AuthProvider>
+            <SplashScreen minDuration={1800} />
+            <BrowserRouter>
             <Routes>
               {/* Login & Registration Portal */}
               <Route path="/login" element={<LoginPage />} />
@@ -114,6 +116,7 @@ export const App: React.FC = () => {
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
+    </GlobalErrorBoundary>
   );
 };
 

@@ -449,27 +449,29 @@ export const getStoredTransactions = (): Transaction[] => {
     } catch {}
   }
   const deletedIds = getDeletedCustomerIds();
-  const currentCustomers = getStoredCustomers();
-  const currentCustIds = new Set(currentCustomers.map((c) => c.id));
-  const currentCustNos = new Set(currentCustomers.map((c) => c.customerNumber).filter(Boolean));
 
   return parsed.filter((t) => {
+    if (!t) return false;
     if (deletedIds.includes(t.id) || (t.receiptNo && deletedIds.includes(t.receiptNo))) return false;
     const txCustId = (t as any).customerId || t.account?.customerId || t.account?.customer?.id;
     const txCustNo = (t as any).customer?.customerNumber || t.account?.customer?.customerNumber;
     if (txCustId && deletedIds.includes(txCustId)) return false;
     if (txCustNo && deletedIds.includes(txCustNo)) return false;
 
-    // Filter out transactions belonging to deleted or non-existent customers
-    if (txCustId && currentCustomers.length > 0 && !currentCustIds.has(txCustId)) return false;
-    if (txCustNo && currentCustomers.length > 0 && !currentCustNos.has(txCustNo)) return false;
-
     // Filter out company interest withdrawal transactions if no approved withdrawal exists in vault
     if (t.type === 'COMPANY_INTEREST_WITHDRAWAL') {
-      const approvedWds = getStoredCompanyWithdrawals().filter((w) => w.status === 'APPROVED');
-      if (approvedWds.length === 0) return false;
-      const hasMatch = approvedWds.some((w) => Math.abs(w.amount - t.amount) < 0.01);
-      if (!hasMatch) return false;
+      try {
+        const rawWds = localStorage.getItem('erikon_company_withdrawals');
+        if (!rawWds) return false;
+        const wds = JSON.parse(rawWds);
+        if (!Array.isArray(wds) || wds.length === 0) return false;
+        const approvedWds = wds.filter((w: any) => w.status === 'APPROVED');
+        if (approvedWds.length === 0) return false;
+        const hasMatch = approvedWds.some((w: any) => Math.abs(w.amount - t.amount) < 0.01);
+        if (!hasMatch) return false;
+      } catch {
+        return false;
+      }
     }
 
     return true;
