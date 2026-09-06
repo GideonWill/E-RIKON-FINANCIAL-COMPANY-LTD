@@ -285,6 +285,7 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       }
       localStorage.setItem('erikon_dynamic_notifications', JSON.stringify([]));
       localStorage.setItem('erikon_read_notifications', JSON.stringify([]));
+      localStorage.setItem('erikon_cleared_notifications', JSON.stringify([]));
 
       broadcastRealtimeEvent('MANUAL_SYNC', { source: 'REMOTE_CLOUD_AUTHORITATIVE' }, 'remote');
       if (typeof window !== 'undefined') {

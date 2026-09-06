@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getStoredApprovals, getStoredTransactions } from '../../services/api';
-import { useRealtimeSync } from '../../services/realtimeSync';
+import { useRealtimeSync, broadcastRealtimeEvent } from '../../services/realtimeSync';
 import { RoleName } from '../../types';
 import { 
   BellAlertIcon, 
@@ -17,7 +17,8 @@ import {
   DevicePhoneMobileIcon, 
   ShieldCheckIcon,
   TrashIcon,
-  ArrowDownLeftIcon
+  ArrowDownLeftIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline';
 
 export interface NotificationItem {
@@ -49,8 +50,32 @@ export const getStoredReadNotificationIds = (): string[] => {
 };
 
 export const saveStoredReadNotificationIds = (ids: string[]) => {
-  localStorage.setItem('erikon_read_notifications', JSON.stringify(ids));
-  window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
+  try {
+    localStorage.setItem('erikon_read_notifications', JSON.stringify(ids));
+  } catch {}
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
+  }
+  broadcastRealtimeEvent('MANUAL_SYNC', { readNotifications: ids });
+};
+
+export const getStoredClearedNotificationIds = (): string[] => {
+  try {
+    const data = localStorage.getItem('erikon_cleared_notifications');
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveStoredClearedNotificationIds = (ids: string[]) => {
+  try {
+    localStorage.setItem('erikon_cleared_notifications', JSON.stringify(ids));
+  } catch {}
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
+  }
+  broadcastRealtimeEvent('MANUAL_SYNC', { clearedNotifications: ids });
 };
 
 export const getStoredDynamicNotifications = (): NotificationItem[] => {
@@ -63,18 +88,30 @@ export const getStoredDynamicNotifications = (): NotificationItem[] => {
 };
 
 export const saveStoredDynamicNotifications = (notifications: NotificationItem[]) => {
-  localStorage.setItem('erikon_dynamic_notifications', JSON.stringify(notifications.slice(0, 50)));
-  window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
+  try {
+    localStorage.setItem('erikon_dynamic_notifications', JSON.stringify(notifications.slice(0, 50)));
+  } catch {}
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
+  }
 };
 
-export const clearAllNotifications = () => {
-  localStorage.setItem('erikon_dynamic_notifications', JSON.stringify([]));
+export const clearAllNotifications = (role?: RoleName) => {
+  const readIds = getStoredReadNotificationIds();
+  const currentCleared = getStoredClearedNotificationIds();
+  
   const txs = getStoredTransactions();
   const txIds = txs.map((t) => `tx-${t.id}`);
   const approvals = getStoredApprovals();
   const apprIds = approvals.map((a) => `appr-${a.id}`);
-  saveStoredReadNotificationIds(Array.from(new Set([...getStoredReadNotificationIds(), ...txIds, ...apprIds])));
-  window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
+  const dynamic = getStoredDynamicNotifications();
+  const dynamicIds = dynamic.map((d) => d.id);
+  
+  const allIdsToClear = Array.from(new Set([...currentCleared, ...txIds, ...apprIds, ...dynamicIds]));
+  
+  saveStoredClearedNotificationIds(allIdsToClear);
+  saveStoredDynamicNotifications([]);
+  saveStoredReadNotificationIds(Array.from(new Set([...readIds, ...allIdsToClear])));
 };
 
 export const addSystemNotification = (item: {
@@ -98,6 +135,7 @@ export const addSystemNotification = (item: {
 
 export const getSystemNotifications = (role: RoleName): NotificationItem[] => {
   const readIds = getStoredReadNotificationIds();
+  const clearedIds = getStoredClearedNotificationIds();
   const approvals = getStoredApprovals();
   const pendingApprovals = approvals.filter((a) => a.status === 'PENDING');
 
@@ -203,7 +241,9 @@ export const getSystemNotifications = (role: RoleName): NotificationItem[] => {
   transactionNotifications.forEach((n) => notifMap.set(n.id, n));
   dynamicNotifications.forEach((n) => notifMap.set(n.id, n));
 
-  return Array.from(notifMap.values()).filter((n) => n.roles.includes(role));
+  return Array.from(notifMap.values())
+    .filter((n) => n.roles.includes(role))
+    .filter((n) => !clearedIds.includes(n.id));
 };
 
 export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose, onNotificationsUpdated }) => {
@@ -211,6 +251,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
   const { currentUser } = useAuth();
   const [filterMode, setFilterMode] = useState<'MY_ROLE' | 'ALL'>('MY_ROLE');
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const activeRole = currentUser?.role || 'SUPER_ADMIN';
 
@@ -219,25 +260,47 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
   };
 
   useEffect(() => {
-    loadNotifications();
+    if (isOpen) {
+      loadNotifications();
+    }
+  }, [isOpen, activeRole]);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      loadNotifications();
+    };
+    window.addEventListener('erikon_realtime_update', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('erikon_realtime_update', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
   }, [activeRole]);
 
   useRealtimeSync(() => {
     loadNotifications();
   });
 
-  if (!isOpen) return null;
+  const displayedNotifications = useMemo(() => {
+    return filterMode === 'MY_ROLE'
+      ? notifications.filter((n) => n.roles.includes(activeRole))
+      : notifications;
+  }, [notifications, filterMode, activeRole]);
 
-  const displayedNotifications = filterMode === 'MY_ROLE'
-    ? notifications.filter((n) => n.roles.includes(activeRole))
-    : notifications;
+  const unreadCount = useMemo(() => {
+    return displayedNotifications.filter((n) => !n.isRead).length;
+  }, [displayedNotifications]);
+
+  if (!isOpen) return null;
 
   const handleNotificationClick = (item: NotificationItem) => {
     const readIds = getStoredReadNotificationIds();
     if (!readIds.includes(item.id)) {
       saveStoredReadNotificationIds([...readIds, item.id]);
     }
-    loadNotifications();
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n))
+    );
     if (onNotificationsUpdated) onNotificationsUpdated();
     onClose();
 
@@ -259,12 +322,49 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
     }
   };
 
+  const handleDismissNotification = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const currentCleared = getStoredClearedNotificationIds();
+    const updated = Array.from(new Set([...currentCleared, id]));
+    saveStoredClearedNotificationIds(updated);
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    if (onNotificationsUpdated) onNotificationsUpdated();
+  };
+
   const markAllAsRead = () => {
-    const allIds = notifications.map((n) => n.id);
+    const allIds = displayedNotifications.map((n) => n.id);
     const readIds = getStoredReadNotificationIds();
     const merged = Array.from(new Set([...readIds, ...allIds]));
     saveStoredReadNotificationIds(merged);
-    loadNotifications();
+
+    // Also mark dynamic notifications as read in storage
+    const dynamic = getStoredDynamicNotifications();
+    if (dynamic.length > 0) {
+      saveStoredDynamicNotifications(dynamic.map((d) => ({ ...d, isRead: true })));
+    }
+
+    // Immediately update local state for instantaneous UI response
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+
+    setStatusMessage('All notifications marked as read');
+    setTimeout(() => setStatusMessage(null), 2500);
+
+    if (onNotificationsUpdated) onNotificationsUpdated();
+  };
+
+  const handleClearAll = () => {
+    const displayedIds = displayedNotifications.map((n) => n.id);
+    const currentCleared = getStoredClearedNotificationIds();
+    const updatedCleared = Array.from(new Set([...currentCleared, ...displayedIds]));
+    saveStoredClearedNotificationIds(updatedCleared);
+    saveStoredDynamicNotifications([]);
+
+    // Immediately clear displayed notifications
+    setNotifications((prev) => prev.filter((n) => !displayedIds.includes(n.id)));
+
+    setStatusMessage('All notifications cleared successfully');
+    setTimeout(() => setStatusMessage(null), 2500);
+
     if (onNotificationsUpdated) onNotificationsUpdated();
   };
 
@@ -300,15 +400,20 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2">
-            <div className="p-2 rounded-xl bg-teal-50 text-[#0d9488] border border-teal-200">
+            <div className="p-2 rounded-xl bg-teal-50 text-[#0d9488] border border-teal-200 dark:bg-teal-950/40 dark:border-teal-800">
               <BellAlertIcon className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-1.5">
                 Workstation Alerts
-                <span className="text-[10px] bg-teal-50 text-[#0d9488] font-black px-2 py-0.5 rounded-full border border-teal-200 uppercase">
+                <span className="text-[10px] bg-teal-50 text-[#0d9488] font-black px-2 py-0.5 rounded-full border border-teal-200 dark:bg-teal-950/40 dark:border-teal-800 uppercase">
                   {(activeRole || 'STAFF').replace(/_/g, ' ')}
                 </span>
+                {unreadCount > 0 && (
+                  <span className="text-[9px] bg-emerald-500 text-white font-black px-1.5 py-0.5 rounded-full shadow-xs">
+                    {unreadCount} NEW
+                  </span>
+                )}
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 Tailored notification feed for your active role
@@ -320,10 +425,19 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
             type="button"
             onClick={onClose}
             className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
+            aria-label="Close"
           >
             <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Transient Status Feedback Alert */}
+        {statusMessage && (
+          <div className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300 text-xs font-bold animate-pulse">
+            <CheckCircleIcon className="w-4 h-4 text-[#0d9488]" />
+            <span>{statusMessage}</span>
+          </div>
+        )}
 
         {/* Filter Bar */}
         <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-950 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
@@ -338,7 +452,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
               onClick={() => setFilterMode('MY_ROLE')}
               className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer ${
                 filterMode === 'MY_ROLE'
-                  ? 'bg-teal-50 text-[#0d9488] border border-teal-200 shadow-xs'
+                  ? 'bg-teal-50 text-[#0d9488] border border-teal-200 dark:bg-teal-950/60 dark:border-teal-800 shadow-xs'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
             >
@@ -349,7 +463,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
               onClick={() => setFilterMode('ALL')}
               className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer ${
                 filterMode === 'ALL'
-                  ? 'bg-teal-50 text-[#0d9488] border border-teal-200 shadow-xs'
+                  ? 'bg-teal-50 text-[#0d9488] border border-teal-200 dark:bg-teal-950/60 dark:border-teal-800 shadow-xs'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
             >
@@ -359,10 +473,13 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
         </div>
 
         {/* Notification List */}
-        <div className="max-h-[380px] overflow-y-auto space-y-2.5 pr-1">
+        <div className="max-h-[360px] overflow-y-auto space-y-2.5 pr-1">
           {displayedNotifications.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-xs space-y-1">
-              <p className="font-bold">No active notifications</p>
+            <div className="p-8 text-center text-slate-400 text-xs space-y-1.5">
+              <div className="w-10 h-10 mx-auto rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                <CheckCircleIcon className="w-5 h-5 text-emerald-500" />
+              </div>
+              <p className="font-bold text-slate-700 dark:text-slate-200">No active notifications</p>
               <p className="text-[11px] opacity-70">Everything is caught up and synchronized!</p>
             </div>
           ) : (
@@ -370,23 +487,46 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
               <div
                 key={n.id}
                 onClick={() => handleNotificationClick(n)}
-                className={`p-3.5 rounded-2xl border transition-all cursor-pointer group space-y-1.5 ${
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer group space-y-1.5 relative ${
                   n.isRead
                     ? 'bg-slate-50/50 dark:bg-slate-950/30 border-slate-100 dark:border-slate-800/60 opacity-65 hover:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    : 'bg-emerald-50/30 dark:bg-teal-950/20 border-teal-200/60 shadow-xs hover:border-[#0d9488]'
+                    : 'bg-emerald-50/30 dark:bg-teal-950/20 border-teal-300 dark:border-teal-700/60 shadow-xs hover:border-[#0d9488]'
                 }`}
               >
-                <div className="flex items-center justify-between text-xs font-bold">
-                  <span className="flex items-center gap-1.5 text-[#065f46] dark:text-teal-400 group-hover:underline">
+                <div className="flex items-center justify-between text-xs font-bold gap-2">
+                  <span className="flex items-center gap-1.5 text-[#065f46] dark:text-teal-400 group-hover:underline truncate">
                     {getIcon(n.type)}
-                    {n.title}
+                    <span className="truncate">{n.title}</span>
                   </span>
-                  <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
-                    <ClockIcon className="w-3 h-3" /> {n.time}
-                  </span>
+                  
+                  <div className="flex items-center space-x-2 shrink-0">
+                    {n.isRead ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center gap-0.5">
+                        <CheckCircleIcon className="w-2.5 h-2.5 text-slate-400" />
+                        Read
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-emerald-500 text-white shadow-xs animate-pulse">
+                        NEW
+                      </span>
+                    )}
+
+                    <span className="text-[10px] text-slate-400 font-mono flex items-center gap-0.5">
+                      <ClockIcon className="w-3 h-3" /> {n.time}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={(e) => handleDismissNotification(n.id, e)}
+                      className="p-1 rounded-md text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
+                      title="Dismiss notification"
+                    >
+                      <XMarkIcon className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
-                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug pr-4">
                   {n.message}
                 </p>
 
@@ -403,28 +543,29 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
         <div className="flex space-x-2 pt-2 border-t border-slate-100 dark:border-slate-800">
           <button
             type="button"
-            onClick={() => {
-              clearAllNotifications();
-              loadNotifications();
-              if (onNotificationsUpdated) onNotificationsUpdated();
-            }}
-            className="px-3 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 border border-rose-200 dark:border-rose-900/50 font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1"
-            title="Clear all alerts"
+            disabled={displayedNotifications.length === 0}
+            onClick={handleClearAll}
+            className="px-3.5 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 disabled:opacity-40 disabled:cursor-not-allowed border border-rose-200 dark:border-rose-900/50 font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+            title="Clear all alerts from feed"
           >
-            <TrashIcon className="w-3.5 h-3.5" />
+            <TrashIcon className="w-4 h-4" />
             <span>Clear All</span>
           </button>
+          
           <button
             type="button"
+            disabled={displayedNotifications.length === 0 || unreadCount === 0}
             onClick={markAllAsRead}
-            className="flex-1 py-2.5 rounded-xl bg-teal-50 text-[#0d9488] hover:bg-teal-100 border border-teal-200 font-bold text-xs transition-all cursor-pointer"
+            className="flex-1 py-2.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-[#0d9488] dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/40 disabled:opacity-40 disabled:cursor-not-allowed border border-teal-200 dark:border-teal-800 font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
           >
-            Mark All as Read
+            <CheckCircleIcon className="w-4 h-4" />
+            <span>Mark All as Read</span>
           </button>
+          
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer active:scale-95"
           >
             Close
           </button>
@@ -434,3 +575,4 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
     </div>
   );
 };
+

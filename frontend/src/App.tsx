@@ -36,6 +36,7 @@ if (typeof window !== 'undefined') {
       'erikon_approvals',
       'erikon_dynamic_notifications',
       'erikon_read_notifications',
+      'erikon_cleared_notifications',
     ];
     keysToPurge.forEach((k) => localStorage.removeItem(k));
     localStorage.setItem(purgeKey, 'true');

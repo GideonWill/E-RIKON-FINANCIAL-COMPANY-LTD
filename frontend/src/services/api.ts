@@ -488,6 +488,7 @@ export const clearClientAndFinancialDatabase = () => {
   localStorage.setItem('erikon_deleted_customer_ids', JSON.stringify([]));
   localStorage.setItem('erikon_dynamic_notifications', JSON.stringify([]));
   localStorage.setItem('erikon_read_notifications', JSON.stringify([]));
+  localStorage.setItem('erikon_cleared_notifications', JSON.stringify([]));
   localStorage.setItem('erikon_audit_logs', JSON.stringify([]));
 
   try {
