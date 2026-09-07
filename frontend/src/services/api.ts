@@ -2965,6 +2965,7 @@ export const startNewCycleForAccount = (
   saveStoredAuditLogs([newAuditLog, ...auditLogs]);
 
   broadcastRealtimeEvent('NEW_SAVINGS_CYCLE_STARTED', { accountId: acc.id, cycleNumber: nextCycleNo });
+  import('./cloudSync').then(({ pushLocalToCloud }) => pushLocalToCloud()).catch(() => {});
   return acc;
 };
 

@@ -471,6 +471,43 @@ export const AccountsPage: React.FC = () => {
                     </div>
                   )}
 
+                  {/* Dedicated Full Cycle Action Card */}
+                  {(cycles[0]?.isCompleted || (cycles[0]?.currentDayCount || 0) >= 31 || (activeCycle?.currentDayCount || 0) >= 31) && (
+                    <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-teal-500/15 to-amber-500/10 border-2 border-emerald-500/50 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                          <SparklesIcon className="w-6 h-6" />
+                        </div>
+                        <div className="min-w-0 text-left">
+                          <div className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                            <span>Cycle #{displayedCycleNo} is Full (31/31 Days Complete)!</span>
+                          </div>
+                          <p className="text-[10px] sm:text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
+                            Corporate fee retained. Account is primed and ready to advance to Cycle #{((cycles[0]?.cycleNumber || 1) + 1)}.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextNo = (cycles[0]?.cycleNumber || 1) + 1;
+                          startNewCycleForAccount(selectedAccount.id, currentUser || undefined);
+                          const fresh = getStoredAccounts();
+                          setAccounts(fresh);
+                          const updated = fresh.find((a) => a.id === selectedAccount.id);
+                          if (updated) {
+                            setSelectedAccount(updated);
+                            setSelectedCycleNumber(updated.dailyCycles?.[0]?.cycleNumber || null);
+                          }
+                        }}
+                        className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-white text-xs font-black shrink-0 flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/30 cursor-pointer transition-all active:scale-95"
+                      >
+                        <SparklesIcon className="w-4 h-4" />
+                        <span>Advance to Cycle #{((cycles[0]?.cycleNumber || 1) + 1)} Now</span>
+                      </button>
+                    </div>
+                  )}
+
                   {/* 31-Day Policy Visual Matrix */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
