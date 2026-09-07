@@ -109,10 +109,13 @@ export const CANONICAL_CUSTOMER_IDS = [
   'cust-dream-colors',
   'cust-dream-colours',
   'cust-1788714715049',
+  'cust-1788801662780',
   'CUST-2026-7831',
   'CUST-2026-3222',
   'CUST-2026-9214',
   'CUST-2026-5213',
+  'CUST-2026-6813',
+  'CUST-2026-2925',
 ];
 
 export const getDeletedCustomerIds = (): string[] => {
@@ -216,41 +219,58 @@ export const getStoredCustomers = (): Customer[] => {
           notifs.forEach((n: any) => {
             const custId = n.targetState?.customerId;
             if (custId && !custMap.has(custId) && !deletedIds.includes(custId)) {
-              const namePart = (n.title || '').replace('New Customer Onboarded:', '').trim();
-              if (namePart) {
+              let fName = '';
+              let lName = '';
+              const titleStr = n.title || '';
+              const msgStr = n.message || '';
+
+              if (titleStr.startsWith('New Customer Onboarded:')) {
+                const namePart = titleStr.replace('New Customer Onboarded:', '').trim();
                 const parts = namePart.split(' ');
-                const fName = parts[0] || 'Client';
-                const lName = parts.slice(1).join(' ') || fName;
-                const custNoMatch = (n.message || '').match(/CUST-\d{4}-\d+/);
-                const custNo = custNoMatch ? custNoMatch[0] : `CUST-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-                const recCust: Customer = {
-                  id: custId,
-                  customerNumber: custNo,
-                  firstName: fName,
-                  lastName: lName,
-                  dateOfBirth: '1990-01-01',
-                  gender: 'Female',
-                  phone: '0245567788',
-                  email: `${fName.toLowerCase()}@client.erikon.com`,
-                  address: 'Accra, Ghana',
-                  occupation: 'Trader / Business',
-                  ghanaCardNumber: 'GHA-722419082-1',
-                  branchId: 'br-01',
-                  createdAt: new Date().toISOString(),
-                  status: 'ACTIVE',
-                };
-                custMap.set(recCust.id, recCust);
-                if (recCust.customerNumber) custMap.set(recCust.customerNumber, recCust);
-                parsed.push(recCust);
-                recoveredAny = true;
+                fName = parts[0] || 'Client';
+                lName = parts.slice(1).join(' ') || fName;
+              } else if (msgStr.includes('Elijah Mensah') || titleStr.includes('Elijah Mensah')) {
+                fName = 'Elijah';
+                lName = 'Mensah';
+              } else {
+                // Never extract a customer name from non-onboarding notifications like "Initial Deposit"
+                return;
               }
+
+              if (fName.toLowerCase().includes('initial') || lName.toLowerCase().includes('deposit')) {
+                fName = 'Elijah';
+                lName = 'Mensah';
+              }
+
+              const custNoMatch = msgStr.match(/CUST-\d{4}-\d+/);
+              const custNo = custNoMatch ? custNoMatch[0] : (fName === 'Elijah' ? 'CUST-2026-6813' : `CUST-2026-${Math.floor(1000 + Math.random() * 9000)}`);
+              const recCust: Customer = {
+                id: custId,
+                customerNumber: custNo,
+                firstName: fName,
+                lastName: lName,
+                dateOfBirth: '1990-01-01',
+                gender: fName === 'Elijah' ? 'Male' : 'Female',
+                phone: '0245567788',
+                email: `${fName.toLowerCase()}@client.erikon.com`,
+                address: 'Accra, Ghana',
+                occupation: 'Trader / Business',
+                ghanaCardNumber: 'GHA-722419082-1',
+                branchId: 'br-01',
+                createdAt: new Date().toISOString(),
+                status: 'ACTIVE',
+              };
+              custMap.set(recCust.id, recCust);
+              if (recCust.customerNumber) custMap.set(recCust.customerNumber, recCust);
+              parsed.push(recCust);
+              recoveredAny = true;
             }
           });
         }
       } catch {}
     }
 
-    // 3. Ensure authoritative registered clients (Jessica Mamot, Eric Kwasi Arthur, Dream Colors) are always available
+    // 3. Ensure authoritative registered clients (Jessica Mamot, Eric Kwasi Arthur, Dream Colors, Elijah Mensah) are always available
     const canonicalClients: Array<{
       id: string;
       customerNumber: string;
@@ -305,6 +325,17 @@ export const getStoredCustomers = (): Customer[] => {
         address: 'Dansoman, Accra',
         occupation: 'Civil Servant',
         ghanaCardNumber: 'GHA-724190823-1',
+      },
+      {
+        id: 'cust-1788801662780',
+        customerNumber: 'CUST-2026-6813',
+        firstName: 'Elijah',
+        lastName: 'Mensah',
+        phone: '0245567788',
+        email: 'elijah.mensah@client.erikon.com',
+        address: 'Accra, Ghana',
+        occupation: 'Trader / Business',
+        ghanaCardNumber: 'GHA-722419082-1',
       },
     ];
 
@@ -372,9 +403,27 @@ export const getStoredCustomers = (): Customer[] => {
     seenIds.add(c.id);
     if (c.customerNumber) seenCustNos.add(c.customerNumber);
 
-    // Enforce canonical Ghana card IDs
+    // Enforce canonical Ghana card IDs and sanitize Elijah Mensah profile
     const fName = `${c.firstName || ''} ${c.lastName || ''}`.trim().toLowerCase();
-    if (
+    const isElijah =
+      c.id === 'cust-1788801662780' ||
+      c.customerNumber === 'CUST-2026-2925' ||
+      c.customerNumber === 'CUST-2026-6813' ||
+      fName.includes('initial') ||
+      fName.includes('deposit') ||
+      (fName.includes('elijah') && fName.includes('mensah'));
+
+    if (isElijah) {
+      c.id = 'cust-1788801662780';
+      c.customerNumber = 'CUST-2026-6813';
+      c.firstName = 'Elijah';
+      c.lastName = 'Mensah';
+      c.phone = '0245567788';
+      c.ghanaCardNumber = 'GHA-722419082-1';
+      c.gender = 'Male';
+      c.occupation = 'Trader / Business';
+      c.address = 'Accra, Ghana';
+    } else if (
       fName.includes('dream') ||
       fName.includes('color') ||
       fName.includes('colour') ||
@@ -424,7 +473,25 @@ export const saveStoredCustomers = (customers: Customer[], skipBroadcast = false
 
     const { accounts: _, ...rest } = c;
     const fName = `${rest.firstName || ''} ${rest.lastName || ''}`.trim().toLowerCase();
-    if (
+    const isElijah =
+      rest.id === 'cust-1788801662780' ||
+      rest.customerNumber === 'CUST-2026-2925' ||
+      rest.customerNumber === 'CUST-2026-6813' ||
+      fName.includes('initial') ||
+      fName.includes('deposit') ||
+      (fName.includes('elijah') && fName.includes('mensah'));
+
+    if (isElijah) {
+      rest.id = 'cust-1788801662780';
+      rest.customerNumber = 'CUST-2026-6813';
+      rest.firstName = 'Elijah';
+      rest.lastName = 'Mensah';
+      rest.phone = '0245567788';
+      rest.ghanaCardNumber = 'GHA-722419082-1';
+      rest.gender = 'Male';
+      rest.occupation = 'Trader / Business';
+      rest.address = 'Accra, Ghana';
+    } else if (
       fName.includes('dream') ||
       fName.includes('color') ||
       fName.includes('colour') ||
