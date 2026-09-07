@@ -440,8 +440,8 @@ export const CustomersPage: React.FC = () => {
     const effectiveDeposit = Math.max(0, depositNum);
 
     try {
-      const newCustId = `cust-${Date.now()}`;
-      const newCustNo = `CUST-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+      const newCustId = `CUST-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const newCustNo = newCustId;
 
       const newCust: Customer = {
         id: newCustId,
@@ -492,7 +492,7 @@ export const CustomersPage: React.FC = () => {
           : []);
 
       const initialCycle: DailyCollectionCycle = {
-        id: `cyc-${newCustId.replace('cust-', '')}`,
+        id: `cyc-${newCustId.toLowerCase()}`,
         cycleNumber: 1,
         currentDayCount: currentDayCount,
         dailyTargetAmount: chosenPackage,
@@ -506,7 +506,7 @@ export const CustomersPage: React.FC = () => {
 
       // Create Savings Account on the chosen package
       const newAcc: Account = {
-        id: `acc-${newCustId.replace('cust-', '')}`,
+        id: `acc-${newCustId.toLowerCase()}`,
         accountNumber: `ACC-1001-${Math.floor(1000 + Math.random() * 9000)}`,
         customerId: newCustId,
         customer: newCust,

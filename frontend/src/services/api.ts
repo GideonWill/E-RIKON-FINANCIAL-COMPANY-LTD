@@ -649,15 +649,15 @@ export const getStoredAccounts = (): Account[] => {
     );
     if (!hasAcc) {
       const fName = `${c.firstName || ''} ${c.lastName || ''}`.trim().toLowerCase();
-      const isJessica = c.id === 'cust-jessica-mamot' || fName.includes('jessica') || fName.includes('mamot');
-      const isDream = c.id === 'cust-dream-colors' || fName.includes('dream') || fName.includes('colors');
-      const isArthur = c.id === 'cust-1788779905017' || (fName.includes('eric') && fName.includes('arthur'));
-      const isVincent = c.id === 'cust-1788714715049' || (fName.includes('vincent') && fName.includes('mensah'));
-      const isElijah = c.id === 'cust-1788801662780' || (fName.includes('elijah') && fName.includes('mensah')) || fName.includes('initial');
+      const isJessica = c.id === 'CUST-2026-7831' || c.id === 'cust-jessica-mamot' || fName.includes('jessica') || fName.includes('mamot');
+      const isDream = c.id === 'CUST-2026-9214' || c.id === 'cust-dream-colors' || fName.includes('dream') || fName.includes('colors');
+      const isArthur = c.id === 'CUST-2026-3222' || c.id === 'cust-1788779905017' || (fName.includes('eric') && fName.includes('arthur'));
+      const isVincent = c.id === 'CUST-2026-5213' || c.id === 'cust-1788714715049' || (fName.includes('vincent') && fName.includes('mensah'));
+      const isElijah = c.id === 'CUST-2026-6813' || c.id === 'cust-1788801662780' || (fName.includes('elijah') && fName.includes('mensah')) || fName.includes('initial');
 
-      const defaultPkg = isJessica ? 20 : (isDream ? 30 : (isArthur || isVincent || isElijah ? 10 : 50));
-      const accId = isJessica ? 'acc-cust-jessica-mamot' : (isDream ? 'acc-cust-dream-colors' : (isArthur ? 'acc-1788779905017' : (isVincent ? 'acc-1788714715049' : (isElijah ? 'acc-cust-1788801662780' : `acc-${c.id}`))));
-      const accNo = isJessica ? 'ACC-2026-20817' : (isDream ? 'ACC-2026-16298' : (isArthur ? 'ACC-1001-5757' : (isVincent ? 'ACC-1001-5597' : (isElijah ? 'ACC-2026-88461' : `ACC-2026-${Math.floor(10000 + Math.random() * 90000)}`))));
+      const defaultPkg = isJessica ? 20 : (isDream ? 30 : (isArthur || isVincent || isElijah ? 10 : ((c as any).savingsPackage || (c.accounts?.[0]?.savingsPackage) || 20)));
+      const accId = isJessica ? 'acc-cust-jessica-mamot' : (isDream ? 'acc-cust-dream-colors' : (isArthur ? 'acc-1788779905017' : (isVincent ? 'acc-1788714715049' : (isElijah ? 'acc-cust-1788801662780' : `acc-${c.id.toLowerCase()}`))));
+      const accNo = isJessica ? 'ACC-2026-20817' : (isDream ? 'ACC-2026-16298' : (isArthur ? 'ACC-1001-5757' : (isVincent ? 'ACC-1001-5597' : (isElijah ? 'ACC-2026-88461' : `ACC-1001-${Math.floor(1000 + Math.random() * 9000)}`))));
       const newAcc: Account = {
         id: accId,
         accountNumber: accNo,
