@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getStoredAccounts, getStoredCustomers, getStoredTransactions, deleteCustomerRecord, startNewCycleForAccount } from '../services/api';
 import { useRealtimeSync } from '../services/realtimeSync';
+import { pullCloudToLocal } from '../services/cloudSync';
 import { useAuth } from '../contexts/AuthContext';
 import { addSystemNotification } from '../components/ui/NotificationsModal';
 import { Account } from '../types';
@@ -94,6 +95,17 @@ export const AccountsPage: React.FC = () => {
       }
     }
   }, [location.key, location.state, accounts, navigate, location.pathname, location.search]);
+
+  // Pull latest cloud state on mount
+  useEffect(() => {
+    pullCloudToLocal().then(() => {
+      const fresh = getStoredAccounts();
+      setAccounts(fresh);
+      if (!selectedAccount && fresh.length > 0) {
+        setSelectedAccount(fresh[0]);
+      }
+    }).catch(() => {});
+  }, []);
 
   // Real-time multi-device subscription
   useRealtimeSync(() => {

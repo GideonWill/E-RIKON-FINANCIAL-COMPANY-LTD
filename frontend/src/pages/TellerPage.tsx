@@ -14,7 +14,7 @@ import {
   toDecimal
 } from '../services/api';
 import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
-import { pushLocalToCloud } from '../services/cloudSync';
+import { pushLocalToCloud, pullCloudToLocal } from '../services/cloudSync';
 import { Account, Transaction, PaymentMode, SavingsPackage, SAVINGS_PACKAGES, User, TransactorInfo } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
@@ -138,6 +138,17 @@ export const TellerPage: React.FC = () => {
       setChosenPackage(selectedAccount.savingsPackage);
     }
   }, [selectedAccount?.id, selectedAccount?.savingsPackage]);
+
+  // Pull latest cloud state on mount
+  useEffect(() => {
+    pullCloudToLocal().then(() => {
+      const freshAccs = getStoredAccounts();
+      setAccounts(freshAccs);
+      if (!selectedAccount && freshAccs.length > 0) {
+        setSelectedAccount(freshAccs[0]);
+      }
+    }).catch(() => {});
+  }, []);
 
   // Subscribe to real-time events from other devices/tabs
   useRealtimeSync(() => {

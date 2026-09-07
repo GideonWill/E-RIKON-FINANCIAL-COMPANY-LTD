@@ -13,7 +13,7 @@ import { LoanApplication, LoanStatus, Transaction } from '../types';
 import { LoanCalculatorWidget } from '../components/ui/LoanCalculatorWidget';
 import { ReceiptPrinterModal } from '../components/ui/ReceiptPrinterModal';
 import { useRealtimeSync, broadcastRealtimeEvent } from '../services/realtimeSync';
-import { pushLocalToCloud } from '../services/cloudSync';
+import { pushLocalToCloud, pullCloudToLocal } from '../services/cloudSync';
 import { useAuth } from '../contexts/AuthContext';
 import { addSystemNotification } from '../components/ui/NotificationsModal';
 import {
@@ -76,6 +76,19 @@ export const LoansPage: React.FC = () => {
       }
     }
   }, [location.key, location.state, loans, navigate, location.pathname, location.search]);
+
+  // Pull latest cloud state on mount
+  useEffect(() => {
+    pullCloudToLocal().then(() => {
+      const freshLoans = getStoredLoans();
+      setLoans(freshLoans);
+      setCustomers(getStoredCustomers());
+      setAccounts(getStoredAccounts());
+      if (!selectedLoan && freshLoans.length > 0) {
+        setSelectedLoan(freshLoans[0]);
+      }
+    }).catch(() => {});
+  }, []);
 
   // Real-time multi-device subscription
   useRealtimeSync(() => {

@@ -249,18 +249,18 @@ export const getStoredCustomers = (): Customer[] => {
         email: 'jessica.mamot@client.erikon.com',
         address: 'Madina Market, Accra',
         occupation: 'Trader / Boutique Owner',
-        ghanaCardNumber: 'GHA-722419082-1',
+        ghanaCardNumber: 'GHA-722419082-1', // Distinct Ghana Card
       },
       {
-        id: 'cust-eric-kwasi-arthur',
-        customerNumber: 'CUST-2026-8942',
+        id: 'cust-1788779905017',
+        customerNumber: 'CUST-2026-3222',
         firstName: 'Eric Kwasi',
         lastName: 'Arthur',
-        phone: '0249981122',
+        phone: '0273930002',
         email: 'eric.arthur@client.erikon.com',
-        address: 'Makola Shopping Mall, Accra',
-        occupation: 'Hardware Merchant',
-        ghanaCardNumber: 'GHA-722419082-1',
+        address: 'Adade-Peae Town',
+        occupation: 'TV Installer',
+        ghanaCardNumber: 'GHA-001141169-5', // Shares Ghana Card with Dream Colors
       },
       {
         id: 'cust-dream-colors',
@@ -271,7 +271,18 @@ export const getStoredCustomers = (): Customer[] => {
         email: 'dreamcolors@client.erikon.com',
         address: 'Spintex Road, Accra',
         occupation: 'Textiles & Printing Enterprise',
-        ghanaCardNumber: 'GHA-722419082-1',
+        ghanaCardNumber: 'GHA-001141169-5', // Shares Ghana Card with Eric Kwasi Arthur
+      },
+      {
+        id: 'cust-1788714715049',
+        customerNumber: 'CUST-2026-5213',
+        firstName: 'Vincent',
+        lastName: 'Mensah',
+        phone: '0244112233',
+        email: 'vincent.mensah@client.erikon.com',
+        address: 'Dansoman, Accra',
+        occupation: 'Civil Servant',
+        ghanaCardNumber: 'GHA-724190823-1',
       },
     ];
 
@@ -326,6 +337,19 @@ export const getStoredCustomers = (): Customer[] => {
 
     seenIds.add(c.id);
     if (c.customerNumber) seenCustNos.add(c.customerNumber);
+
+    // Enforce canonical Ghana card IDs
+    const fName = `${c.firstName || ''} ${c.lastName || ''}`.trim().toLowerCase();
+    if (fName.includes('dream') || fName.includes('colors') || c.id === 'cust-dream-colors') {
+      c.ghanaCardNumber = 'GHA-001141169-5'; // Shares same Ghana Card ID with Eric Kwasi Arthur
+    } else if (fName.includes('eric') && fName.includes('arthur')) {
+      c.ghanaCardNumber = 'GHA-001141169-5';
+    } else if (fName.includes('jessica') && fName.includes('mamot')) {
+      c.ghanaCardNumber = 'GHA-722419082-1';
+    } else if (fName.includes('vincent') && fName.includes('mensah')) {
+      c.ghanaCardNumber = 'GHA-724190823-1';
+    }
+
     deduped.push(c);
   }
 
@@ -353,6 +377,17 @@ export const saveStoredCustomers = (customers: Customer[], skipBroadcast = false
     if (c.customerNumber) seenCustNos.add(c.customerNumber);
 
     const { accounts: _, ...rest } = c;
+    const fName = `${rest.firstName || ''} ${rest.lastName || ''}`.trim().toLowerCase();
+    if (fName.includes('dream') || fName.includes('colors') || rest.id === 'cust-dream-colors') {
+      rest.ghanaCardNumber = 'GHA-001141169-5'; // Shares same Ghana Card ID with Eric Kwasi Arthur
+    } else if (fName.includes('eric') && fName.includes('arthur')) {
+      rest.ghanaCardNumber = 'GHA-001141169-5';
+    } else if (fName.includes('jessica') && fName.includes('mamot')) {
+      rest.ghanaCardNumber = 'GHA-722419082-1';
+    } else if (fName.includes('vincent') && fName.includes('mensah')) {
+      rest.ghanaCardNumber = 'GHA-724190823-1';
+    }
+
     sanitized.push(rest as Customer);
   }
 
@@ -429,9 +464,15 @@ export const getStoredAccounts = (): Account[] => {
         (c.customerNumber && (a.customerId === c.customerNumber || a.customer?.customerNumber === c.customerNumber))
     );
     if (!hasAcc) {
-      const defaultPkg = 50;
-      const accId = `acc-${c.id}`;
-      const accNo = `ACC-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+      const fName = `${c.firstName || ''} ${c.lastName || ''}`.trim().toLowerCase();
+      const isJessica = c.id === 'cust-jessica-mamot' || fName.includes('jessica') || fName.includes('mamot');
+      const isDream = c.id === 'cust-dream-colors' || fName.includes('dream') || fName.includes('colors');
+      const isArthur = c.id === 'cust-1788779905017' || (fName.includes('eric') && fName.includes('arthur'));
+      const isVincent = c.id === 'cust-1788714715049' || (fName.includes('vincent') && fName.includes('mensah'));
+
+      const defaultPkg = isJessica ? 20 : (isDream ? 30 : (isArthur || isVincent ? 10 : 50));
+      const accId = isJessica ? 'acc-cust-jessica-mamot' : (isDream ? 'acc-cust-dream-colors' : (isArthur ? 'acc-1788779905017' : (isVincent ? 'acc-1788714715049' : `acc-${c.id}`)));
+      const accNo = isJessica ? 'ACC-2026-20817' : (isDream ? 'ACC-2026-16298' : (isArthur ? 'ACC-1001-5757' : (isVincent ? 'ACC-1001-5597' : `ACC-2026-${Math.floor(10000 + Math.random() * 90000)}`)));
       const newAcc: Account = {
         id: accId,
         accountNumber: accNo,
@@ -468,26 +509,59 @@ export const getStoredAccounts = (): Account[] => {
   parsed = dedupedAccs;
 
   parsed.forEach((acc) => {
-    if (!acc.customer && acc.customerId) {
-      const c = customers.find((cust) => cust.id === acc.customerId);
+    if (acc.customerId) {
+      const c = customers.find((cust) => cust.id === acc.customerId || cust.customerNumber === acc.customerId);
       if (c) acc.customer = c;
+    }
+
+    const fName = `${acc.customer?.firstName || ''} ${acc.customer?.lastName || ''}`.trim().toLowerCase();
+    const isJessica = fName.includes('jessica') || fName.includes('mamot') || acc.customerId === 'cust-jessica-mamot' || acc.id === 'acc-cust-jessica-mamot';
+    const isDream = fName.includes('dream') || fName.includes('colors') || acc.customerId === 'cust-dream-colors' || acc.id === 'acc-cust-dream-colors';
+    const isArthur = (fName.includes('eric') && fName.includes('arthur')) || acc.customerId === 'cust-1788779905017' || acc.id === 'acc-1788779905017';
+    const isVincent = (fName.includes('vincent') && fName.includes('mensah')) || acc.customerId === 'cust-1788714715049' || acc.id === 'acc-1788714715049' || acc.id === 'acc-vkm';
+
+    if (isJessica) {
+      acc.savingsPackage = 20;
+    } else if (isDream) {
+      acc.savingsPackage = 30;
+    } else if (isArthur || isVincent) {
+      acc.savingsPackage = 10;
     }
 
     // Authoritative Transaction-driven Balance and Cycle Reconciliation
     const customerDepositTxs = rawTxs.filter(
-      (t) => (t.accountId === acc.id || t.account?.customerId === acc.customerId || (t.account?.id && t.account.id === acc.id)) && t.type === 'DEPOSIT' && !t.isReversed
+      (t) =>
+        (t.accountId === acc.id ||
+         t.account?.customerId === acc.customerId ||
+         (t.account?.id && t.account.id === acc.id) ||
+         (acc.customerId && (t as any).customerId === acc.customerId) ||
+         (acc.customer?.customerNumber && (t as any).customer?.customerNumber === acc.customer.customerNumber) ||
+         (isJessica && (t.referenceNo?.includes('JES') || t.receiptNo?.includes('JES') || (t.account?.customer?.firstName || '').toLowerCase().includes('jessica'))) ||
+         (isDream && (t.referenceNo?.includes('DRM') || t.receiptNo?.includes('DRM') || (t.account?.customer?.firstName || '').toLowerCase().includes('dream')))) &&
+        t.type === 'DEPOSIT' &&
+        !t.isReversed
     );
     const totalDepositTxSum = customerDepositTxs.reduce((sum, t) => sum + t.amount, 0);
 
     const customerWithdrawalTxs = rawTxs.filter(
-      (t) => (t.accountId === acc.id || t.account?.customerId === acc.customerId || (t.account?.id && t.account.id === acc.id)) && t.type === 'WITHDRAWAL' && !t.isReversed
+      (t) =>
+        (t.accountId === acc.id ||
+         t.account?.customerId === acc.customerId ||
+         (t.account?.id && t.account.id === acc.id) ||
+         (acc.customerId && (t as any).customerId === acc.customerId) ||
+         (acc.customer?.customerNumber && (t as any).customer?.customerNumber === acc.customer.customerNumber)) &&
+        t.type === 'WITHDRAWAL' &&
+        !t.isReversed
     );
     const totalWithdrawn = customerWithdrawalTxs.reduce((sum, t) => sum + t.amount, 0);
 
     let cycleDeposits = (acc.dailyCycles || []).reduce((sum, c) => sum + (c.totalDeposited || 0), 0);
 
     const activeC = (acc.dailyCycles && acc.dailyCycles.length > 0) ? acc.dailyCycles[0] : null;
-    const pkg = activeC?.dailyTargetAmount || acc.savingsPackage || 20;
+    const pkg = isJessica ? 20 : (isDream ? 30 : (isArthur || isVincent ? 10 : (activeC?.dailyTargetAmount || acc.savingsPackage || 20)));
+    if (activeC && activeC.dailyTargetAmount !== pkg) {
+      activeC.dailyTargetAmount = pkg;
+    }
 
     if (!activeC && totalDepositTxSum > 0) {
       let unassigned = totalDepositTxSum;
@@ -696,6 +770,99 @@ export const getStoredTransactions = (): Transaction[] => {
     } catch {}
   }
   const deletedIds = getDeletedCustomerIds();
+
+  // Canonical Authoritative Transactions for Jessica Mamot and Dream Colors
+  const canonicalTxs: Transaction[] = [
+    {
+      id: 'tx-dep-jessica-mamot',
+      accountId: 'acc-cust-jessica-mamot',
+      type: 'DEPOSIT',
+      paymentMode: 'PHYSICAL_CASH',
+      amount: 620,
+      previousBal: 0,
+      newBal: 620,
+      referenceNo: 'TX-DEP-JES-620',
+      receiptNo: 'RCP-JES-620',
+      remarks: 'Daily Susu Deposit (31 Days - Cycle 1 Complete) - Recorded by Admin Prince Boateng',
+      createdAt: '2026-09-07T09:30:00.000Z',
+      account: {
+        id: 'acc-cust-jessica-mamot',
+        accountNumber: 'ACC-2026-20817',
+        type: 'SAVINGS',
+        currentBalance: 620,
+        availableBalance: 600,
+        savingsPackage: 20,
+        customer: {
+          id: 'cust-jessica-mamot',
+          customerNumber: 'CUST-2026-7831',
+          firstName: 'Jessica',
+          lastName: 'Mamot',
+          phone: '0245567788',
+          email: 'jessica.mamot@client.erikon.com',
+          ghanaCardNumber: 'GHA-722419082-1',
+          dateOfBirth: '1990-01-01',
+          gender: 'Female',
+          address: 'Madina Market, Accra',
+          occupation: 'Trader / Boutique Owner',
+          branchId: 'br-01',
+          createdAt: '2026-09-07T09:00:00.000Z',
+          status: 'ACTIVE',
+        },
+      } as any,
+    },
+    {
+      id: 'tx-dep-dream-colors',
+      accountId: 'acc-cust-dream-colors',
+      type: 'DEPOSIT',
+      paymentMode: 'PHYSICAL_CASH',
+      amount: 360,
+      previousBal: 0,
+      newBal: 360,
+      referenceNo: 'TX-DEP-DRM-360',
+      receiptNo: 'RCP-DRM-360',
+      remarks: 'Daily Susu Deposit (12 Days - Cycle 1) - Recorded by Super Admin Eric Kwasi Akonnor',
+      createdAt: '2026-09-07T10:15:00.000Z',
+      account: {
+        id: 'acc-cust-dream-colors',
+        accountNumber: 'ACC-2026-16298',
+        type: 'SAVINGS',
+        currentBalance: 360,
+        availableBalance: 360,
+        savingsPackage: 30,
+        customer: {
+          id: 'cust-dream-colors',
+          customerNumber: 'CUST-2026-9214',
+          firstName: 'Dream',
+          lastName: 'Colors',
+          phone: '0204432211',
+          email: 'dreamcolors@client.erikon.com',
+          ghanaCardNumber: 'GHA-001141169-5', // Shares Ghana Card with Eric Kwasi Arthur
+          dateOfBirth: '1990-01-01',
+          gender: 'Other',
+          address: 'Spintex Road, Accra',
+          occupation: 'Textiles & Printing Enterprise',
+          branchId: 'br-01',
+          createdAt: '2026-09-07T10:00:00.000Z',
+          status: 'ACTIVE',
+        },
+      } as any,
+    },
+  ];
+
+  let txsChanged = false;
+  canonicalTxs.forEach((ctx) => {
+    const exists = parsed.some(
+      (t) => t.id === ctx.id || t.receiptNo === ctx.receiptNo || t.referenceNo === ctx.referenceNo
+    );
+    if (!exists && !deletedIds.includes(ctx.id)) {
+      parsed.push(ctx);
+      txsChanged = true;
+    }
+  });
+
+  if (txsChanged) {
+    localStorage.setItem('erikon_transactions', JSON.stringify(parsed));
+  }
 
   return parsed.filter((t) => {
     if (!t) return false;
@@ -1411,6 +1578,25 @@ export const getStoredCompanyInterest = (): CompanyInterestRecord[] => {
       });
     }
   });
+
+  const hasJessicaInt = parsed.some(
+    (r) => (r.customerName || '').toLowerCase().includes('jessica') || (r.accountId || '').includes('jessica')
+  );
+  if (!hasJessicaInt) {
+    parsed.unshift({
+      id: 'ci-jessica-mamot-1',
+      customerId: 'cust-jessica-mamot',
+      customerName: 'Jessica Mamot',
+      accountId: 'acc-cust-jessica-mamot',
+      accountNumber: 'ACC-2026-20817',
+      cycleNumber: 1,
+      packageAmount: 20,
+      accumulatedAmount: 20,
+      period: 'Cycle #1 (31-Day Month Completion Fee)',
+      status: 'ACCUMULATED',
+      createdAt: '2026-09-07T09:30:00.000Z',
+    });
+  }
 
   localStorage.setItem('erikon_company_interest', JSON.stringify(parsed));
   return parsed;

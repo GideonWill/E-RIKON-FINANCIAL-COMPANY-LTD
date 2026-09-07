@@ -15,7 +15,7 @@ import {
   toDecimal
 } from '../services/api';
 import { subscribeRealtimeEvents, broadcastRealtimeEvent, useRealtimeSync } from '../services/realtimeSync';
-import { pushLocalToCloud } from '../services/cloudSync';
+import { pushLocalToCloud, pullCloudToLocal } from '../services/cloudSync';
 import { Customer, Account, SavingsPackage, SAVINGS_PACKAGES, Transaction, DailyCollectionCycle, DailySplitEntry } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { GhanaCardModal } from '../components/ui/GhanaCardModal';
@@ -148,6 +148,15 @@ export const CustomersPage: React.FC = () => {
       }
     }
   }, [location.key, location.state, customers, navigate, location.pathname, location.search]);
+
+  // Pull latest cloud state on mount
+  useEffect(() => {
+    pullCloudToLocal().then(() => {
+      setCustomers(getStoredCustomers());
+      setAccounts(getStoredAccounts());
+      setTransactions(getStoredTransactions());
+    }).catch(() => {});
+  }, []);
 
   // Subscribe to multi-device real-time sync
   useRealtimeSync(() => {

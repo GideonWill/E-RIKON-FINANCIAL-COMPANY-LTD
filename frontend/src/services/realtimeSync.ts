@@ -212,6 +212,11 @@ export const broadcastRealtimeEvent = (
 
   // Notify all direct subscribers in this tab
   notifyAllSubscribers(payload);
+
+  // Dispatch window event for components and header/sidebar badges listening to 'erikon_realtime_update'
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('erikon_realtime_update', { detail: payload }));
+  }
 };
 
 // ─── React Hook with automatic batching & debouncing ──────────────────────────

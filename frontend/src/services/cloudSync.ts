@@ -21,9 +21,14 @@ import {
   addDeletedCustomerId,
   getDeletedUserEmails,
   addDeletedUserEmail,
+  getBlockedUserEmails,
   RegisteredUserRecord
 } from './api';
 import { ApprovalRequest } from '../types';
+import { 
+  getStoredDynamicNotifications, 
+  saveStoredDynamicNotifications 
+} from '../components/ui/NotificationsModal';
 import { broadcastRealtimeEvent, subscribeRealtimeEvents } from './realtimeSync';
 import { 
   getRealtimeDatabaseVault,
@@ -45,6 +50,8 @@ export interface CloudVaultPayload {
   auditLogs?: any[];
   deletedCustomerIds?: string[];
   deletedUserEmails?: string[];
+  blockedUserEmails?: string[];
+  notifications?: any[];
   authoritative?: boolean;
   action?: string;
   updatedAt?: string;
@@ -53,6 +60,7 @@ export interface CloudVaultPayload {
 let isPushing = false;
 let pushPending = false;
 let isApplyingRemoteUpdate = false;
+let pendingRemoteVault: any = null;
 let lastSyncTimestamp: string | null = null;
 
 export const getLastSyncTime = () => lastSyncTimestamp;
@@ -114,6 +122,8 @@ export const pushLocalToCloud = async (authoritative = true): Promise<boolean> =
     auditLogs: getStoredAuditLogs(),
     deletedCustomerIds: getDeletedCustomerIds(),
     deletedUserEmails: getDeletedUserEmails(),
+    blockedUserEmails: getBlockedUserEmails(),
+    notifications: getStoredDynamicNotifications(),
     authoritative,
     updatedAt: new Date().toISOString(),
   };
@@ -152,6 +162,13 @@ export const pushLocalToCloud = async (authoritative = true): Promise<boolean> =
 
   lastSyncTimestamp = new Date().toLocaleTimeString();
   isPushing = false;
+
+  // Apply any incoming remote snapshot that arrived while pushing
+  if (pendingRemoteVault) {
+    const nextVault = pendingRemoteVault;
+    pendingRemoteVault = null;
+    applyIncomingCloudVault(nextVault);
+  }
 
   if (pushPending) {
     setTimeout(() => pushLocalToCloud(authoritative), 150);
@@ -256,9 +273,24 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       }
     }
 
-    const sanitizeVincentAcc = (acc: any) => {
+    const sanitizeCustomerItem = (c: any) => {
+      if (!c) return c;
+      const fName = `${c.firstName || ''} ${c.lastName || ''}`.trim().toLowerCase();
+      if (fName.includes('dream') || fName.includes('colors') || c.id === 'cust-dream-colors') {
+        return { ...c, ghanaCardNumber: 'GHA-001141169-5' }; // Shares same Ghana Card ID with Eric Kwasi Arthur
+      } else if (fName.includes('eric') && fName.includes('arthur')) {
+        return { ...c, ghanaCardNumber: 'GHA-001141169-5' };
+      } else if (fName.includes('jessica') && fName.includes('mamot')) {
+        return { ...c, ghanaCardNumber: 'GHA-722419082-1' };
+      } else if (fName.includes('vincent') && fName.includes('mensah')) {
+        return { ...c, ghanaCardNumber: 'GHA-724190823-1' };
+      }
+      return c;
+    };
+
+    const sanitizeAuthoritativeAcc = (acc: any) => {
       const name = `${acc.customer?.firstName || ''} ${acc.customer?.lastName || ''}`.toLowerCase();
-      const isVincent = name.includes('vincent') || name.includes('mensah') || acc.id === 'acc-vkm' || acc.accountNumber?.includes('VKM');
+      const isVincent = name.includes('vincent') || name.includes('mensah') || acc.id === 'acc-vkm' || acc.accountNumber?.includes('VKM') || acc.customerId === 'cust-1788714715049';
       if (isVincent) {
         if (acc.dailyCycles && acc.dailyCycles.length > 5) {
           acc.dailyCycles = acc.dailyCycles.filter((c: any) => c.cycleNumber <= 5);
@@ -267,7 +299,36 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
           acc.currentBalance = 1350;
           acc.availableBalance = 1310;
         }
+        acc.savingsPackage = 10;
       }
+
+      const isJessica = name.includes('jessica') || name.includes('mamot') || acc.customerId === 'cust-jessica-mamot' || acc.id === 'acc-cust-jessica-mamot';
+      if (isJessica) {
+        acc.savingsPackage = 20;
+        if (!acc.currentBalance || acc.currentBalance < 620) {
+          acc.currentBalance = 620;
+          acc.availableBalance = 600;
+        }
+      }
+
+      const isDream = name.includes('dream') || name.includes('colors') || acc.customerId === 'cust-dream-colors' || acc.id === 'acc-cust-dream-colors';
+      if (isDream) {
+        acc.savingsPackage = 30;
+        if (!acc.currentBalance || acc.currentBalance < 360) {
+          acc.currentBalance = 360;
+          acc.availableBalance = 360;
+        }
+      }
+
+      const isArthur = (name.includes('eric') && name.includes('arthur')) || acc.customerId === 'cust-1788779905017' || acc.id === 'acc-1788779905017';
+      if (isArthur) {
+        acc.savingsPackage = 10;
+        if (!acc.currentBalance || acc.currentBalance < 310) {
+          acc.currentBalance = 310;
+          acc.availableBalance = 300;
+        }
+      }
+
       return acc;
     };
 
@@ -276,13 +337,38 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       return name.includes('vincent') || name.includes('mensah') || t.accountId === 'acc-vkm' || t.account?.accountNumber?.includes('VKM');
     };
 
+    // Synchronize blocked user emails
+    if (Array.isArray(cloudData.blockedUserEmails)) {
+      const localBlocked = getBlockedUserEmails();
+      const mergedBlocked = Array.from(
+        new Set([...localBlocked, ...cloudData.blockedUserEmails.map((e) => String(e).toLowerCase())])
+      );
+      if (JSON.stringify(mergedBlocked) !== JSON.stringify(localBlocked)) {
+        localStorage.setItem('erikon_blocked_user_emails', JSON.stringify(mergedBlocked));
+        hasUpdates = true;
+      }
+    }
+
+    // Synchronize dynamic notifications across all staff & devices
+    if (Array.isArray(cloudData.notifications)) {
+      const localNotifs = getStoredDynamicNotifications();
+      const notifMap = new Map<string, any>();
+      localNotifs.forEach((n) => notifMap.set(n.id, n));
+      cloudData.notifications.forEach((n) => notifMap.set(n.id, n));
+      const mergedNotifs = Array.from(notifMap.values()).slice(0, 60);
+      if (JSON.stringify(mergedNotifs) !== JSON.stringify(localNotifs)) {
+        saveStoredDynamicNotifications(mergedNotifs);
+        hasUpdates = true;
+      }
+    }
+
     // Authoritative direct replacement (clears any stale test transactions or old deleted records)
     if (cloudData.authoritative) {
       if (Array.isArray(cloudData.customers)) {
-        saveStoredCustomers(cloudData.customers, true);
+        saveStoredCustomers(cloudData.customers.map(sanitizeCustomerItem), true);
       }
       if (Array.isArray(cloudData.accounts)) {
-        saveStoredAccounts(cloudData.accounts.map(sanitizeVincentAcc));
+        saveStoredAccounts(cloudData.accounts.map(sanitizeAuthoritativeAcc), true);
       }
       if (Array.isArray(cloudData.transactions)) {
         const cleanTxs = cloudData.transactions.filter((t: any) => {
@@ -291,16 +377,20 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
           }
           return true;
         });
-        saveStoredTransactions(cleanTxs);
+        saveStoredTransactions(cleanTxs, true);
       }
-      saveStoredLoans(Array.isArray(cloudData.loans) ? cloudData.loans : []);
+      saveStoredLoans(Array.isArray(cloudData.loans) ? cloudData.loans : [], true);
       if (Array.isArray(cloudData.companyInterest)) {
         const cleanInterest = cloudData.companyInterest.filter((ci: any) => {
           const isVincent = ci.customerName === 'Vincent Kwabena Mensah' || ci.id?.startsWith('ci-vkm');
           if (isVincent && ci.cycleNumber > 4) return false;
           return true;
         });
-        saveStoredCompanyInterest(cleanInterest);
+        const localInt = getStoredCompanyInterest();
+        const intMap = new Map<string, any>();
+        localInt.forEach((i) => intMap.set(i.id || `${i.accountId}-cyc-${i.cycleNumber}`, i));
+        cleanInterest.forEach((i) => intMap.set(i.id || `${i.accountId}-cyc-${i.cycleNumber}`, i));
+        saveStoredCompanyInterest(Array.from(intMap.values()));
       }
       saveStoredCompanyWithdrawals(Array.isArray(cloudData.companyWithdrawals) ? cloudData.companyWithdrawals : []);
       if (Array.isArray(cloudData.approvals)) {
@@ -314,9 +404,6 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       if (Array.isArray(cloudData.auditLogs)) {
         saveStoredAuditLogs(cloudData.auditLogs);
       }
-      localStorage.setItem('erikon_dynamic_notifications', JSON.stringify([]));
-      localStorage.setItem('erikon_read_notifications', JSON.stringify([]));
-      localStorage.setItem('erikon_cleared_notifications', JSON.stringify([]));
 
       broadcastRealtimeEvent('MANUAL_SYNC', { source: 'REMOTE_CLOUD_AUTHORITATIVE' }, 'remote');
       if (typeof window !== 'undefined') {
@@ -388,7 +475,7 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
 
       seenIds.add(c.id);
       if (c.customerNumber) seenCustNos.add(c.customerNumber);
-      mergedCust.push(c);
+      mergedCust.push(sanitizeCustomerItem(c));
     }
 
     if (JSON.stringify(mergedCust) !== JSON.stringify(localCust)) {
@@ -451,7 +538,7 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
         }
       });
 
-      const mergedAcc = Array.from(accMap.values()).map(sanitizeVincentAcc).filter(
+      const mergedAcc = Array.from(accMap.values()).map(sanitizeAuthoritativeAcc).filter(
         (a) =>
           !deletedCustIds.includes(a.customerId) &&
           !deletedCustIds.includes(a.id) &&
@@ -499,8 +586,12 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
         return true;
       });
       const localInt = getStoredCompanyInterest();
-      if (JSON.stringify(sanitizedInterest) !== JSON.stringify(localInt)) {
-        saveStoredCompanyInterest(sanitizedInterest);
+      const intMap = new Map<string, any>();
+      localInt.forEach((i) => intMap.set(i.id || `${i.accountId}-cyc-${i.cycleNumber}`, i));
+      sanitizedInterest.forEach((i) => intMap.set(i.id || `${i.accountId}-cyc-${i.cycleNumber}`, i));
+      const mergedInterest = Array.from(intMap.values());
+      if (JSON.stringify(mergedInterest) !== JSON.stringify(localInt)) {
+        saveStoredCompanyInterest(mergedInterest);
         hasUpdates = true;
       }
     }
@@ -674,9 +765,12 @@ export const initCloudSync = () => {
 
   // Attach live sub-second Firebase Realtime Database onValue listener
   const unsubscribeFirestore = subscribeRealtimeDatabaseVault((vaultData) => {
-    if (vaultData && !isPushing) {
-      applyIncomingCloudVault(vaultData);
+    if (!vaultData) return;
+    if (isPushing) {
+      pendingRemoteVault = vaultData;
+      return;
     }
+    applyIncomingCloudVault(vaultData);
   });
 
   return () => {
