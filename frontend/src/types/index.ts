@@ -312,6 +312,9 @@ export interface Transaction {
   receiptNo: string;
   accountId: string;
   account?: Account;
+  accountNumber?: string;
+  customerId?: string;
+  customer?: Customer;
   type: TransactionType;
   paymentMode: PaymentMode;
   amount: number;

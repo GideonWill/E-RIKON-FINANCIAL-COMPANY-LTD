@@ -192,6 +192,35 @@ export const pushLocalToCloud = async (authoritative = true): Promise<boolean> =
   return anySuccess;
 };
 
+export const mergeAccountCycles = (localCycles: any[] = [], cloudCycles: any[] = []): any[] => {
+  const cycleMap = new Map<number, any>();
+  const all = [...(localCycles || []), ...(cloudCycles || [])];
+  
+  all.forEach((cyc) => {
+    if (!cyc) return;
+    const num = cyc.cycleNumber || 1;
+    const existing = cycleMap.get(num);
+    if (!existing) {
+      cycleMap.set(num, cyc);
+    } else {
+      const existingDays = existing.currentDayCount || 0;
+      const incomingDays = cyc.currentDayCount || 0;
+      const existingSplits = existing.dailySplits?.length || 0;
+      const incomingSplits = cyc.dailySplits?.length || 0;
+
+      if (incomingDays > existingDays || (incomingDays === existingDays && incomingSplits > existingSplits)) {
+        cycleMap.set(num, { ...existing, ...cyc, currentDayCount: incomingDays, dailySplits: cyc.dailySplits || existing.dailySplits });
+      } else if (existingDays > incomingDays || (existingDays === incomingDays && existingSplits >= incomingSplits)) {
+        cycleMap.set(num, { ...cyc, ...existing, currentDayCount: existingDays, dailySplits: existing.dailySplits || cyc.dailySplits });
+      } else {
+        cycleMap.set(num, { ...existing, ...cyc });
+      }
+    }
+  });
+
+  return Array.from(cycleMap.values()).sort((a, b) => b.cycleNumber - a.cycleNumber);
+};
+
 /**
  * Applies an incoming cloud vault payload to local storage and dispatches update events.
  * Uses isApplyingRemoteUpdate guard to prevent infinite echo loops.
@@ -457,10 +486,6 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       if (isElijah) {
         acc.customerId = 'CUST-2026-6813';
         acc.savingsPackage = 10;
-        if (!acc.currentBalance || acc.currentBalance < 620) {
-          acc.currentBalance = 620;
-          acc.availableBalance = 600;
-        }
         if (acc.customer) {
           acc.customer.id = 'CUST-2026-6813';
           acc.customer.firstName = 'Elijah';
@@ -471,8 +496,9 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
         const existingCycles = Array.isArray(acc.dailyCycles) ? [...acc.dailyCycles] : [];
         const hasCyc1 = existingCycles.find((c: any) => c.cycleNumber === 1);
         const hasCyc2 = existingCycles.find((c: any) => c.cycleNumber === 2);
+        const hasCyc3 = existingCycles.find((c: any) => c.cycleNumber === 3);
 
-        const cyc1 = (hasCyc1 && hasCyc1.currentDayCount >= 31) ? hasCyc1 : {
+        const cyc1 = (hasCyc1 && hasCyc1.currentDayCount >= 31 && hasCyc1.dailySplits?.length >= 31) ? hasCyc1 : {
           id: 'cyc-elijah-1',
           cycleNumber: 1,
           startDate: '2026-09-07',
@@ -494,7 +520,7 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
           })),
         };
 
-        const cyc2 = hasCyc2 ? hasCyc2 : {
+        const cyc2 = (hasCyc2 && hasCyc2.currentDayCount >= 31 && hasCyc2.dailySplits?.length >= 31) ? hasCyc2 : {
           id: 'cyc-elijah-2',
           cycleNumber: 2,
           startDate: '2026-09-07',
@@ -516,8 +542,49 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
           })),
         };
 
-        const higherCycles = existingCycles.filter((c: any) => c.cycleNumber > 2);
-        acc.dailyCycles = [...higherCycles, cyc2, cyc1];
+        const cyc3 = (hasCyc3 && hasCyc3.currentDayCount >= 31 && hasCyc3.dailySplits?.length >= 31) ? hasCyc3 : {
+          id: 'cyc-elijah-3',
+          cycleNumber: 3,
+          startDate: '2026-09-07',
+          dailyTargetAmount: 10,
+          totalDeposited: 310,
+          currentDayCount: 31,
+          feeDeducted: true,
+          companyFeeAmount: 10,
+          isCompleted: true,
+          dailySplits: Array.from({ length: 31 }, (_, i) => ({
+            dayNumber: i + 1,
+            date: '2026-09-07',
+            amount: 10,
+            receiptNo: `RCP-ELJ-C3-${i + 1}`,
+            isCompanyFee: i + 1 === 31,
+            recordedBy: 'Authorized Officer',
+            recordedAt: '2026-09-07T18:36:00.000Z',
+            batchTxRef: 'TX-DEP-ELJ-310-C3',
+          })),
+        };
+
+        const higherCycles = existingCycles.filter((c: any) => c.cycleNumber > 3);
+        higherCycles.forEach((c: any) => {
+          if (c.currentDayCount > 0 && (!c.dailySplits || c.dailySplits.length < c.currentDayCount)) {
+            const existingCount = c.dailySplits ? c.dailySplits.length : 0;
+            const newSplits = Array.from({ length: c.currentDayCount - existingCount }, (_, i) => ({
+              dayNumber: existingCount + i + 1,
+              date: c.startDate || new Date().toISOString().split('T')[0],
+              amount: 10,
+              receiptNo: `RCP-C${c.cycleNumber}-${existingCount + i + 1}`,
+              isCompanyFee: existingCount + i + 1 === 31,
+            }));
+            c.dailySplits = [...(c.dailySplits || []), ...newSplits];
+          }
+        });
+
+        acc.dailyCycles = [...higherCycles, cyc3, cyc2, cyc1];
+
+        const allCyclesDeposited = acc.dailyCycles.reduce((sum: number, c: any) => sum + (c.totalDeposited || 0), 0);
+        const allFeesRetained = acc.dailyCycles.reduce((sum: number, c: any) => sum + (c.feeDeducted ? (c.companyFeeAmount || 10) : 0), 0);
+        acc.currentBalance = Math.max(acc.currentBalance || 0, allCyclesDeposited);
+        acc.availableBalance = Math.max(acc.availableBalance || 0, Math.max(0, allCyclesDeposited - allFeesRetained));
       }
 
       return acc;
@@ -587,10 +654,43 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
         saveStoredCustomers(cloudData.customers.map(sanitizeCustomerItem), true);
       }
       if (Array.isArray(cloudData.accounts)) {
-        saveStoredAccounts(cloudData.accounts.map(sanitizeAuthoritativeAcc), true);
+        const localAcc = getStoredAccounts();
+        const accMap = new Map<string, any>();
+        localAcc.forEach((a) => {
+          const key = a.accountNumber || a.id;
+          if (key) accMap.set(key, a);
+        });
+        cloudData.accounts.forEach((a) => {
+          const key = a.accountNumber || a.id;
+          if (key) {
+            const existing = accMap.get(key);
+            if (existing) {
+              const mergedCycles = mergeAccountCycles(existing.dailyCycles, a.dailyCycles);
+              const mergedBal = Math.max(existing.currentBalance || 0, a.currentBalance || 0);
+              const mergedAvail = Math.max(existing.availableBalance || 0, a.availableBalance || 0);
+              accMap.set(key, { ...existing, ...a, dailyCycles: mergedCycles, currentBalance: mergedBal, availableBalance: mergedAvail });
+            } else {
+              accMap.set(key, a);
+            }
+          }
+        });
+        saveStoredAccounts(Array.from(accMap.values()).map(sanitizeAuthoritativeAcc), true);
       }
       if (Array.isArray(cloudData.transactions)) {
-        const cleanTxs = cloudData.transactions.filter((t: any) => {
+        const localTxs = getStoredTransactions();
+        const txMap = new Map<string, any>();
+        localTxs.forEach((t) => {
+          const key = t.id || t.receiptNo || t.referenceNo;
+          if (key) txMap.set(key, t);
+        });
+        cloudData.transactions.forEach((t: any) => {
+          const key = t.id || t.receiptNo || t.referenceNo;
+          if (key) {
+            const existing = txMap.get(key);
+            txMap.set(key, { ...existing, ...t });
+          }
+        });
+        const cleanTxs = Array.from(txMap.values()).filter((t: any) => {
           if (isVincentTxItem(t) && t.type === 'DEPOSIT') {
             return t.referenceNo?.startsWith('TX-DEP-vkm-dep');
           }
@@ -754,22 +854,14 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
         const key = a.accountNumber || a.id;
         if (key) {
           const existing = accMap.get(key);
-          const mergedAcc = { ...existing, ...a };
-          // Preserve cycles if existing has higher cycles or incoming cycles are missing
-          if (existing?.dailyCycles && a.dailyCycles) {
-            const existingMax = Math.max(...existing.dailyCycles.map((c: any) => c.cycleNumber || 1), 1);
-            const incomingMax = Math.max(...a.dailyCycles.map((c: any) => c.cycleNumber || 1), 1);
-            if (existingMax > incomingMax || (existingMax === incomingMax && existing.dailyCycles.length > a.dailyCycles.length)) {
-              mergedAcc.dailyCycles = existing.dailyCycles;
-            }
-          } else if (existing?.dailyCycles && (!a.dailyCycles || a.dailyCycles.length === 0)) {
-            mergedAcc.dailyCycles = existing.dailyCycles;
+          if (existing) {
+            const mergedCycles = mergeAccountCycles(existing.dailyCycles, a.dailyCycles);
+            const mergedBal = Math.max(existing.currentBalance || 0, a.currentBalance || 0);
+            const mergedAvail = Math.max(existing.availableBalance || 0, a.availableBalance || 0);
+            accMap.set(key, { ...existing, ...a, dailyCycles: mergedCycles, currentBalance: mergedBal, availableBalance: mergedAvail });
+          } else {
+            accMap.set(key, a);
           }
-          if (existing?.currentBalance && (!a.currentBalance || existing.currentBalance > a.currentBalance)) {
-            mergedAcc.currentBalance = existing.currentBalance;
-            mergedAcc.availableBalance = existing.availableBalance;
-          }
-          accMap.set(key, mergedAcc);
         }
       });
 

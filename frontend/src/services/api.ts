@@ -724,31 +724,33 @@ export const getStoredAccounts = (): Account[] => {
     }
 
     // Authoritative Transaction-driven Balance and Cycle Reconciliation
-    const customerDepositTxs = rawTxs.filter(
-      (t) =>
-        (t.accountId === acc.id ||
-         t.account?.customerId === acc.customerId ||
-         (t.account?.id && t.account.id === acc.id) ||
-         (acc.customerId && (t as any).customerId === acc.customerId) ||
-         (acc.customer?.customerNumber && (t as any).customer?.customerNumber === acc.customer.customerNumber) ||
-         (isJessica && (t.referenceNo?.includes('JES') || t.receiptNo?.includes('JES') || (t.account?.customer?.firstName || '').toLowerCase().includes('jessica'))) ||
-         (isDream && (t.referenceNo?.includes('DRM') || t.receiptNo?.includes('DRM') || (t.account?.customer?.firstName || '').toLowerCase().includes('dream'))) ||
-         (isElijah && (t.referenceNo?.includes('ELJ') || t.receiptNo?.includes('ELJ') || (t.account?.customer?.firstName || '').toLowerCase().includes('elijah') || t.id?.includes('1788801662781') || t.id?.includes('1788803912549')))) &&
-        t.type === 'DEPOSIT' &&
-        !t.isReversed
-    );
+    const customerDepositTxs = rawTxs.filter((t) => {
+      if (!t || t.type !== 'DEPOSIT' || t.isReversed) return false;
+      if (t.accountId === acc.id || t.account?.id === acc.id) return true;
+      if (acc.accountNumber && (t.accountNumber === acc.accountNumber || t.account?.accountNumber === acc.accountNumber)) return true;
+      const tCustId = normalizeCustomerId((t as any).customerId || t.account?.customerId || t.account?.customer?.id || t.customer?.id);
+      const aCustId = normalizeCustomerId(acc.customerId || acc.customer?.id || acc.customer?.customerNumber);
+      if (tCustId && aCustId && tCustId === aCustId) return true;
+      const tFirstName = (t.account?.customer?.firstName || t.customer?.firstName || '').trim().toLowerCase();
+      const aFirstName = (acc.customer?.firstName || '').trim().toLowerCase();
+      if (aFirstName && tFirstName && aFirstName === tFirstName) return true;
+      if (acc.accountNumber && (t.remarks?.includes(acc.accountNumber) || t.referenceNo?.includes(acc.accountNumber))) return true;
+      return false;
+    });
     const totalDepositTxSum = customerDepositTxs.reduce((sum, t) => sum + t.amount, 0);
 
-    const customerWithdrawalTxs = rawTxs.filter(
-      (t) =>
-        (t.accountId === acc.id ||
-         t.account?.customerId === acc.customerId ||
-         (t.account?.id && t.account.id === acc.id) ||
-         (acc.customerId && (t as any).customerId === acc.customerId) ||
-         (acc.customer?.customerNumber && (t as any).customer?.customerNumber === acc.customer.customerNumber)) &&
-        t.type === 'WITHDRAWAL' &&
-        !t.isReversed
-    );
+    const customerWithdrawalTxs = rawTxs.filter((t) => {
+      if (!t || t.type !== 'WITHDRAWAL' || t.isReversed) return false;
+      if (t.accountId === acc.id || t.account?.id === acc.id) return true;
+      if (acc.accountNumber && (t.accountNumber === acc.accountNumber || t.account?.accountNumber === acc.accountNumber)) return true;
+      const tCustId = normalizeCustomerId((t as any).customerId || t.account?.customerId || t.account?.customer?.id || t.customer?.id);
+      const aCustId = normalizeCustomerId(acc.customerId || acc.customer?.id || acc.customer?.customerNumber);
+      if (tCustId && aCustId && tCustId === aCustId) return true;
+      const tFirstName = (t.account?.customer?.firstName || t.customer?.firstName || '').trim().toLowerCase();
+      const aFirstName = (acc.customer?.firstName || '').trim().toLowerCase();
+      if (aFirstName && tFirstName && aFirstName === tFirstName) return true;
+      return false;
+    });
     const totalWithdrawn = customerWithdrawalTxs.reduce((sum, t) => sum + t.amount, 0);
 
     let cycleDeposits = (acc.dailyCycles || []).reduce((sum, c) => sum + (c.totalDeposited || 0), 0);
@@ -857,16 +859,21 @@ export const getStoredAccounts = (): Account[] => {
         cycleDeposits = totalDepositTxSum;
         splitsUpdated = true;
       }
-      if (activeC.currentDayCount > 0 && (!activeC.dailySplits || activeC.dailySplits.length === 0)) {
-        activeC.dailySplits = Array.from({ length: activeC.currentDayCount }, (_, i) => ({
-          dayNumber: i + 1,
-          date: activeC.startDate || new Date().toISOString().split('T')[0],
-          amount: pkg,
-          receiptNo: `RCP-REC-${i + 1}`,
-          isCompanyFee: i + 1 === 31,
+    (acc.dailyCycles || []).forEach((c) => {
+      const cPkg = c.dailyTargetAmount || pkg;
+      if (c.currentDayCount > 0 && (!c.dailySplits || c.dailySplits.length < c.currentDayCount)) {
+        const existingCount = c.dailySplits ? c.dailySplits.length : 0;
+        const newSplits = Array.from({ length: c.currentDayCount - existingCount }, (_, i) => ({
+          dayNumber: existingCount + i + 1,
+          date: c.startDate || new Date().toISOString().split('T')[0],
+          amount: cPkg,
+          receiptNo: `RCP-C${c.cycleNumber}-${existingCount + i + 1}`,
+          isCompanyFee: existingCount + i + 1 === 31,
         }));
+        c.dailySplits = [...(c.dailySplits || []), ...newSplits];
         splitsUpdated = true;
       }
+    });
     }
 
     const totalDepositedAll = Math.max(cycleDeposits, totalDepositTxSum);
@@ -1098,6 +1105,43 @@ export const getStoredTransactions = (): Transaction[] => {
         type: 'SAVINGS',
         currentBalance: 620,
         availableBalance: 600,
+        savingsPackage: 10,
+        customer: {
+          id: 'cust-1788801662780',
+          customerNumber: 'CUST-2026-6813',
+          firstName: 'Elijah',
+          lastName: 'Mensah',
+          phone: '0245567788',
+          email: 'elijah.mensah@client.erikon.com',
+          ghanaCardNumber: 'GHA-722419082-1',
+          dateOfBirth: '1990-01-01',
+          gender: 'Male',
+          address: 'Accra, Ghana',
+          occupation: 'Trader / Business',
+          branchId: 'br-01',
+          createdAt: '2026-09-07T17:15:00.000Z',
+          status: 'ACTIVE',
+        },
+      } as any,
+    },
+    {
+      id: 'tx-1788806206026',
+      accountId: 'acc-cust-1788801662780',
+      type: 'DEPOSIT',
+      paymentMode: 'PHYSICAL_CASH',
+      amount: 310,
+      previousBal: 620,
+      newBal: 930,
+      referenceNo: 'TX-DEP-ELJ-310-C3',
+      receiptNo: 'RCP-ELJ-C3-310',
+      remarks: 'Daily Susu Deposit (31 Days - Cycle 3 Complete) - Recorded by Admin',
+      createdAt: '2026-09-07T18:36:00.000Z',
+      account: {
+        id: 'acc-cust-1788801662780',
+        accountNumber: 'ACC-2026-88461',
+        type: 'SAVINGS',
+        currentBalance: 930,
+        availableBalance: 900,
         savingsPackage: 10,
         customer: {
           id: 'cust-1788801662780',
@@ -2836,6 +2880,8 @@ export const recordPackageDeposit = (
     receiptNo: `RCP-${Date.now().toString().slice(-8)}`,
     accountId: acc.id,
     account: acc,
+    customerId: acc.customerId || acc.customer?.id,
+    customer: acc.customer,
     type: 'DEPOSIT',
     paymentMode: 'PHYSICAL_CASH',
     amount: toDecimal(amountPaid),
@@ -2859,6 +2905,8 @@ export const recordPackageDeposit = (
       receiptNo: `RCP-FEE-${Date.now().toString().slice(-8)}`,
       accountId: acc.id,
       account: acc,
+      customerId: acc.customerId || acc.customer?.id,
+      customer: acc.customer,
       type: 'COMPANY_FEE_DEDUCTION',
       paymentMode: 'PHYSICAL_CASH',
       amount: toDecimal(packageFee),
