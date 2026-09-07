@@ -103,19 +103,28 @@ export const CURRENT_DATA_VERSION = 'ecfms_clean_slate_2026_09_03';
 
 // --- PERSISTENCE & REAL-TIME REPOSITORY ---
 
+// Authoritative Customer IDs and Customer Numbers for the 5 Active Clients
 export const CANONICAL_CUSTOMER_IDS = [
-  'cust-jessica-mamot',
+  // 1. Eric Kwasi Arthur
   'cust-1788779905017',
+  'CUST-2026-3222',
+
+  // 2. Vincent Kwabena Mensah
+  'cust-1788714715049',
+  'CUST-2026-5213',
+
+  // 3. Jessica Mamot
+  'cust-jessica-mamot',
+  'CUST-2026-7831',
+
+  // 4. Dream Colors
   'cust-dream-colors',
   'cust-dream-colours',
-  'cust-1788714715049',
-  'cust-1788801662780',
-  'CUST-2026-7831',
-  'CUST-2026-3222',
   'CUST-2026-9214',
-  'CUST-2026-5213',
+
+  // 5. Elijah Mensah
+  'cust-1788801662780',
   'CUST-2026-6813',
-  'CUST-2026-2925',
 ];
 
 export const getDeletedCustomerIds = (): string[] => {
@@ -318,7 +327,7 @@ export const getStoredCustomers = (): Customer[] => {
       {
         id: 'cust-1788714715049',
         customerNumber: 'CUST-2026-5213',
-        firstName: 'Vincent',
+        firstName: 'Vincent Kwabena',
         lastName: 'Mensah',
         phone: '0244112233',
         email: 'vincent.mensah@client.erikon.com',
