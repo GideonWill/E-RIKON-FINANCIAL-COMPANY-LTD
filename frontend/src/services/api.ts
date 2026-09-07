@@ -588,10 +588,11 @@ export const getStoredAccounts = (): Account[] => {
       const isDream = c.id === 'cust-dream-colors' || fName.includes('dream') || fName.includes('colors');
       const isArthur = c.id === 'cust-1788779905017' || (fName.includes('eric') && fName.includes('arthur'));
       const isVincent = c.id === 'cust-1788714715049' || (fName.includes('vincent') && fName.includes('mensah'));
+      const isElijah = c.id === 'cust-1788801662780' || (fName.includes('elijah') && fName.includes('mensah')) || fName.includes('initial');
 
-      const defaultPkg = isJessica ? 20 : (isDream ? 30 : (isArthur || isVincent ? 10 : 50));
-      const accId = isJessica ? 'acc-cust-jessica-mamot' : (isDream ? 'acc-cust-dream-colors' : (isArthur ? 'acc-1788779905017' : (isVincent ? 'acc-1788714715049' : `acc-${c.id}`)));
-      const accNo = isJessica ? 'ACC-2026-20817' : (isDream ? 'ACC-2026-16298' : (isArthur ? 'ACC-1001-5757' : (isVincent ? 'ACC-1001-5597' : `ACC-2026-${Math.floor(10000 + Math.random() * 90000)}`)));
+      const defaultPkg = isJessica ? 20 : (isDream ? 30 : (isArthur || isVincent || isElijah ? 10 : 50));
+      const accId = isJessica ? 'acc-cust-jessica-mamot' : (isDream ? 'acc-cust-dream-colors' : (isArthur ? 'acc-1788779905017' : (isVincent ? 'acc-1788714715049' : (isElijah ? 'acc-cust-1788801662780' : `acc-${c.id}`))));
+      const accNo = isJessica ? 'ACC-2026-20817' : (isDream ? 'ACC-2026-16298' : (isArthur ? 'ACC-1001-5757' : (isVincent ? 'ACC-1001-5597' : (isElijah ? 'ACC-2026-88461' : `ACC-2026-${Math.floor(10000 + Math.random() * 90000)}`))));
       const newAcc: Account = {
         id: accId,
         accountNumber: accNo,
@@ -638,13 +639,23 @@ export const getStoredAccounts = (): Account[] => {
     const isDream = fName.includes('dream') || fName.includes('colors') || acc.customerId === 'cust-dream-colors' || acc.id === 'acc-cust-dream-colors';
     const isArthur = (fName.includes('eric') && fName.includes('arthur')) || acc.customerId === 'cust-1788779905017' || acc.id === 'acc-1788779905017';
     const isVincent = (fName.includes('vincent') && fName.includes('mensah')) || acc.customerId === 'cust-1788714715049' || acc.id === 'acc-1788714715049' || acc.id === 'acc-vkm';
+    const isElijah = (fName.includes('elijah') && fName.includes('mensah')) || acc.customerId === 'cust-1788801662780' || acc.id === 'acc-cust-1788801662780' || acc.id === 'acc-1788801662780' || acc.accountNumber === 'ACC-2026-88461' || fName.includes('initial');
 
     if (isJessica) {
       acc.savingsPackage = 20;
     } else if (isDream) {
       acc.savingsPackage = 30;
-    } else if (isArthur || isVincent) {
+    } else if (isArthur || isVincent || isElijah) {
       acc.savingsPackage = 10;
+    }
+
+    if (isElijah && acc.customer) {
+      acc.customer.id = 'cust-1788801662780';
+      acc.customer.firstName = 'Elijah';
+      acc.customer.lastName = 'Mensah';
+      acc.customer.customerNumber = 'CUST-2026-6813';
+      acc.customer.phone = '0245567788';
+      acc.customer.ghanaCardNumber = 'GHA-722419082-1';
     }
 
     // Authoritative Transaction-driven Balance and Cycle Reconciliation
@@ -656,7 +667,8 @@ export const getStoredAccounts = (): Account[] => {
          (acc.customerId && (t as any).customerId === acc.customerId) ||
          (acc.customer?.customerNumber && (t as any).customer?.customerNumber === acc.customer.customerNumber) ||
          (isJessica && (t.referenceNo?.includes('JES') || t.receiptNo?.includes('JES') || (t.account?.customer?.firstName || '').toLowerCase().includes('jessica'))) ||
-         (isDream && (t.referenceNo?.includes('DRM') || t.receiptNo?.includes('DRM') || (t.account?.customer?.firstName || '').toLowerCase().includes('dream')))) &&
+         (isDream && (t.referenceNo?.includes('DRM') || t.receiptNo?.includes('DRM') || (t.account?.customer?.firstName || '').toLowerCase().includes('dream'))) ||
+         (isElijah && (t.referenceNo?.includes('ELJ') || t.receiptNo?.includes('ELJ') || (t.account?.customer?.firstName || '').toLowerCase().includes('elijah') || t.id?.includes('1788801662781')))) &&
         t.type === 'DEPOSIT' &&
         !t.isReversed
     );
@@ -677,7 +689,7 @@ export const getStoredAccounts = (): Account[] => {
     let cycleDeposits = (acc.dailyCycles || []).reduce((sum, c) => sum + (c.totalDeposited || 0), 0);
 
     const activeC = (acc.dailyCycles && acc.dailyCycles.length > 0) ? acc.dailyCycles[0] : null;
-    const pkg = isJessica ? 20 : (isDream ? 30 : (isArthur || isVincent ? 10 : (activeC?.dailyTargetAmount || acc.savingsPackage || 20)));
+    const pkg = isJessica ? 20 : (isDream ? 30 : (isArthur || isVincent || isElijah ? 10 : (activeC?.dailyTargetAmount || acc.savingsPackage || 20)));
     if (activeC && activeC.dailyTargetAmount !== pkg) {
       activeC.dailyTargetAmount = pkg;
     }
@@ -962,6 +974,43 @@ export const getStoredTransactions = (): Transaction[] => {
           occupation: 'Textiles & Printing Enterprise',
           branchId: 'br-01',
           createdAt: '2026-09-07T10:00:00.000Z',
+          status: 'ACTIVE',
+        },
+      } as any,
+    },
+    {
+      id: 'tx-init-1788801662781',
+      accountId: 'acc-cust-1788801662780',
+      type: 'DEPOSIT',
+      paymentMode: 'PHYSICAL_CASH',
+      amount: 310,
+      previousBal: 0,
+      newBal: 300,
+      referenceNo: 'TX-DEP-ELJ-310',
+      receiptNo: 'RCP-ELJ-310',
+      remarks: 'Daily Susu Deposit (31 Days - Cycle 1 Complete) - Recorded by Admin Prince Boateng',
+      createdAt: '2026-09-07T17:15:00.000Z',
+      account: {
+        id: 'acc-cust-1788801662780',
+        accountNumber: 'ACC-2026-88461',
+        type: 'SAVINGS',
+        currentBalance: 310,
+        availableBalance: 300,
+        savingsPackage: 10,
+        customer: {
+          id: 'cust-1788801662780',
+          customerNumber: 'CUST-2026-6813',
+          firstName: 'Elijah',
+          lastName: 'Mensah',
+          phone: '0245567788',
+          email: 'elijah.mensah@client.erikon.com',
+          ghanaCardNumber: 'GHA-722419082-1',
+          dateOfBirth: '1990-01-01',
+          gender: 'Male',
+          address: 'Accra, Ghana',
+          occupation: 'Trader / Business',
+          branchId: 'br-01',
+          createdAt: '2026-09-07T17:15:00.000Z',
           status: 'ACTIVE',
         },
       } as any,
