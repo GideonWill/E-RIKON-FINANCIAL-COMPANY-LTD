@@ -27,7 +27,11 @@ import {
 import { ApprovalRequest } from '../types';
 import { 
   getStoredDynamicNotifications, 
-  saveStoredDynamicNotifications 
+  saveStoredDynamicNotifications,
+  getStoredReadNotificationIds,
+  saveStoredReadNotificationIds,
+  getStoredClearedNotificationIds,
+  saveStoredClearedNotificationIds
 } from '../components/ui/NotificationsModal';
 import { broadcastRealtimeEvent, subscribeRealtimeEvents } from './realtimeSync';
 import { 
@@ -52,6 +56,8 @@ export interface CloudVaultPayload {
   deletedUserEmails?: string[];
   blockedUserEmails?: string[];
   notifications?: any[];
+  readNotificationIds?: string[];
+  clearedNotificationIds?: string[];
   authoritative?: boolean;
   action?: string;
   updatedAt?: string;
@@ -124,6 +130,8 @@ export const pushLocalToCloud = async (authoritative = true): Promise<boolean> =
     deletedUserEmails: getDeletedUserEmails(),
     blockedUserEmails: getBlockedUserEmails(),
     notifications: getStoredDynamicNotifications(),
+    readNotificationIds: getStoredReadNotificationIds(),
+    clearedNotificationIds: getStoredClearedNotificationIds(),
     authoritative,
     updatedAt: new Date().toISOString(),
   };
@@ -349,12 +357,40 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       }
     }
 
-    // Synchronize dynamic notifications across all staff & devices
+    // Synchronize read and cleared notification IDs
+    if (Array.isArray(cloudData.readNotificationIds)) {
+      const localRead = getStoredReadNotificationIds();
+      const mergedRead = Array.from(new Set([...localRead, ...cloudData.readNotificationIds]));
+      if (mergedRead.length !== localRead.length) {
+        localStorage.setItem('erikon_read_notifications', JSON.stringify(mergedRead));
+        hasUpdates = true;
+      }
+    }
+    if (Array.isArray(cloudData.clearedNotificationIds)) {
+      const localCleared = getStoredClearedNotificationIds();
+      const mergedCleared = Array.from(new Set([...localCleared, ...cloudData.clearedNotificationIds]));
+      if (mergedCleared.length !== localCleared.length) {
+        localStorage.setItem('erikon_cleared_notifications', JSON.stringify(mergedCleared));
+        hasUpdates = true;
+      }
+    }
+
+    // Synchronize dynamic notifications across all staff & devices (strictly filtering out cleared IDs)
     if (Array.isArray(cloudData.notifications)) {
+      const clearedList = new Set(getStoredClearedNotificationIds());
+      const readList = new Set(getStoredReadNotificationIds());
       const localNotifs = getStoredDynamicNotifications();
       const notifMap = new Map<string, any>();
-      localNotifs.forEach((n) => notifMap.set(n.id, n));
-      cloudData.notifications.forEach((n) => notifMap.set(n.id, n));
+      localNotifs.forEach((n) => {
+        if (!clearedList.has(n.id)) notifMap.set(n.id, n);
+      });
+      cloudData.notifications.forEach((n) => {
+        if (!clearedList.has(n.id)) {
+          const existing = notifMap.get(n.id);
+          const isRead = readList.has(n.id) || existing?.isRead || n.isRead;
+          notifMap.set(n.id, { ...n, isRead });
+        }
+      });
       const mergedNotifs = Array.from(notifMap.values()).slice(0, 60);
       if (JSON.stringify(mergedNotifs) !== JSON.stringify(localNotifs)) {
         saveStoredDynamicNotifications(mergedNotifs);

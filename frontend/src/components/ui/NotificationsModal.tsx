@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getStoredApprovals, getStoredTransactions } from '../../services/api';
 import { useRealtimeSync, broadcastRealtimeEvent } from '../../services/realtimeSync';
+import { pushLocalToCloud } from '../../services/cloudSync';
 import { RoleName } from '../../types';
 import { 
   BellAlertIcon, 
@@ -57,6 +58,7 @@ export const saveStoredReadNotificationIds = (ids: string[]) => {
     window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
   }
   broadcastRealtimeEvent('MANUAL_SYNC', { readNotifications: ids });
+  pushLocalToCloud().catch(() => {});
 };
 
 export const getStoredClearedNotificationIds = (): string[] => {
@@ -76,6 +78,7 @@ export const saveStoredClearedNotificationIds = (ids: string[]) => {
     window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
   }
   broadcastRealtimeEvent('MANUAL_SYNC', { clearedNotifications: ids });
+  pushLocalToCloud().catch(() => {});
 };
 
 export const getStoredDynamicNotifications = (): NotificationItem[] => {
@@ -94,6 +97,7 @@ export const saveStoredDynamicNotifications = (notifications: NotificationItem[]
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
   }
+  pushLocalToCloud().catch(() => {});
 };
 
 export const clearAllNotifications = (role?: RoleName) => {
@@ -112,6 +116,7 @@ export const clearAllNotifications = (role?: RoleName) => {
   saveStoredClearedNotificationIds(allIdsToClear);
   saveStoredDynamicNotifications([]);
   saveStoredReadNotificationIds(Array.from(new Set([...readIds, ...allIdsToClear])));
+  pushLocalToCloud().catch(() => {});
 };
 
 export const addSystemNotification = (item: {
@@ -440,17 +445,39 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
   };
 
   const handleClearAll = () => {
+    const allNotifIds = notifications.map((n) => n.id);
     const displayedIds = displayedNotifications.map((n) => n.id);
+    const idsToClear = Array.from(new Set([...allNotifIds, ...displayedIds]));
     const currentCleared = getStoredClearedNotificationIds();
-    const updatedCleared = Array.from(new Set([...currentCleared, ...displayedIds]));
+    const currentRead = getStoredReadNotificationIds();
+    const updatedCleared = Array.from(new Set([...currentCleared, ...idsToClear]));
+    const updatedRead = Array.from(new Set([...currentRead, ...idsToClear]));
     saveStoredClearedNotificationIds(updatedCleared);
+    saveStoredReadNotificationIds(updatedRead);
     saveStoredDynamicNotifications([]);
 
-    // Immediately clear displayed notifications
-    setNotifications((prev) => prev.filter((n) => !displayedIds.includes(n.id)));
+    // Immediately clear all notifications from local view
+    setNotifications([]);
 
     setStatusMessage('All notifications cleared successfully');
     setTimeout(() => setStatusMessage(null), 2500);
+
+    if (onNotificationsUpdated) onNotificationsUpdated();
+  };
+
+  const handleMarkSingleAsRead = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const readIds = getStoredReadNotificationIds();
+    const updated = Array.from(new Set([...readIds, id]));
+    saveStoredReadNotificationIds(updated);
+
+    const dynamic = getStoredDynamicNotifications();
+    const updatedDynamic = dynamic.map((d) => (d.id === id ? { ...d, isRead: true } : d));
+    saveStoredDynamicNotifications(updatedDynamic);
+
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+    setStatusMessage('Notification marked as read');
+    setTimeout(() => setStatusMessage(null), 2000);
 
     if (onNotificationsUpdated) onNotificationsUpdated();
   };
@@ -593,9 +620,15 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                         Read
                       </span>
                     ) : (
-                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-emerald-500 text-white shadow-xs animate-pulse">
-                        NEW
-                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleMarkSingleAsRead(n.id, e)}
+                        className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white shadow-xs transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                        title="Click to mark as read"
+                      >
+                        <CheckCircleIcon className="w-2.5 h-2.5" />
+                        Mark as Read
+                      </button>
                     )}
 
                     <span className="text-[10px] text-slate-400 font-mono flex items-center gap-0.5">
