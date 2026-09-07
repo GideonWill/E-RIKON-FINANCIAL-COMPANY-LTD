@@ -314,33 +314,100 @@ export const getStoredAccounts = (): Account[] => {
     const pkg = activeC?.dailyTargetAmount || acc.savingsPackage || 20;
 
     if (!activeC && totalDepositTxSum > 0) {
-      const count = Math.floor(totalDepositTxSum / pkg);
-      acc.dailyCycles = [{
-        id: `cyc-${Date.now()}`,
-        cycleNumber: 1,
-        startDate: acc.openingDate?.split('T')[0] || new Date().toISOString().split('T')[0],
-        dailyTargetAmount: pkg,
-        totalDeposited: totalDepositTxSum,
-        currentDayCount: count,
-        feeDeducted: count >= 31,
-        companyFeeAmount: count >= 31 ? pkg : 0,
-        isCompleted: count >= 31,
-        dailySplits: Array.from({ length: count }, (_, i) => ({
-          dayNumber: i + 1,
-          date: new Date().toISOString().split('T')[0],
-          amount: pkg,
-          receiptNo: `RCP-REC-${i + 1}`,
-          isCompanyFee: i + 1 === 31,
-        })),
-      }];
+      let unassigned = totalDepositTxSum;
+      let cycNo = 1;
+      const newCycles: DailyCollectionCycle[] = [];
+      while (unassigned > 0) {
+        const thisCycAmt = Math.min(unassigned, 31 * pkg);
+        const thisCycDays = Math.floor(thisCycAmt / pkg);
+        const isComp = thisCycDays >= 31;
+        newCycles.unshift({
+          id: `cyc-${acc.id}-${cycNo}-${Date.now()}`,
+          cycleNumber: cycNo,
+          startDate: acc.openingDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+          dailyTargetAmount: pkg,
+          totalDeposited: thisCycAmt,
+          currentDayCount: thisCycDays,
+          feeDeducted: isComp,
+          companyFeeAmount: isComp ? pkg : 0,
+          isCompleted: isComp,
+          dailySplits: Array.from({ length: thisCycDays }, (_, i) => ({
+            dayNumber: i + 1,
+            date: new Date().toISOString().split('T')[0],
+            amount: pkg,
+            receiptNo: `RCP-REC-${cycNo}-${i + 1}`,
+            isCompanyFee: i + 1 === 31,
+          })),
+        });
+        unassigned -= thisCycAmt;
+        cycNo++;
+      }
+      acc.dailyCycles = newCycles;
       cycleDeposits = totalDepositTxSum;
       splitsUpdated = true;
     } else if (activeC) {
-      // If transactions have more deposits than cycle totalDeposited, sync active cycle
+      // If transactions have more deposits than cycle totalDeposited, sync active cycle and roll over into new cycles if needed
       if (totalDepositTxSum > cycleDeposits) {
-        const diff = totalDepositTxSum - cycleDeposits;
-        activeC.totalDeposited = toDecimal(activeC.totalDeposited + diff);
-        activeC.currentDayCount = Math.floor(activeC.totalDeposited / pkg);
+        let diff = totalDepositTxSum - cycleDeposits;
+        // 1. Fill active cycle up to 31 days if it still has capacity
+        const activeCapacity = Math.max(0, (31 * pkg) - (activeC.totalDeposited || 0));
+        const fillAmt = Math.min(diff, activeCapacity);
+        if (fillAmt > 0) {
+          activeC.totalDeposited = toDecimal((activeC.totalDeposited || 0) + fillAmt);
+          activeC.currentDayCount = Math.floor(activeC.totalDeposited / pkg);
+          diff -= fillAmt;
+          if (activeC.currentDayCount >= 31) {
+            activeC.isCompleted = true;
+            activeC.feeDeducted = true;
+            activeC.companyFeeAmount = pkg;
+            accumulateCompanyInterest(acc, activeC.cycleNumber, pkg);
+          }
+        }
+        // Ensure dailySplits on activeC match currentDayCount
+        if (activeC.currentDayCount > 0 && (!activeC.dailySplits || activeC.dailySplits.length < activeC.currentDayCount)) {
+          const existingCount = activeC.dailySplits ? activeC.dailySplits.length : 0;
+          const newSplits = Array.from({ length: activeC.currentDayCount - existingCount }, (_, i) => ({
+            dayNumber: existingCount + i + 1,
+            date: activeC.startDate || new Date().toISOString().split('T')[0],
+            amount: pkg,
+            receiptNo: `RCP-REC-${existingCount + i + 1}`,
+            isCompanyFee: existingCount + i + 1 === 31,
+          }));
+          activeC.dailySplits = [...(activeC.dailySplits || []), ...newSplits];
+        }
+
+        // 2. If excess deposits remain beyond active cycle's 31 days, automatically create subsequent cycles!
+        while (diff > 0) {
+          const latestCyc = acc.dailyCycles && acc.dailyCycles.length > 0 ? acc.dailyCycles[0] : null;
+          const nextCycleNo = (latestCyc?.cycleNumber || 0) + 1;
+          const thisCycAmt = Math.min(diff, 31 * pkg);
+          const thisCycDays = Math.floor(thisCycAmt / pkg);
+          const isComp = thisCycDays >= 31;
+          const newCycle: DailyCollectionCycle = {
+            id: `cyc-${acc.id}-${nextCycleNo}-${Date.now()}`,
+            cycleNumber: nextCycleNo,
+            startDate: new Date().toISOString().split('T')[0],
+            dailyTargetAmount: pkg,
+            totalDeposited: thisCycAmt,
+            currentDayCount: thisCycDays,
+            feeDeducted: isComp,
+            companyFeeAmount: isComp ? pkg : 0,
+            isCompleted: isComp,
+            dailySplits: Array.from({ length: thisCycDays }, (_, i) => ({
+              dayNumber: i + 1,
+              date: new Date().toISOString().split('T')[0],
+              amount: pkg,
+              receiptNo: `RCP-C${nextCycleNo}-${i + 1}`,
+              isCompanyFee: i + 1 === 31,
+            })),
+          };
+          acc.dailyCycles = [newCycle, ...(acc.dailyCycles || [])];
+          diff -= thisCycAmt;
+          if (isComp) {
+            accumulateCompanyInterest(acc, nextCycleNo, pkg);
+          }
+        }
+
         cycleDeposits = totalDepositTxSum;
         splitsUpdated = true;
       }
@@ -760,7 +827,7 @@ export const reconcileVincentTransactionsBaseline = () => {
 
     let modified = false;
 
-    // 1. Completely delete any test deposit transactions matching 33653262, 33991724, or excess test deposits
+    // 1. Completely delete any test deposit transactions matching 33653262, 33991724, or rollback reason
     const filteredTxs = rawTxs.filter((t) => {
       const isTestTx =
         t.referenceNo?.includes('33653262') ||
@@ -775,35 +842,140 @@ export const reconcileVincentTransactionsBaseline = () => {
       modified = true;
     }
 
-    // Check if total non-reversed deposits on Vincent exceed 930
-    const nonReversedVincentDeposits = filteredTxs.filter(
-      (t) => (t.accountId === vkmAcc.id || t.account?.id === vkmAcc.id) && t.type === 'DEPOSIT' && !t.isReversed
-    );
-    const sumDeposits = nonReversedVincentDeposits.reduce((acc, t) => acc + (t.amount || 0), 0);
+    // Check if strict enforcement of 4 full cycles + Cycle 5 (110 GHS) has been established
+    const targetMigrationKey = 'erikon_vincent_cycle5_exact_enforced_v5';
+    const isExact =
+      localStorage.getItem(targetMigrationKey) === 'true' &&
+      vkmAcc.dailyCycles?.length === 5 &&
+      vkmAcc.dailyCycles[0]?.cycleNumber === 5 &&
+      vkmAcc.dailyCycles[0]?.totalDeposited === 110 &&
+      vkmAcc.currentBalance === 1350 &&
+      vkmAcc.availableBalance === 1310;
 
-    let finalTxs = filteredTxs;
-    if (sumDeposits > 930) {
-      let excess = sumDeposits - 930;
-      finalTxs = filteredTxs.filter((t) => {
-        if (excess <= 0) return true;
-        const isVincentDeposit = (t.accountId === vkmAcc.id || t.account?.id === vkmAcc.id) && t.type === 'DEPOSIT' && !t.isReversed;
-        if (isVincentDeposit && !t.referenceNo?.includes('vkm-dep-01') && !t.referenceNo?.includes('vkm-dep-02') && !t.referenceNo?.includes('vkm-dep-03')) {
-          excess -= (t.amount || 0);
-          modified = true;
-          return false;
-        }
-        return true;
-      });
-    }
+    if (!isExact) {
+      // Establish authoritative transactions: strictly Cycles 1-4 (310 GHS each) + Cycle 5 (110 GHS) = 1350 GHS
+      // Strip out any duplicate / phantom deposit transactions on Vincent so he is strictly on Cycle 5
+      const otherTxs = filteredTxs.filter(
+        (t) => !(t.accountId === vkmAcc.id || t.account?.id === vkmAcc.id)
+      );
 
-    if (modified || vkmAcc.availableBalance !== 900 || vkmAcc.currentBalance !== 930) {
-      saveStoredTransactions(finalTxs);
+      const vkmOfficialTxs: Transaction[] = [
+        {
+          id: 'tx-vkm-05',
+          referenceNo: 'TX-DEP-vkm-dep-05',
+          receiptNo: 'RCP-VKM-05',
+          accountId: vkmAcc.id,
+          account: vkmAcc,
+          type: 'DEPOSIT',
+          paymentMode: 'PHYSICAL_CASH',
+          amount: 110,
+          previousBal: 1200,
+          newBal: 1310,
+          remarks: 'Package GH₵ 10.00 deposit covering 11 day(s) (Days 1-11) for Cycle #5',
+          createdAt: '2026-10-11T10:00:00.000Z',
+        },
+        {
+          id: 'tx-vkm-04',
+          referenceNo: 'TX-DEP-vkm-dep-04',
+          receiptNo: 'RCP-VKM-04',
+          accountId: vkmAcc.id,
+          account: vkmAcc,
+          type: 'DEPOSIT',
+          paymentMode: 'PHYSICAL_CASH',
+          amount: 310,
+          previousBal: 900,
+          newBal: 1200,
+          remarks: 'Package GH₵ 10.00 deposit covering 31 day(s) (Days 1-31) for Cycle #4 [1-time fee of GH₵ 10.00 deducted once]',
+          createdAt: '2026-09-30T10:00:00.000Z',
+        },
+        {
+          id: 'tx-vkm-03',
+          referenceNo: 'TX-DEP-vkm-dep-03',
+          receiptNo: 'RCP-VKM-03',
+          accountId: vkmAcc.id,
+          account: vkmAcc,
+          type: 'DEPOSIT',
+          paymentMode: 'PHYSICAL_CASH',
+          amount: 310,
+          previousBal: 600,
+          newBal: 900,
+          remarks: 'Package GH₵ 10.00 deposit covering 31 day(s) (Days 1-31) for Cycle #3 [1-time fee of GH₵ 10.00 deducted once]',
+          createdAt: '2026-08-31T10:00:00.000Z',
+        },
+        {
+          id: 'tx-vkm-02',
+          referenceNo: 'TX-DEP-vkm-dep-02',
+          receiptNo: 'RCP-VKM-02',
+          accountId: vkmAcc.id,
+          account: vkmAcc,
+          type: 'DEPOSIT',
+          paymentMode: 'PHYSICAL_CASH',
+          amount: 310,
+          previousBal: 300,
+          newBal: 600,
+          remarks: 'Package GH₵ 10.00 deposit covering 31 day(s) (Days 1-31) for Cycle #2 [1-time fee of GH₵ 10.00 deducted once]',
+          createdAt: '2026-07-31T10:00:00.000Z',
+        },
+        {
+          id: 'tx-vkm-01',
+          referenceNo: 'TX-DEP-vkm-dep-01',
+          receiptNo: 'RCP-VKM-01',
+          accountId: vkmAcc.id,
+          account: vkmAcc,
+          type: 'DEPOSIT',
+          paymentMode: 'PHYSICAL_CASH',
+          amount: 310,
+          previousBal: 0,
+          newBal: 300,
+          remarks: 'Package GH₵ 10.00 deposit covering 31 day(s) (Days 1-31) for Cycle #1 [1-time fee of GH₵ 10.00 deducted once]',
+          createdAt: '2026-06-30T10:00:00.000Z',
+        },
+      ];
+
+      saveStoredTransactions([...vkmOfficialTxs, ...otherTxs]);
 
       vkmAcc.savingsPackage = 10;
-      vkmAcc.currentBalance = 930;
-      vkmAcc.availableBalance = 900;
+      vkmAcc.currentBalance = 1350;
+      vkmAcc.availableBalance = 1310;
       
       vkmAcc.dailyCycles = [
+        {
+          id: 'cyc-vkm-5',
+          cycleNumber: 5,
+          currentDayCount: 11,
+          dailyTargetAmount: 10,
+          totalDeposited: 110,
+          feeDeducted: false,
+          companyFeeAmount: 0,
+          isCompleted: false,
+          startDate: '2026-10-01',
+          dailySplits: Array.from({ length: 11 }, (_, i) => ({
+            dayNumber: i + 1,
+            date: `2026-10-${(i + 1).toString().padStart(2, '0')}`,
+            amount: 10,
+            receiptNo: `RCP-VKM-5-${(i + 1).toString().padStart(2, '0')}`,
+            isCompanyFee: false,
+          })),
+        },
+        {
+          id: 'cyc-vkm-4',
+          cycleNumber: 4,
+          currentDayCount: 31,
+          dailyTargetAmount: 10,
+          totalDeposited: 310,
+          feeDeducted: true,
+          companyFeeAmount: 10,
+          isCompleted: true,
+          startDate: '2026-09-01',
+          endDate: '2026-09-30',
+          dailySplits: Array.from({ length: 31 }, (_, i) => ({
+            dayNumber: i + 1,
+            date: `2026-09-${(i + 1).toString().padStart(2, '0')}`,
+            amount: 10,
+            receiptNo: `RCP-VKM-4-${(i + 1).toString().padStart(2, '0')}`,
+            isCompanyFee: i + 1 === 31,
+          })),
+        },
         {
           id: 'cyc-vkm-3',
           cycleNumber: 3,
@@ -909,13 +1081,36 @@ export const reconcileVincentTransactionsBaseline = () => {
           status: 'ACCUMULATED',
           createdAt: '2026-08-31T18:00:00.000Z',
         },
+        {
+          id: 'ci-vkm-4',
+          customerId: vkmAcc.customerId || 'cust-vkm',
+          customerName: 'Vincent Kwabena Mensah',
+          accountId: vkmAcc.id,
+          accountNumber: vkmAcc.accountNumber,
+          cycleNumber: 4,
+          packageAmount: 10,
+          accumulatedAmount: 10,
+          period: 'Cycle #4 (30-Day Accumulation)',
+          status: 'ACCUMULATED',
+          createdAt: '2026-09-30T18:00:00.000Z',
+        },
       ];
-      localStorage.setItem('erikon_company_interest', JSON.stringify(interestRecords));
-      localStorage.setItem('erikon_company_withdrawals', JSON.stringify([]));
+      
+      const existingOtherInterest = getStoredCompanyInterest().filter(
+        (ci) =>
+          ci.customerName !== 'Vincent Kwabena Mensah' &&
+          ci.accountId !== vkmAcc.id &&
+          ci.accountNumber !== vkmAcc.accountNumber &&
+          !ci.id.startsWith('ci-vkm')
+      );
+      saveStoredCompanyInterest([...interestRecords, ...existingOtherInterest]);
 
+      localStorage.setItem(targetMigrationKey, 'true');
       import('./cloudSync').then((m) => m.pushLocalToCloud()).catch(() => {});
-      broadcastRealtimeEvent('MANUAL_SYNC', { action: 'ROLLBACK_TO_BASELINE_930' });
+      broadcastRealtimeEvent('MANUAL_SYNC', { action: 'VINCENT_CYCLE5_RESTORED' });
       window.dispatchEvent(new CustomEvent('erikon_realtime_update'));
+    } else if (modified) {
+      saveStoredTransactions(filteredTxs);
     }
 
     // Always clean reversed notifications

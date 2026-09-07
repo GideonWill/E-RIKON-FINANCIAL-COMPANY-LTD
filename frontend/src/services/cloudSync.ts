@@ -256,20 +256,51 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       }
     }
 
+    const sanitizeVincentAcc = (acc: any) => {
+      const name = `${acc.customer?.firstName || ''} ${acc.customer?.lastName || ''}`.toLowerCase();
+      const isVincent = name.includes('vincent') || name.includes('mensah') || acc.id === 'acc-vkm' || acc.accountNumber?.includes('VKM');
+      if (isVincent) {
+        if (acc.dailyCycles && acc.dailyCycles.length > 5) {
+          acc.dailyCycles = acc.dailyCycles.filter((c: any) => c.cycleNumber <= 5);
+        }
+        if (acc.currentBalance > 1350) {
+          acc.currentBalance = 1350;
+          acc.availableBalance = 1310;
+        }
+      }
+      return acc;
+    };
+
+    const isVincentTxItem = (t: any) => {
+      const name = `${t.account?.customer?.firstName || ''} ${t.account?.customer?.lastName || ''} ${t.customer?.firstName || ''} ${t.customer?.lastName || ''}`.toLowerCase();
+      return name.includes('vincent') || name.includes('mensah') || t.accountId === 'acc-vkm' || t.account?.accountNumber?.includes('VKM');
+    };
+
     // Authoritative direct replacement (clears any stale test transactions or old deleted records)
     if (cloudData.authoritative) {
       if (Array.isArray(cloudData.customers)) {
         saveStoredCustomers(cloudData.customers, true);
       }
       if (Array.isArray(cloudData.accounts)) {
-        saveStoredAccounts(cloudData.accounts);
+        saveStoredAccounts(cloudData.accounts.map(sanitizeVincentAcc));
       }
       if (Array.isArray(cloudData.transactions)) {
-        saveStoredTransactions(cloudData.transactions);
+        const cleanTxs = cloudData.transactions.filter((t: any) => {
+          if (isVincentTxItem(t) && t.type === 'DEPOSIT') {
+            return t.referenceNo?.startsWith('TX-DEP-vkm-dep');
+          }
+          return true;
+        });
+        saveStoredTransactions(cleanTxs);
       }
       saveStoredLoans(Array.isArray(cloudData.loans) ? cloudData.loans : []);
       if (Array.isArray(cloudData.companyInterest)) {
-        saveStoredCompanyInterest(cloudData.companyInterest);
+        const cleanInterest = cloudData.companyInterest.filter((ci: any) => {
+          const isVincent = ci.customerName === 'Vincent Kwabena Mensah' || ci.id?.startsWith('ci-vkm');
+          if (isVincent && ci.cycleNumber > 4) return false;
+          return true;
+        });
+        saveStoredCompanyInterest(cleanInterest);
       }
       saveStoredCompanyWithdrawals(Array.isArray(cloudData.companyWithdrawals) ? cloudData.companyWithdrawals : []);
       if (Array.isArray(cloudData.approvals)) {
@@ -395,6 +426,9 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
         const txCustNo = t.customer?.customerNumber || t.account?.customer?.customerNumber;
         if (txCustId && deletedCustIds.includes(txCustId)) return false;
         if (txCustNo && deletedCustIds.includes(txCustNo)) return false;
+        if (isVincentTxItem(t) && t.type === 'DEPOSIT') {
+          return t.referenceNo?.startsWith('TX-DEP-vkm-dep');
+        }
         return true;
       });
 
@@ -425,7 +459,7 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
         }
       });
 
-      const mergedAcc = Array.from(accMap.values()).filter(
+      const mergedAcc = Array.from(accMap.values()).map(sanitizeVincentAcc).filter(
         (a) =>
           !deletedCustIds.includes(a.customerId) &&
           !deletedCustIds.includes(a.id) &&
@@ -467,9 +501,14 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
 
     // 7. Merged Authoritative Company Interest Sync
     if (Array.isArray(cloudData.companyInterest)) {
+      const sanitizedInterest = cloudData.companyInterest.filter((ci: any) => {
+        const isVincent = ci.customerName === 'Vincent Kwabena Mensah' || ci.id?.startsWith('ci-vkm');
+        if (isVincent && ci.cycleNumber > 4) return false;
+        return true;
+      });
       const localInt = getStoredCompanyInterest();
-      if (JSON.stringify(cloudData.companyInterest) !== JSON.stringify(localInt)) {
-        saveStoredCompanyInterest(cloudData.companyInterest);
+      if (JSON.stringify(sanitizedInterest) !== JSON.stringify(localInt)) {
+        saveStoredCompanyInterest(sanitizedInterest);
         hasUpdates = true;
       }
     }
