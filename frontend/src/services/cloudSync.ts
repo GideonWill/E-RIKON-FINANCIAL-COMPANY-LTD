@@ -22,7 +22,8 @@ import {
   getDeletedUserEmails,
   addDeletedUserEmail,
   getBlockedUserEmails,
-  RegisteredUserRecord
+  RegisteredUserRecord,
+  CANONICAL_CUSTOMER_IDS
 } from './api';
 import { ApprovalRequest } from '../types';
 import { 
@@ -149,7 +150,12 @@ export const pushLocalToCloud = async (authoritative = true): Promise<boolean> =
   }
 
   // 2. Secondary: Asynchronous background push to HTTP endpoints (non-blocking)
-  const payloadStr = JSON.stringify(payload);
+  // Compact audit logs for HTTP endpoints to stay under proxy body-size limits
+  const httpPayload = {
+    ...payload,
+    auditLogs: Array.isArray(payload.auditLogs) ? payload.auditLogs.slice(0, 50) : [],
+  };
+  const payloadStr = JSON.stringify(httpPayload);
   const endpoints = getSyncEndpoints();
 
   endpoints.forEach((url) => {
@@ -284,7 +290,13 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     const sanitizeCustomerItem = (c: any) => {
       if (!c) return c;
       const fName = `${c.firstName || ''} ${c.lastName || ''}`.trim().toLowerCase();
-      if (fName.includes('dream') || fName.includes('colors') || c.id === 'cust-dream-colors') {
+      if (
+        fName.includes('dream') ||
+        fName.includes('color') ||
+        fName.includes('colour') ||
+        c.id === 'cust-dream-colors' ||
+        c.id === 'cust-dream-colours'
+      ) {
         return { ...c, ghanaCardNumber: 'GHA-001141169-5' }; // Shares same Ghana Card ID with Eric Kwasi Arthur
       } else if (fName.includes('eric') && fName.includes('arthur')) {
         return { ...c, ghanaCardNumber: 'GHA-001141169-5' };
@@ -319,7 +331,14 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
         }
       }
 
-      const isDream = name.includes('dream') || name.includes('colors') || acc.customerId === 'cust-dream-colors' || acc.id === 'acc-cust-dream-colors';
+      const isDream =
+        name.includes('dream') ||
+        name.includes('color') ||
+        name.includes('colour') ||
+        acc.customerId === 'cust-dream-colors' ||
+        acc.customerId === 'cust-dream-colours' ||
+        acc.id === 'acc-cust-dream-colors' ||
+        acc.id === 'acc-cust-dream-colours';
       if (isDream) {
         acc.savingsPackage = 30;
         if (!acc.currentBalance || acc.currentBalance < 360) {
@@ -505,7 +524,13 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
     // Allow multiple accounts and clients to share the same Ghana card
     for (const c of custMap.values()) {
       if (!c || !c.id) continue;
-      if (deletedCustIds.includes(c.id) || (c.customerNumber && deletedCustIds.includes(c.customerNumber))) continue;
+      if (
+        !CANONICAL_CUSTOMER_IDS.includes(c.id) &&
+        !CANONICAL_CUSTOMER_IDS.includes(c.customerNumber || '') &&
+        (deletedCustIds.includes(c.id) || (c.customerNumber && deletedCustIds.includes(c.customerNumber)))
+      ) {
+        continue;
+      }
       if (seenIds.has(c.id)) continue;
       if (c.customerNumber && seenCustNos.has(c.customerNumber)) continue;
 
@@ -682,8 +707,36 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
  * Pulls latest state from authoritative cloud backends and merges into local storage
  */
 export const pullCloudToLocal = async (): Promise<boolean> => {
-  // 1. Try direct Firebase Realtime Database read first if configured
-  if (isFirebaseConfigured() && isRealtimeCloudConnected()) {
+  // 1. Direct Firebase REST endpoint read (sub-100ms, zero-dependency, works immediately on all devices & networks)
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const fbRes = await fetch(
+      'https://erikon-company-plc-default-rtdb.europe-west1.firebasedatabase.app/system_vault.json',
+      {
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeoutId);
+    if (fbRes.ok) {
+      const fbData = await fbRes.json();
+      if (
+        fbData &&
+        ((Array.isArray(fbData.customers) && fbData.customers.length > 0) ||
+         (Array.isArray(fbData.registeredUsers) && fbData.registeredUsers.length > 0) ||
+         (Array.isArray(fbData.accounts) && fbData.accounts.length > 0) ||
+         (Array.isArray(fbData.transactions) && fbData.transactions.length > 0))
+      ) {
+        return applyIncomingCloudVault(fbData);
+      }
+    }
+  } catch (e) {
+    // Continue to SDK read or HTTP fallback
+  }
+
+  // 2. Try direct Firebase Realtime Database SDK read if configured
+  if (isFirebaseConfigured()) {
     try {
       const rtdbData = await getRealtimeDatabaseVault();
       if (
@@ -699,7 +752,7 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
     }
   }
 
-  // 2. Fallback to HTTP sync endpoints
+  // 3. Fallback to HTTP sync endpoints
   const endpoints = getSyncEndpoints();
   let cloudData: CloudVaultPayload | null = null;
 

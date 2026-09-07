@@ -16,6 +16,7 @@ let globalCloudVault = {
 };
 
 const LIVE_BACKEND_URL = 'https://e-rikon-ecfms-backend.onrender.com/api/sync';
+const FIREBASE_RTDB_URL = 'https://erikon-company-plc-default-rtdb.europe-west1.firebasedatabase.app/system_vault.json';
 
 export default async function handler(req, res) {
   // CORS Headers for multi-device access
@@ -32,6 +33,30 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
+    // 1. Primary: Direct Google Firebase RTDB Fetch (sub-100ms, 99.999% uptime, zero cold start)
+    try {
+      const fbController = new AbortController();
+      const fbTimeout = setTimeout(() => fbController.abort(), 2000);
+      const fbRes = await fetch(FIREBASE_RTDB_URL, {
+        headers: { Accept: 'application/json' },
+        signal: fbController.signal
+      });
+      clearTimeout(fbTimeout);
+      if (fbRes.ok) {
+        const fbData = await fbRes.json();
+        const vault = fbData?.vault || fbData;
+        if (vault && Array.isArray(vault.customers) && vault.customers.length > 0) {
+          globalCloudVault = { ...globalCloudVault, ...vault };
+          return res.status(200).json({
+            success: true,
+            vault: globalCloudVault,
+            updatedAt: globalCloudVault.updatedAt || new Date().toISOString(),
+          });
+        }
+      }
+    } catch {}
+
+    // 2. Secondary: Live Render Backend
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2500);
@@ -253,9 +278,15 @@ export default async function handler(req, res) {
 
       globalCloudVault.updatedAt = new Date().toISOString();
 
-      // Asynchronously forward to live database backend
+      // Asynchronously forward to live database backend & Firebase Realtime Database
       fetch(LIVE_BACKEND_URL, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(globalCloudVault),
+      }).catch(() => {});
+
+      fetch(FIREBASE_RTDB_URL, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(globalCloudVault),
       }).catch(() => {});

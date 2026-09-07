@@ -103,20 +103,34 @@ export const CURRENT_DATA_VERSION = 'ecfms_clean_slate_2026_09_03';
 
 // --- PERSISTENCE & REAL-TIME REPOSITORY ---
 
+export const CANONICAL_CUSTOMER_IDS = [
+  'cust-jessica-mamot',
+  'cust-1788779905017',
+  'cust-dream-colors',
+  'cust-dream-colours',
+  'cust-1788714715049',
+  'CUST-2026-7831',
+  'CUST-2026-3222',
+  'CUST-2026-9214',
+  'CUST-2026-5213',
+];
+
 export const getDeletedCustomerIds = (): string[] => {
   const data = localStorage.getItem('erikon_deleted_customer_ids');
   if (!data) return [];
   try {
     const parsed = JSON.parse(data);
     if (!Array.isArray(parsed)) return [];
-    // Sanitize: ensure Ghana cards or phone numbers are never treated as customer IDs
+    // Sanitize: ensure Ghana cards or phone numbers are never treated as customer IDs,
+    // and never allow authoritative canonical active customers to be blocked
     return parsed.filter(
       (id) =>
         typeof id === 'string' &&
         !id.startsWith('GHA-') &&
         !id.startsWith('+233') &&
         !id.startsWith('02') &&
-        !id.startsWith('05')
+        !id.startsWith('05') &&
+        !CANONICAL_CUSTOMER_IDS.includes(id)
     );
   } catch {
     return [];
@@ -125,8 +139,16 @@ export const getDeletedCustomerIds = (): string[] => {
 
 export const addDeletedCustomerId = (id: string) => {
   if (!id) return;
-  // Never add Ghana card or phone numbers as customer IDs
-  if (id.startsWith('GHA-') || id.startsWith('+233') || id.startsWith('02') || id.startsWith('05')) return;
+  // Never add canonical customers, Ghana card or phone numbers as deleted customer IDs
+  if (
+    CANONICAL_CUSTOMER_IDS.includes(id) ||
+    id.startsWith('GHA-') ||
+    id.startsWith('+233') ||
+    id.startsWith('02') ||
+    id.startsWith('05')
+  ) {
+    return;
+  }
   const ids = getDeletedCustomerIds();
   if (!ids.includes(id)) {
     const updated = [...ids, id];
@@ -287,13 +309,19 @@ export const getStoredCustomers = (): Customer[] => {
     ];
 
     canonicalClients.forEach((cc) => {
-      const exists = parsed.some(
-        (p) =>
-          p.id === cc.id ||
-          p.customerNumber === cc.customerNumber ||
-          (`${p.firstName} ${p.lastName}`.trim().toLowerCase() === `${cc.firstName} ${cc.lastName}`.trim().toLowerCase())
-      );
-      if (!exists && !deletedIds.includes(cc.id) && !deletedIds.includes(cc.customerNumber)) {
+      const isDreamClient = cc.id === 'cust-dream-colors' || cc.firstName.toLowerCase().includes('dream');
+      const exists = parsed.some((p) => {
+        if (!p) return false;
+        if (p.id === cc.id || p.customerNumber === cc.customerNumber) return true;
+        const pFullName = `${p.firstName || ''} ${p.lastName || ''}`.trim().toLowerCase();
+        const ccFullName = `${cc.firstName || ''} ${cc.lastName || ''}`.trim().toLowerCase();
+        if (pFullName === ccFullName) return true;
+        if (isDreamClient && (pFullName.includes('dream') || pFullName.includes('color') || pFullName.includes('colour'))) {
+          return true;
+        }
+        return false;
+      });
+      if (!exists) {
         const newRecord: Customer = {
           id: cc.id,
           customerNumber: cc.customerNumber,
@@ -331,7 +359,13 @@ export const getStoredCustomers = (): Customer[] => {
   // Deduplication is strictly based on Customer ID and unique Customer Number.
   for (const c of parsed) {
     if (!c || !c.id) continue;
-    if (deletedIds.includes(c.id) || (c.customerNumber && deletedIds.includes(c.customerNumber))) continue;
+    if (
+      !CANONICAL_CUSTOMER_IDS.includes(c.id) &&
+      !CANONICAL_CUSTOMER_IDS.includes(c.customerNumber || '') &&
+      (deletedIds.includes(c.id) || (c.customerNumber && deletedIds.includes(c.customerNumber)))
+    ) {
+      continue;
+    }
     if (seenIds.has(c.id)) continue;
     if (c.customerNumber && seenCustNos.has(c.customerNumber)) continue;
 
@@ -340,7 +374,13 @@ export const getStoredCustomers = (): Customer[] => {
 
     // Enforce canonical Ghana card IDs
     const fName = `${c.firstName || ''} ${c.lastName || ''}`.trim().toLowerCase();
-    if (fName.includes('dream') || fName.includes('colors') || c.id === 'cust-dream-colors') {
+    if (
+      fName.includes('dream') ||
+      fName.includes('color') ||
+      fName.includes('colour') ||
+      c.id === 'cust-dream-colors' ||
+      c.id === 'cust-dream-colours'
+    ) {
       c.ghanaCardNumber = 'GHA-001141169-5'; // Shares same Ghana Card ID with Eric Kwasi Arthur
     } else if (fName.includes('eric') && fName.includes('arthur')) {
       c.ghanaCardNumber = 'GHA-001141169-5';
@@ -369,7 +409,13 @@ export const saveStoredCustomers = (customers: Customer[], skipBroadcast = false
   // Note: multiple customers can share the same Ghana card
   for (const c of customers) {
     if (!c || !c.id) continue;
-    if (currentDeleted.includes(c.id) || (c.customerNumber && currentDeleted.includes(c.customerNumber))) continue;
+    if (
+      !CANONICAL_CUSTOMER_IDS.includes(c.id) &&
+      !CANONICAL_CUSTOMER_IDS.includes(c.customerNumber || '') &&
+      (currentDeleted.includes(c.id) || (c.customerNumber && currentDeleted.includes(c.customerNumber)))
+    ) {
+      continue;
+    }
     if (seenIds.has(c.id)) continue;
     if (c.customerNumber && seenCustNos.has(c.customerNumber)) continue;
 
@@ -378,7 +424,13 @@ export const saveStoredCustomers = (customers: Customer[], skipBroadcast = false
 
     const { accounts: _, ...rest } = c;
     const fName = `${rest.firstName || ''} ${rest.lastName || ''}`.trim().toLowerCase();
-    if (fName.includes('dream') || fName.includes('colors') || rest.id === 'cust-dream-colors') {
+    if (
+      fName.includes('dream') ||
+      fName.includes('color') ||
+      fName.includes('colour') ||
+      rest.id === 'cust-dream-colors' ||
+      rest.id === 'cust-dream-colours'
+    ) {
       rest.ghanaCardNumber = 'GHA-001141169-5'; // Shares same Ghana Card ID with Eric Kwasi Arthur
     } else if (fName.includes('eric') && fName.includes('arthur')) {
       rest.ghanaCardNumber = 'GHA-001141169-5';
