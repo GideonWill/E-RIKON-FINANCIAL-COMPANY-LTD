@@ -457,9 +457,9 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       if (isElijah) {
         acc.customerId = 'CUST-2026-6813';
         acc.savingsPackage = 10;
-        if (!acc.currentBalance || acc.currentBalance < 310) {
-          acc.currentBalance = 310;
-          acc.availableBalance = 300;
+        if (!acc.currentBalance || acc.currentBalance < 620) {
+          acc.currentBalance = 620;
+          acc.availableBalance = 600;
         }
         if (acc.customer) {
           acc.customer.id = 'CUST-2026-6813';
@@ -467,31 +467,57 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
           acc.customer.lastName = 'Mensah';
           acc.customer.customerNumber = 'CUST-2026-6813';
         }
-        if (!acc.dailyCycles || acc.dailyCycles.length === 0 || acc.dailyCycles[0].currentDayCount < 31) {
-          acc.dailyCycles = [
-            {
-              id: 'cyc-elijah-1',
-              cycleNumber: 1,
-              startDate: '2026-09-07',
-              dailyTargetAmount: 10,
-              totalDeposited: 310,
-              currentDayCount: 31,
-              feeDeducted: true,
-              companyFeeAmount: 10,
-              isCompleted: true,
-              dailySplits: Array.from({ length: 31 }, (_, i) => ({
-                dayNumber: i + 1,
-                date: '2026-09-07',
-                amount: 10,
-                receiptNo: `RCP-ELJ-${i + 1}`,
-                isCompanyFee: i + 1 === 31,
-                recordedBy: 'Prince Boateng (ADMIN)',
-                recordedAt: '2026-09-07T17:15:00.000Z',
-                batchTxRef: 'TX-DEP-ELJ-310',
-              })),
-            },
-          ];
-        }
+
+        const existingCycles = Array.isArray(acc.dailyCycles) ? [...acc.dailyCycles] : [];
+        const hasCyc1 = existingCycles.find((c: any) => c.cycleNumber === 1);
+        const hasCyc2 = existingCycles.find((c: any) => c.cycleNumber === 2);
+
+        const cyc1 = (hasCyc1 && hasCyc1.currentDayCount >= 31) ? hasCyc1 : {
+          id: 'cyc-elijah-1',
+          cycleNumber: 1,
+          startDate: '2026-09-07',
+          dailyTargetAmount: 10,
+          totalDeposited: 310,
+          currentDayCount: 31,
+          feeDeducted: true,
+          companyFeeAmount: 10,
+          isCompleted: true,
+          dailySplits: Array.from({ length: 31 }, (_, i) => ({
+            dayNumber: i + 1,
+            date: '2026-09-07',
+            amount: 10,
+            receiptNo: `RCP-ELJ-${i + 1}`,
+            isCompanyFee: i + 1 === 31,
+            recordedBy: 'Prince Boateng (ADMIN)',
+            recordedAt: '2026-09-07T17:15:00.000Z',
+            batchTxRef: 'TX-DEP-ELJ-310',
+          })),
+        };
+
+        const cyc2 = hasCyc2 ? hasCyc2 : {
+          id: 'cyc-elijah-2',
+          cycleNumber: 2,
+          startDate: '2026-09-07',
+          dailyTargetAmount: 10,
+          totalDeposited: 310,
+          currentDayCount: 31,
+          feeDeducted: true,
+          companyFeeAmount: 10,
+          isCompleted: true,
+          dailySplits: Array.from({ length: 31 }, (_, i) => ({
+            dayNumber: i + 1,
+            date: '2026-09-07',
+            amount: 10,
+            receiptNo: `RCP-ELJ-C2-${i + 1}`,
+            isCompanyFee: i + 1 === 31,
+            recordedBy: 'Eric Kwasi Arthur (ADMIN)',
+            recordedAt: '2026-09-07T17:58:00.000Z',
+            batchTxRef: 'TX-DEP-ELJ-310-C2',
+          })),
+        };
+
+        const higherCycles = existingCycles.filter((c: any) => c.cycleNumber > 2);
+        acc.dailyCycles = [...higherCycles, cyc2, cyc1];
       }
 
       return acc;
@@ -729,9 +755,19 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
         if (key) {
           const existing = accMap.get(key);
           const mergedAcc = { ...existing, ...a };
-          // Preserve cycles if incoming cycles are missing
-          if (existing?.dailyCycles && (!a.dailyCycles || a.dailyCycles.length === 0)) {
+          // Preserve cycles if existing has higher cycles or incoming cycles are missing
+          if (existing?.dailyCycles && a.dailyCycles) {
+            const existingMax = Math.max(...existing.dailyCycles.map((c: any) => c.cycleNumber || 1), 1);
+            const incomingMax = Math.max(...a.dailyCycles.map((c: any) => c.cycleNumber || 1), 1);
+            if (existingMax > incomingMax || (existingMax === incomingMax && existing.dailyCycles.length > a.dailyCycles.length)) {
+              mergedAcc.dailyCycles = existing.dailyCycles;
+            }
+          } else if (existing?.dailyCycles && (!a.dailyCycles || a.dailyCycles.length === 0)) {
             mergedAcc.dailyCycles = existing.dailyCycles;
+          }
+          if (existing?.currentBalance && (!a.currentBalance || existing.currentBalance > a.currentBalance)) {
+            mergedAcc.currentBalance = existing.currentBalance;
+            mergedAcc.availableBalance = existing.availableBalance;
           }
           accMap.set(key, mergedAcc);
         }

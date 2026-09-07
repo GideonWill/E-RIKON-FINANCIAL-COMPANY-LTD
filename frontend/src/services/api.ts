@@ -733,7 +733,7 @@ export const getStoredAccounts = (): Account[] => {
          (acc.customer?.customerNumber && (t as any).customer?.customerNumber === acc.customer.customerNumber) ||
          (isJessica && (t.referenceNo?.includes('JES') || t.receiptNo?.includes('JES') || (t.account?.customer?.firstName || '').toLowerCase().includes('jessica'))) ||
          (isDream && (t.referenceNo?.includes('DRM') || t.receiptNo?.includes('DRM') || (t.account?.customer?.firstName || '').toLowerCase().includes('dream'))) ||
-         (isElijah && (t.referenceNo?.includes('ELJ') || t.receiptNo?.includes('ELJ') || (t.account?.customer?.firstName || '').toLowerCase().includes('elijah') || t.id?.includes('1788801662781')))) &&
+         (isElijah && (t.referenceNo?.includes('ELJ') || t.receiptNo?.includes('ELJ') || (t.account?.customer?.firstName || '').toLowerCase().includes('elijah') || t.id?.includes('1788801662781') || t.id?.includes('1788803912549')))) &&
         t.type === 'DEPOSIT' &&
         !t.isReversed
     );
@@ -1061,6 +1061,43 @@ export const getStoredTransactions = (): Transaction[] => {
         type: 'SAVINGS',
         currentBalance: 310,
         availableBalance: 300,
+        savingsPackage: 10,
+        customer: {
+          id: 'cust-1788801662780',
+          customerNumber: 'CUST-2026-6813',
+          firstName: 'Elijah',
+          lastName: 'Mensah',
+          phone: '0245567788',
+          email: 'elijah.mensah@client.erikon.com',
+          ghanaCardNumber: 'GHA-722419082-1',
+          dateOfBirth: '1990-01-01',
+          gender: 'Male',
+          address: 'Accra, Ghana',
+          occupation: 'Trader / Business',
+          branchId: 'br-01',
+          createdAt: '2026-09-07T17:15:00.000Z',
+          status: 'ACTIVE',
+        },
+      } as any,
+    },
+    {
+      id: 'tx-1788803912549',
+      accountId: 'acc-cust-1788801662780',
+      type: 'DEPOSIT',
+      paymentMode: 'PHYSICAL_CASH',
+      amount: 310,
+      previousBal: 310,
+      newBal: 620,
+      referenceNo: 'TX-DEP-ELJ-310-C2',
+      receiptNo: 'RCP-ELJ-C2-310',
+      remarks: 'Daily Susu Deposit (31 Days - Cycle 2 Initiated & Funded) - Recorded by Admin Eric Kwasi',
+      createdAt: '2026-09-07T17:58:00.000Z',
+      account: {
+        id: 'acc-cust-1788801662780',
+        accountNumber: 'ACC-2026-88461',
+        type: 'SAVINGS',
+        currentBalance: 620,
+        availableBalance: 600,
         savingsPackage: 10,
         customer: {
           id: 'cust-1788801662780',
