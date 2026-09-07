@@ -39,13 +39,8 @@ export class CustomersService {
   ) {}
 
   async registerCustomer(dto: RegisterCustomerDto) {
-    // Check unique Ghana Card & Phone
-    const existingGhanaCard = await this.prisma.customer.findUnique({
-      where: { ghanaCardNumber: dto.ghanaCardNumber },
-    });
-    if (existingGhanaCard) {
-      throw new BadRequestException(`Customer with Ghana Card ${dto.ghanaCardNumber} already registered.`);
-    }
+    // Note: Multiple accounts and clients are permitted to share the same Ghana Card ID
+    // Check phone uniqueness
 
     const existingPhone = await this.prisma.customer.findUnique({
       where: { phone: dto.phone },

@@ -353,13 +353,11 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
 
     const custMap = new Map<string, any>();
     const custNoToId = new Map<string, string>();
-    const cardToId = new Map<string, string>();
 
     localCust.forEach((c) => {
       if (!c || !c.id) return;
       custMap.set(c.id, c);
       if (c.customerNumber) custNoToId.set(c.customerNumber, c.id);
-      if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0') cardToId.set(c.ghanaCardNumber, c.id);
     });
 
     cleanCloudCust.forEach((c) => {
@@ -367,7 +365,6 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       const matchedId =
         (c.id && custMap.has(c.id) ? c.id : undefined) ||
         (c.customerNumber && custNoToId.get(c.customerNumber)) ||
-        (c.ghanaCardNumber && cardToId.get(c.ghanaCardNumber)) ||
         c.id;
 
       const existing = custMap.get(matchedId);
@@ -376,26 +373,21 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
 
       custMap.set(targetId, mergedRecord);
       if (mergedRecord.customerNumber) custNoToId.set(mergedRecord.customerNumber, targetId);
-      if (mergedRecord.ghanaCardNumber && mergedRecord.ghanaCardNumber !== 'GHA-000000000-0') {
-        cardToId.set(mergedRecord.ghanaCardNumber, targetId);
-      }
     });
 
     const seenIds = new Set<string>();
     const seenCustNos = new Set<string>();
-    const seenCards = new Set<string>();
     const mergedCust: any[] = [];
 
+    // Allow multiple accounts and clients to share the same Ghana card
     for (const c of custMap.values()) {
       if (!c || !c.id) continue;
       if (deletedCustIds.includes(c.id) || (c.customerNumber && deletedCustIds.includes(c.customerNumber))) continue;
       if (seenIds.has(c.id)) continue;
       if (c.customerNumber && seenCustNos.has(c.customerNumber)) continue;
-      if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0' && seenCards.has(c.ghanaCardNumber)) continue;
 
       seenIds.add(c.id);
       if (c.customerNumber) seenCustNos.add(c.customerNumber);
-      if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0') seenCards.add(c.ghanaCardNumber);
       mergedCust.push(c);
     }
 
@@ -433,7 +425,7 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       });
 
       if (JSON.stringify(mergedTxs) !== JSON.stringify(localTxs)) {
-        saveStoredTransactions(mergedTxs);
+        saveStoredTransactions(mergedTxs, true);
         hasUpdates = true;
       }
     }
@@ -468,7 +460,7 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       );
 
       if (JSON.stringify(mergedAcc) !== JSON.stringify(localAcc)) {
-        saveStoredAccounts(mergedAcc);
+        saveStoredAccounts(mergedAcc, true);
         hasUpdates = true;
       }
     }
@@ -494,7 +486,7 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       );
 
       if (JSON.stringify(mergedLoans) !== JSON.stringify(localLoans)) {
-        saveStoredLoans(mergedLoans);
+        saveStoredLoans(mergedLoans, true);
         hasUpdates = true;
       }
     }

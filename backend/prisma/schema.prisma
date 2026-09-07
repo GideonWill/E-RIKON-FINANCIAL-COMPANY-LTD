@@ -140,7 +140,7 @@ model Customer {
   phone            String         @unique
   email            String?
   address          String
-  ghanaCardNumber  String         @unique
+  ghanaCardNumber  String
   passportPhotoUrl String?
   signatureUrl     String?
   ghanaCardFrontUrl String?

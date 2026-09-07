@@ -555,8 +555,7 @@ export const CustomersPage: React.FC = () => {
         ...freshCusts.filter(
           (c) =>
             c.id !== newCust.id &&
-            (!newCust.customerNumber || c.customerNumber !== newCust.customerNumber) &&
-            (!newCust.ghanaCardNumber || c.ghanaCardNumber !== newCust.ghanaCardNumber)
+            (!newCust.customerNumber || c.customerNumber !== newCust.customerNumber)
         ),
       ];
       saveStoredCustomers(updatedCusts);

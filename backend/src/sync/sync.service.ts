@@ -183,15 +183,13 @@ export class SyncService {
     }
 
     const seenCustNos = new Set<string>();
-    const seenCustCards = new Set<string>();
     const cleanCusts: any[] = [];
 
+    // Allow multiple accounts and clients to share the same Ghana Card ID
     Array.from(custMap.values()).forEach((c) => {
       if (c.customerNumber && seenCustNos.has(c.customerNumber)) return;
-      if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0' && seenCustCards.has(c.ghanaCardNumber)) return;
 
       if (c.customerNumber) seenCustNos.add(c.customerNumber);
-      if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0') seenCustCards.add(c.ghanaCardNumber);
       cleanCusts.push(c);
     });
     this.vault.customers = cleanCusts;

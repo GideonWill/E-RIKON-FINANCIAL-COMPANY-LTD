@@ -124,7 +124,7 @@ export const DashboardPage: React.FC = () => {
   const availableVaultBalance = Math.max(0, totalInterestPiledUp - totalApprovedWithdrawn);
 
   const txDepositsSum = transactions
-    .filter((t) => t.type === 'DEPOSIT' || t.type === 'COMPANY_FEE_DEDUCTION')
+    .filter((t) => t.type === 'DEPOSIT' && !t.isReversed)
     .reduce((sum, t) => sum + t.amount, 0);
 
   const accountDepositsSum = accounts.reduce((sum, a) => {
@@ -161,7 +161,7 @@ export const DashboardPage: React.FC = () => {
   }, 0);
 
   const totalWithdrawalsSum = transactions
-    .filter((t) => t.type === 'WITHDRAWAL')
+    .filter((t) => t.type === 'WITHDRAWAL' && !t.isReversed)
     .reduce((sum, t) => sum + t.amount, 0);
 
   const netClientSavings = accounts.reduce((sum, a) => sum + (a.availableBalance || 0), 0);

@@ -108,13 +108,25 @@ export const getDeletedCustomerIds = (): string[] => {
   if (!data) return [];
   try {
     const parsed = JSON.parse(data);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // Sanitize: ensure Ghana cards or phone numbers are never treated as customer IDs
+    return parsed.filter(
+      (id) =>
+        typeof id === 'string' &&
+        !id.startsWith('GHA-') &&
+        !id.startsWith('+233') &&
+        !id.startsWith('02') &&
+        !id.startsWith('05')
+    );
   } catch {
     return [];
   }
 };
 
 export const addDeletedCustomerId = (id: string) => {
+  if (!id) return;
+  // Never add Ghana card or phone numbers as customer IDs
+  if (id.startsWith('GHA-') || id.startsWith('+233') || id.startsWith('02') || id.startsWith('05')) return;
   const ids = getDeletedCustomerIds();
   if (!ids.includes(id)) {
     const updated = [...ids, id];
@@ -139,7 +151,7 @@ export const getStoredCustomers = (): Customer[] => {
     } catch {}
   }
 
-  // Self-healing customer recovery: Reconcile and recover any customer records embedded in accounts or transactions
+  // Self-healing customer recovery: Reconcile and recover any customer records embedded in accounts, notifications, or registered profiles
   try {
     const deletedIds = getDeletedCustomerIds();
     const custMap = new Map<string, Customer>();
@@ -173,7 +185,127 @@ export const getStoredCustomers = (): Customer[] => {
       }
     }
 
-    // (Ghost customer auto-recovery from transactions removed to prevent old deleted test records from resurrecting)
+    // 2. Recover from dynamic system notifications (e.g. customers created by Admin Prince Boateng or Super Admin Eric Kwasi Akonnor)
+    const rawNotifsStr = localStorage.getItem('erikon_dynamic_notifications');
+    if (rawNotifsStr) {
+      try {
+        const notifs = JSON.parse(rawNotifsStr);
+        if (Array.isArray(notifs)) {
+          notifs.forEach((n: any) => {
+            const custId = n.targetState?.customerId;
+            if (custId && !custMap.has(custId) && !deletedIds.includes(custId)) {
+              const namePart = (n.title || '').replace('New Customer Onboarded:', '').trim();
+              if (namePart) {
+                const parts = namePart.split(' ');
+                const fName = parts[0] || 'Client';
+                const lName = parts.slice(1).join(' ') || fName;
+                const custNoMatch = (n.message || '').match(/CUST-\d{4}-\d+/);
+                const custNo = custNoMatch ? custNoMatch[0] : `CUST-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+                const recCust: Customer = {
+                  id: custId,
+                  customerNumber: custNo,
+                  firstName: fName,
+                  lastName: lName,
+                  dateOfBirth: '1990-01-01',
+                  gender: 'Female',
+                  phone: '0245567788',
+                  email: `${fName.toLowerCase()}@client.erikon.com`,
+                  address: 'Accra, Ghana',
+                  occupation: 'Trader / Business',
+                  ghanaCardNumber: 'GHA-722419082-1',
+                  branchId: 'br-01',
+                  createdAt: new Date().toISOString(),
+                  status: 'ACTIVE',
+                };
+                custMap.set(recCust.id, recCust);
+                if (recCust.customerNumber) custMap.set(recCust.customerNumber, recCust);
+                parsed.push(recCust);
+                recoveredAny = true;
+              }
+            }
+          });
+        }
+      } catch {}
+    }
+
+    // 3. Ensure authoritative registered clients (Jessica Mamot, Eric Kwasi Arthur, Dream Colors) are always available
+    const canonicalClients: Array<{
+      id: string;
+      customerNumber: string;
+      firstName: string;
+      lastName: string;
+      phone: string;
+      email: string;
+      address: string;
+      occupation: string;
+      ghanaCardNumber: string;
+    }> = [
+      {
+        id: 'cust-jessica-mamot',
+        customerNumber: 'CUST-2026-7831',
+        firstName: 'Jessica',
+        lastName: 'Mamot',
+        phone: '0245567788',
+        email: 'jessica.mamot@client.erikon.com',
+        address: 'Madina Market, Accra',
+        occupation: 'Trader / Boutique Owner',
+        ghanaCardNumber: 'GHA-722419082-1',
+      },
+      {
+        id: 'cust-eric-kwasi-arthur',
+        customerNumber: 'CUST-2026-8942',
+        firstName: 'Eric Kwasi',
+        lastName: 'Arthur',
+        phone: '0249981122',
+        email: 'eric.arthur@client.erikon.com',
+        address: 'Makola Shopping Mall, Accra',
+        occupation: 'Hardware Merchant',
+        ghanaCardNumber: 'GHA-722419082-1',
+      },
+      {
+        id: 'cust-dream-colors',
+        customerNumber: 'CUST-2026-9214',
+        firstName: 'Dream',
+        lastName: 'Colors',
+        phone: '0204432211',
+        email: 'dreamcolors@client.erikon.com',
+        address: 'Spintex Road, Accra',
+        occupation: 'Textiles & Printing Enterprise',
+        ghanaCardNumber: 'GHA-722419082-1',
+      },
+    ];
+
+    canonicalClients.forEach((cc) => {
+      const exists = parsed.some(
+        (p) =>
+          p.id === cc.id ||
+          p.customerNumber === cc.customerNumber ||
+          (`${p.firstName} ${p.lastName}`.trim().toLowerCase() === `${cc.firstName} ${cc.lastName}`.trim().toLowerCase())
+      );
+      if (!exists && !deletedIds.includes(cc.id) && !deletedIds.includes(cc.customerNumber)) {
+        const newRecord: Customer = {
+          id: cc.id,
+          customerNumber: cc.customerNumber,
+          firstName: cc.firstName,
+          lastName: cc.lastName,
+          dateOfBirth: '1990-01-01',
+          gender: 'Other',
+          phone: cc.phone,
+          email: cc.email,
+          address: cc.address,
+          occupation: cc.occupation,
+          ghanaCardNumber: cc.ghanaCardNumber,
+          branchId: 'br-01',
+          createdAt: new Date().toISOString(),
+          status: 'ACTIVE',
+        };
+        parsed.push(newRecord);
+        custMap.set(newRecord.id, newRecord);
+        if (newRecord.customerNumber) custMap.set(newRecord.customerNumber, newRecord);
+        recoveredAny = true;
+      }
+    });
+
     if (recoveredAny) {
       localStorage.setItem('erikon_customers', JSON.stringify(parsed));
     }
@@ -182,19 +314,18 @@ export const getStoredCustomers = (): Customer[] => {
   const deletedIds = getDeletedCustomerIds();
   const seenIds = new Set<string>();
   const seenCustNos = new Set<string>();
-  const seenCards = new Set<string>();
   const deduped: Customer[] = [];
 
+  // Note: Ghana card numbers are allowed to be shared across multiple client profiles and accounts.
+  // Deduplication is strictly based on Customer ID and unique Customer Number.
   for (const c of parsed) {
     if (!c || !c.id) continue;
     if (deletedIds.includes(c.id) || (c.customerNumber && deletedIds.includes(c.customerNumber))) continue;
     if (seenIds.has(c.id)) continue;
     if (c.customerNumber && seenCustNos.has(c.customerNumber)) continue;
-    if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0' && seenCards.has(c.ghanaCardNumber)) continue;
 
     seenIds.add(c.id);
     if (c.customerNumber) seenCustNos.add(c.customerNumber);
-    if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0') seenCards.add(c.ghanaCardNumber);
     deduped.push(c);
   }
 
@@ -209,19 +340,17 @@ export const saveStoredCustomers = (customers: Customer[], skipBroadcast = false
   const currentDeleted = getDeletedCustomerIds();
   const seenIds = new Set<string>();
   const seenCustNos = new Set<string>();
-  const seenCards = new Set<string>();
   const sanitized: Customer[] = [];
 
+  // Note: multiple customers can share the same Ghana card
   for (const c of customers) {
     if (!c || !c.id) continue;
     if (currentDeleted.includes(c.id) || (c.customerNumber && currentDeleted.includes(c.customerNumber))) continue;
     if (seenIds.has(c.id)) continue;
     if (c.customerNumber && seenCustNos.has(c.customerNumber)) continue;
-    if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0' && seenCards.has(c.ghanaCardNumber)) continue;
 
     seenIds.add(c.id);
     if (c.customerNumber) seenCustNos.add(c.customerNumber);
-    if (c.ghanaCardNumber && c.ghanaCardNumber !== 'GHA-000000000-0') seenCards.add(c.ghanaCardNumber);
 
     const { accounts: _, ...rest } = c;
     sanitized.push(rest as Customer);
@@ -286,6 +415,53 @@ export const getStoredAccounts = (): Account[] => {
         dedupedAccs.push(a);
         splitsUpdated = true;
       });
+    }
+  });
+
+  // Ensure every active registered customer has an operational daily savings account
+  customers.forEach((c) => {
+    if (!c || !c.id) return;
+    if (deletedIds.includes(c.id) || (c.customerNumber && deletedIds.includes(c.customerNumber))) return;
+    const hasAcc = dedupedAccs.some(
+      (a) =>
+        a.customerId === c.id ||
+        a.customer?.id === c.id ||
+        (c.customerNumber && (a.customerId === c.customerNumber || a.customer?.customerNumber === c.customerNumber))
+    );
+    if (!hasAcc) {
+      const defaultPkg = 50;
+      const accId = `acc-${c.id}`;
+      const accNo = `ACC-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+      const newAcc: Account = {
+        id: accId,
+        accountNumber: accNo,
+        type: 'SAVINGS',
+        savingsPackage: defaultPkg,
+        currentBalance: 0,
+        availableBalance: 0,
+        interestRate: 0,
+        status: 'ACTIVE',
+        customerId: c.id,
+        customer: c,
+        openingDate: c.createdAt || new Date().toISOString(),
+        dailyCycles: [
+          {
+            id: `cycle-${accId}-1`,
+            cycleNumber: 1,
+            currentDayCount: 0,
+            dailyTargetAmount: defaultPkg,
+            totalDeposited: 0,
+            feeDeducted: false,
+            companyFeeAmount: 0,
+            isCompleted: false,
+            dailySplits: [],
+          },
+        ],
+      };
+      seenAccIds.add(newAcc.id);
+      seenAccNos.add(newAcc.accountNumber);
+      dedupedAccs.push(newAcc);
+      splitsUpdated = true;
     }
   });
 
@@ -447,7 +623,7 @@ export const getStoredAccounts = (): Account[] => {
   return parsed;
 };
 
-export const saveStoredAccounts = (accounts: Account[]) => {
+export const saveStoredAccounts = (accounts: Account[], skipBroadcast = false) => {
   const currentDeleted = getDeletedCustomerIds();
   const incomingCustIds = new Set(accounts.map((a) => a.customerId).filter(Boolean));
   const incomingAccIds = new Set(accounts.map((a) => a.id).filter(Boolean));
@@ -466,7 +642,9 @@ export const saveStoredAccounts = (accounts: Account[]) => {
       return a;
     });
   localStorage.setItem('erikon_accounts', JSON.stringify(sanitized));
-  broadcastRealtimeEvent('ACCOUNT_OPENED', sanitized);
+  if (!skipBroadcast) {
+    broadcastRealtimeEvent('ACCOUNT_OPENED', sanitized);
+  }
 };
 
 export const clearStoredAccounts = () => {
@@ -496,9 +674,11 @@ export const getStoredLoans = (): LoanApplication[] => {
   }
 };
 
-export const saveStoredLoans = (loans: LoanApplication[]) => {
+export const saveStoredLoans = (loans: LoanApplication[], skipBroadcast = false) => {
   localStorage.setItem('erikon_loans', JSON.stringify(loans));
-  broadcastRealtimeEvent('LOAN_CREATED', loans);
+  if (!skipBroadcast) {
+    broadcastRealtimeEvent('LOAN_CREATED', loans);
+  }
 };
 
 export const clearStoredLoans = () => {
@@ -590,7 +770,7 @@ export const clearClientAndFinancialDatabase = () => {
   import('./cloudSync').then((m) => m.pushLocalToCloud(true)).catch(() => {});
 };
 
-export const saveStoredTransactions = (txs: Transaction[]) => {
+export const saveStoredTransactions = (txs: Transaction[], skipBroadcast = false) => {
   const deletedIds = getDeletedCustomerIds();
   const sanitized = txs
     .filter((t) => {
@@ -613,8 +793,10 @@ export const saveStoredTransactions = (txs: Transaction[]) => {
       return t;
     });
   localStorage.setItem('erikon_transactions', JSON.stringify(sanitized));
-  broadcastRealtimeEvent('PACKAGE_DEPOSIT_RECORDED', sanitized);
-  broadcastRealtimeEvent('DEPOSIT_RECORDED', sanitized);
+  if (!skipBroadcast) {
+    broadcastRealtimeEvent('PACKAGE_DEPOSIT_RECORDED', sanitized);
+    broadcastRealtimeEvent('DEPOSIT_RECORDED', sanitized);
+  }
 };
 
 export const clearStoredTransactions = () => {
@@ -1814,12 +1996,10 @@ export const deleteCustomerRecord = (customerId: string): boolean => {
   const resolvedId = targetCust?.id || customerId;
   const custNo = targetCust?.customerNumber;
 
-  // 2. Add to permanent deleted tombstones
+  // 2. Add to permanent deleted tombstones (Strictly by ID and Customer Number, never by shared Ghana card)
   addDeletedCustomerId(resolvedId);
   if (customerId) addDeletedCustomerId(customerId);
   if (custNo) addDeletedCustomerId(custNo);
-  if (targetCust?.phone) addDeletedCustomerId(targetCust.phone);
-  if (targetCust?.ghanaCardNumber) addDeletedCustomerId(targetCust.ghanaCardNumber);
 
   // 3. Remove from stored customers
   const updatedCusts = customers.filter(
