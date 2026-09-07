@@ -103,29 +103,30 @@ export const CURRENT_DATA_VERSION = 'ecfms_clean_slate_2026_09_03';
 
 // --- PERSISTENCE & REAL-TIME REPOSITORY ---
 
-// Authoritative Customer IDs and Customer Numbers for the 5 Active Clients
+// Authoritative Customer IDs (Exactly 1 Customer ID per Customer)
 export const CANONICAL_CUSTOMER_IDS = [
-  // 1. Eric Kwasi Arthur
-  'cust-1788779905017',
-  'CUST-2026-3222',
-
-  // 2. Vincent Kwabena Mensah
-  'cust-1788714715049',
-  'CUST-2026-5213',
-
-  // 3. Jessica Mamot
-  'cust-jessica-mamot',
-  'CUST-2026-7831',
-
-  // 4. Dream Colors
-  'cust-dream-colors',
-  'cust-dream-colours',
-  'CUST-2026-9214',
-
-  // 5. Elijah Mensah
-  'cust-1788801662780',
-  'CUST-2026-6813',
+  'CUST-2026-3222', // 1. Eric Kwasi Arthur
+  'CUST-2026-5213', // 2. Vincent Kwabena Mensah
+  'CUST-2026-7831', // 3. Jessica Mamot
+  'CUST-2026-9214', // 4. Dream Colors
+  'CUST-2026-6813', // 5. Elijah Mensah
 ];
+
+export const LEGACY_CUSTOMER_ID_MAP: Record<string, string> = {
+  'cust-1788779905017': 'CUST-2026-3222',
+  'cust-1788714715049': 'CUST-2026-5213',
+  'cust-vkm': 'CUST-2026-5213',
+  'cust-jessica-mamot': 'CUST-2026-7831',
+  'cust-dream-colors': 'CUST-2026-9214',
+  'cust-dream-colours': 'CUST-2026-9214',
+  'cust-1788801662780': 'CUST-2026-6813',
+  'CUST-2026-2925': 'CUST-2026-6813',
+};
+
+export const normalizeCustomerId = (id?: string): string => {
+  if (!id) return '';
+  return LEGACY_CUSTOMER_ID_MAP[id] || id;
+};
 
 export const getDeletedCustomerIds = (): string[] => {
   const data = localStorage.getItem('erikon_deleted_customer_ids');
@@ -142,7 +143,7 @@ export const getDeletedCustomerIds = (): string[] => {
         !id.startsWith('+233') &&
         !id.startsWith('02') &&
         !id.startsWith('05') &&
-        !CANONICAL_CUSTOMER_IDS.includes(id)
+        !CANONICAL_CUSTOMER_IDS.includes(normalizeCustomerId(id))
     );
   } catch {
     return [];
@@ -151,9 +152,10 @@ export const getDeletedCustomerIds = (): string[] => {
 
 export const addDeletedCustomerId = (id: string) => {
   if (!id) return;
+  const canonicalId = normalizeCustomerId(id);
   // Never add canonical customers, Ghana card or phone numbers as deleted customer IDs
   if (
-    CANONICAL_CUSTOMER_IDS.includes(id) ||
+    CANONICAL_CUSTOMER_IDS.includes(canonicalId) ||
     id.startsWith('GHA-') ||
     id.startsWith('+233') ||
     id.startsWith('02') ||
@@ -279,7 +281,7 @@ export const getStoredCustomers = (): Customer[] => {
       } catch {}
     }
 
-    // 3. Ensure authoritative registered clients (Jessica Mamot, Eric Kwasi Arthur, Dream Colors, Elijah Mensah) are always available
+    // 3. Ensure authoritative registered clients (Jessica Mamot, Eric Kwasi Arthur, Dream Colors, Vincent Kwabena Mensah, Elijah Mensah) are always available
     const canonicalClients: Array<{
       id: string;
       customerNumber: string;
@@ -292,7 +294,7 @@ export const getStoredCustomers = (): Customer[] => {
       ghanaCardNumber: string;
     }> = [
       {
-        id: 'cust-jessica-mamot',
+        id: 'CUST-2026-7831',
         customerNumber: 'CUST-2026-7831',
         firstName: 'Jessica',
         lastName: 'Mamot',
@@ -303,7 +305,7 @@ export const getStoredCustomers = (): Customer[] => {
         ghanaCardNumber: 'GHA-722419082-1', // Distinct Ghana Card
       },
       {
-        id: 'cust-1788779905017',
+        id: 'CUST-2026-3222',
         customerNumber: 'CUST-2026-3222',
         firstName: 'Eric Kwasi',
         lastName: 'Arthur',
@@ -314,7 +316,7 @@ export const getStoredCustomers = (): Customer[] => {
         ghanaCardNumber: 'GHA-001141169-5', // Shares Ghana Card with Dream Colors
       },
       {
-        id: 'cust-dream-colors',
+        id: 'CUST-2026-9214',
         customerNumber: 'CUST-2026-9214',
         firstName: 'Dream',
         lastName: 'Colors',
@@ -325,7 +327,7 @@ export const getStoredCustomers = (): Customer[] => {
         ghanaCardNumber: 'GHA-001141169-5', // Shares Ghana Card with Eric Kwasi Arthur
       },
       {
-        id: 'cust-1788714715049',
+        id: 'CUST-2026-5213',
         customerNumber: 'CUST-2026-5213',
         firstName: 'Vincent Kwabena',
         lastName: 'Mensah',
@@ -336,7 +338,7 @@ export const getStoredCustomers = (): Customer[] => {
         ghanaCardNumber: 'GHA-724190823-1',
       },
       {
-        id: 'cust-1788801662780',
+        id: 'CUST-2026-6813',
         customerNumber: 'CUST-2026-6813',
         firstName: 'Elijah',
         lastName: 'Mensah',
@@ -398,32 +400,30 @@ export const getStoredCustomers = (): Customer[] => {
   // Note: Ghana card numbers are allowed to be shared across multiple client profiles and accounts.
   // Deduplication is strictly based on Customer ID and unique Customer Number.
   for (const c of parsed) {
-    if (!c || !c.id) continue;
+    if (!c) continue;
+    c.id = normalizeCustomerId(c.id || c.customerNumber);
+    c.customerNumber = c.id;
+
     if (
       !CANONICAL_CUSTOMER_IDS.includes(c.id) &&
-      !CANONICAL_CUSTOMER_IDS.includes(c.customerNumber || '') &&
-      (deletedIds.includes(c.id) || (c.customerNumber && deletedIds.includes(c.customerNumber)))
+      (deletedIds.includes(c.id) || deletedIds.includes(normalizeCustomerId(c.id)))
     ) {
       continue;
     }
     if (seenIds.has(c.id)) continue;
-    if (c.customerNumber && seenCustNos.has(c.customerNumber)) continue;
-
     seenIds.add(c.id);
-    if (c.customerNumber) seenCustNos.add(c.customerNumber);
 
-    // Enforce canonical Ghana card IDs and sanitize Elijah Mensah profile
+    // Enforce canonical profiles and ensure each customer has exactly 1 customer ID
     const fName = `${c.firstName || ''} ${c.lastName || ''}`.trim().toLowerCase();
     const isElijah =
+      c.id === 'CUST-2026-6813' ||
       c.id === 'cust-1788801662780' ||
-      c.customerNumber === 'CUST-2026-2925' ||
-      c.customerNumber === 'CUST-2026-6813' ||
       fName.includes('initial') ||
       fName.includes('deposit') ||
       (fName.includes('elijah') && fName.includes('mensah'));
 
     if (isElijah) {
-      c.id = 'cust-1788801662780';
+      c.id = 'CUST-2026-6813';
       c.customerNumber = 'CUST-2026-6813';
       c.firstName = 'Elijah';
       c.lastName = 'Mensah';
@@ -436,15 +436,44 @@ export const getStoredCustomers = (): Customer[] => {
       fName.includes('dream') ||
       fName.includes('color') ||
       fName.includes('colour') ||
+      c.id === 'CUST-2026-9214' ||
       c.id === 'cust-dream-colors' ||
       c.id === 'cust-dream-colours'
     ) {
+      c.id = 'CUST-2026-9214';
+      c.customerNumber = 'CUST-2026-9214';
+      c.firstName = 'Dream';
+      c.lastName = 'Colors';
       c.ghanaCardNumber = 'GHA-001141169-5'; // Shares same Ghana Card ID with Eric Kwasi Arthur
-    } else if (fName.includes('eric') && fName.includes('arthur')) {
+    } else if (
+      (fName.includes('eric') && fName.includes('arthur')) ||
+      c.id === 'CUST-2026-3222' ||
+      c.id === 'cust-1788779905017'
+    ) {
+      c.id = 'CUST-2026-3222';
+      c.customerNumber = 'CUST-2026-3222';
+      c.firstName = 'Eric Kwasi';
+      c.lastName = 'Arthur';
       c.ghanaCardNumber = 'GHA-001141169-5';
-    } else if (fName.includes('jessica') && fName.includes('mamot')) {
+    } else if (
+      (fName.includes('jessica') && fName.includes('mamot')) ||
+      c.id === 'CUST-2026-7831' ||
+      c.id === 'cust-jessica-mamot'
+    ) {
+      c.id = 'CUST-2026-7831';
+      c.customerNumber = 'CUST-2026-7831';
+      c.firstName = 'Jessica';
+      c.lastName = 'Mamot';
       c.ghanaCardNumber = 'GHA-722419082-1';
-    } else if (fName.includes('vincent') && fName.includes('mensah')) {
+    } else if (
+      (fName.includes('vincent') && fName.includes('mensah')) ||
+      c.id === 'CUST-2026-5213' ||
+      c.id === 'cust-1788714715049'
+    ) {
+      c.id = 'CUST-2026-5213';
+      c.customerNumber = 'CUST-2026-5213';
+      c.firstName = 'Vincent Kwabena';
+      c.lastName = 'Mensah';
       c.ghanaCardNumber = 'GHA-724190823-1';
     }
 
@@ -461,37 +490,35 @@ export const getStoredCustomers = (): Customer[] => {
 export const saveStoredCustomers = (customers: Customer[], skipBroadcast = false) => {
   const currentDeleted = getDeletedCustomerIds();
   const seenIds = new Set<string>();
-  const seenCustNos = new Set<string>();
   const sanitized: Customer[] = [];
 
   // Note: multiple customers can share the same Ghana card
   for (const c of customers) {
-    if (!c || !c.id) continue;
+    if (!c) continue;
+    const normId = normalizeCustomerId(c.id || c.customerNumber);
     if (
-      !CANONICAL_CUSTOMER_IDS.includes(c.id) &&
-      !CANONICAL_CUSTOMER_IDS.includes(c.customerNumber || '') &&
-      (currentDeleted.includes(c.id) || (c.customerNumber && currentDeleted.includes(c.customerNumber)))
+      !CANONICAL_CUSTOMER_IDS.includes(normId) &&
+      (currentDeleted.includes(normId) || currentDeleted.includes(c.id) || (c.customerNumber && currentDeleted.includes(c.customerNumber)))
     ) {
       continue;
     }
-    if (seenIds.has(c.id)) continue;
-    if (c.customerNumber && seenCustNos.has(c.customerNumber)) continue;
-
-    seenIds.add(c.id);
-    if (c.customerNumber) seenCustNos.add(c.customerNumber);
+    if (seenIds.has(normId)) continue;
+    seenIds.add(normId);
 
     const { accounts: _, ...rest } = c;
+    rest.id = normId;
+    rest.customerNumber = normId;
+
     const fName = `${rest.firstName || ''} ${rest.lastName || ''}`.trim().toLowerCase();
     const isElijah =
+      rest.id === 'CUST-2026-6813' ||
       rest.id === 'cust-1788801662780' ||
-      rest.customerNumber === 'CUST-2026-2925' ||
-      rest.customerNumber === 'CUST-2026-6813' ||
       fName.includes('initial') ||
       fName.includes('deposit') ||
       (fName.includes('elijah') && fName.includes('mensah'));
 
     if (isElijah) {
-      rest.id = 'cust-1788801662780';
+      rest.id = 'CUST-2026-6813';
       rest.customerNumber = 'CUST-2026-6813';
       rest.firstName = 'Elijah';
       rest.lastName = 'Mensah';
@@ -504,15 +531,44 @@ export const saveStoredCustomers = (customers: Customer[], skipBroadcast = false
       fName.includes('dream') ||
       fName.includes('color') ||
       fName.includes('colour') ||
+      rest.id === 'CUST-2026-9214' ||
       rest.id === 'cust-dream-colors' ||
       rest.id === 'cust-dream-colours'
     ) {
+      rest.id = 'CUST-2026-9214';
+      rest.customerNumber = 'CUST-2026-9214';
+      rest.firstName = 'Dream';
+      rest.lastName = 'Colors';
       rest.ghanaCardNumber = 'GHA-001141169-5'; // Shares same Ghana Card ID with Eric Kwasi Arthur
-    } else if (fName.includes('eric') && fName.includes('arthur')) {
+    } else if (
+      (fName.includes('eric') && fName.includes('arthur')) ||
+      rest.id === 'CUST-2026-3222' ||
+      rest.id === 'cust-1788779905017'
+    ) {
+      rest.id = 'CUST-2026-3222';
+      rest.customerNumber = 'CUST-2026-3222';
+      rest.firstName = 'Eric Kwasi';
+      rest.lastName = 'Arthur';
       rest.ghanaCardNumber = 'GHA-001141169-5';
-    } else if (fName.includes('jessica') && fName.includes('mamot')) {
+    } else if (
+      (fName.includes('jessica') && fName.includes('mamot')) ||
+      rest.id === 'CUST-2026-7831' ||
+      rest.id === 'cust-jessica-mamot'
+    ) {
+      rest.id = 'CUST-2026-7831';
+      rest.customerNumber = 'CUST-2026-7831';
+      rest.firstName = 'Jessica';
+      rest.lastName = 'Mamot';
       rest.ghanaCardNumber = 'GHA-722419082-1';
-    } else if (fName.includes('vincent') && fName.includes('mensah')) {
+    } else if (
+      (fName.includes('vincent') && fName.includes('mensah')) ||
+      rest.id === 'CUST-2026-5213' ||
+      rest.id === 'cust-1788714715049'
+    ) {
+      rest.id = 'CUST-2026-5213';
+      rest.customerNumber = 'CUST-2026-5213';
+      rest.firstName = 'Vincent Kwabena';
+      rest.lastName = 'Mensah';
       rest.ghanaCardNumber = 'GHA-724190823-1';
     }
 
@@ -2230,11 +2286,11 @@ export const createNewCustomer = (customerData: Omit<Customer, 'id' | 'customerN
   const customers = getStoredCustomers();
   const accounts = getStoredAccounts();
 
-  const customerNumber = `CUST-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const customerId = `CUST-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
   const newCustomer: Customer = {
     ...customerData,
-    id: `cust-${Date.now()}`,
-    customerNumber,
+    id: customerId,
+    customerNumber: customerId,
     status: 'VERIFIED',
     createdAt: new Date().toISOString(),
   };

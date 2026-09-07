@@ -23,7 +23,8 @@ import {
   addDeletedUserEmail,
   getBlockedUserEmails,
   RegisteredUserRecord,
-  CANONICAL_CUSTOMER_IDS
+  CANONICAL_CUSTOMER_IDS,
+  normalizeCustomerId
 } from './api';
 import { ApprovalRequest } from '../types';
 import { 
@@ -289,11 +290,11 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
 
     const sanitizeCustomerItem = (c: any) => {
       if (!c) return c;
+      const normId = normalizeCustomerId(c.id || c.customerNumber);
       const fName = `${c.firstName || ''} ${c.lastName || ''}`.trim().toLowerCase();
       const isElijah =
+        normId === 'CUST-2026-6813' ||
         c.id === 'cust-1788801662780' ||
-        c.customerNumber === 'CUST-2026-2925' ||
-        c.customerNumber === 'CUST-2026-6813' ||
         fName.includes('initial') ||
         fName.includes('deposit') ||
         (fName.includes('elijah') && fName.includes('mensah'));
@@ -301,7 +302,7 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       if (isElijah) {
         return {
           ...c,
-          id: 'cust-1788801662780',
+          id: 'CUST-2026-6813',
           customerNumber: 'CUST-2026-6813',
           firstName: 'Elijah',
           lastName: 'Mensah',
@@ -315,24 +316,76 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
         fName.includes('dream') ||
         fName.includes('color') ||
         fName.includes('colour') ||
+        normId === 'CUST-2026-9214' ||
         c.id === 'cust-dream-colors' ||
         c.id === 'cust-dream-colours'
       ) {
-        return { ...c, ghanaCardNumber: 'GHA-001141169-5' }; // Shares same Ghana Card ID with Eric Kwasi Arthur
-      } else if (fName.includes('eric') && fName.includes('arthur')) {
-        return { ...c, ghanaCardNumber: 'GHA-001141169-5' };
-      } else if (fName.includes('jessica') && fName.includes('mamot')) {
-        return { ...c, ghanaCardNumber: 'GHA-722419082-1' };
-      } else if (fName.includes('vincent') && fName.includes('mensah')) {
-        return { ...c, ghanaCardNumber: 'GHA-724190823-1' };
+        return {
+          ...c,
+          id: 'CUST-2026-9214',
+          customerNumber: 'CUST-2026-9214',
+          firstName: 'Dream',
+          lastName: 'Colors',
+          ghanaCardNumber: 'GHA-001141169-5', // Shares same Ghana Card ID with Eric Kwasi Arthur
+        };
+      } else if (
+        (fName.includes('eric') && fName.includes('arthur')) ||
+        normId === 'CUST-2026-3222' ||
+        c.id === 'cust-1788779905017'
+      ) {
+        return {
+          ...c,
+          id: 'CUST-2026-3222',
+          customerNumber: 'CUST-2026-3222',
+          firstName: 'Eric Kwasi',
+          lastName: 'Arthur',
+          ghanaCardNumber: 'GHA-001141169-5',
+        };
+      } else if (
+        (fName.includes('jessica') && fName.includes('mamot')) ||
+        normId === 'CUST-2026-7831' ||
+        c.id === 'cust-jessica-mamot'
+      ) {
+        return {
+          ...c,
+          id: 'CUST-2026-7831',
+          customerNumber: 'CUST-2026-7831',
+          firstName: 'Jessica',
+          lastName: 'Mamot',
+          ghanaCardNumber: 'GHA-722419082-1',
+        };
+      } else if (
+        (fName.includes('vincent') && fName.includes('mensah')) ||
+        normId === 'CUST-2026-5213' ||
+        c.id === 'cust-1788714715049'
+      ) {
+        return {
+          ...c,
+          id: 'CUST-2026-5213',
+          customerNumber: 'CUST-2026-5213',
+          firstName: 'Vincent Kwabena',
+          lastName: 'Mensah',
+          ghanaCardNumber: 'GHA-724190823-1',
+        };
       }
-      return c;
+      return {
+        ...c,
+        id: normId,
+        customerNumber: normId,
+      };
     };
 
     const sanitizeAuthoritativeAcc = (acc: any) => {
       const name = `${acc.customer?.firstName || ''} ${acc.customer?.lastName || ''}`.toLowerCase();
-      const isVincent = name.includes('vincent') || name.includes('mensah') || acc.id === 'acc-vkm' || acc.accountNumber?.includes('VKM') || acc.customerId === 'cust-1788714715049';
+      const isVincent = name.includes('vincent') || name.includes('mensah') || acc.id === 'acc-vkm' || acc.accountNumber?.includes('VKM') || acc.customerId === 'CUST-2026-5213' || acc.customerId === 'cust-1788714715049';
       if (isVincent) {
+        acc.customerId = 'CUST-2026-5213';
+        if (acc.customer) {
+          acc.customer.id = 'CUST-2026-5213';
+          acc.customer.customerNumber = 'CUST-2026-5213';
+          acc.customer.firstName = 'Vincent Kwabena';
+          acc.customer.lastName = 'Mensah';
+        }
         if (acc.dailyCycles && acc.dailyCycles.length > 5) {
           acc.dailyCycles = acc.dailyCycles.filter((c: any) => c.cycleNumber <= 5);
         }
@@ -343,8 +396,13 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
         acc.savingsPackage = 10;
       }
 
-      const isJessica = name.includes('jessica') || name.includes('mamot') || acc.customerId === 'cust-jessica-mamot' || acc.id === 'acc-cust-jessica-mamot';
+      const isJessica = name.includes('jessica') || name.includes('mamot') || acc.customerId === 'CUST-2026-7831' || acc.customerId === 'cust-jessica-mamot' || acc.id === 'acc-cust-jessica-mamot';
       if (isJessica) {
+        acc.customerId = 'CUST-2026-7831';
+        if (acc.customer) {
+          acc.customer.id = 'CUST-2026-7831';
+          acc.customer.customerNumber = 'CUST-2026-7831';
+        }
         acc.savingsPackage = 20;
         if (!acc.currentBalance || acc.currentBalance < 620) {
           acc.currentBalance = 620;
@@ -356,11 +414,17 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
         name.includes('dream') ||
         name.includes('color') ||
         name.includes('colour') ||
+        acc.customerId === 'CUST-2026-9214' ||
         acc.customerId === 'cust-dream-colors' ||
         acc.customerId === 'cust-dream-colours' ||
         acc.id === 'acc-cust-dream-colors' ||
         acc.id === 'acc-cust-dream-colours';
       if (isDream) {
+        acc.customerId = 'CUST-2026-9214';
+        if (acc.customer) {
+          acc.customer.id = 'CUST-2026-9214';
+          acc.customer.customerNumber = 'CUST-2026-9214';
+        }
         acc.savingsPackage = 30;
         if (!acc.currentBalance || acc.currentBalance < 360) {
           acc.currentBalance = 360;
@@ -368,8 +432,13 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
         }
       }
 
-      const isArthur = (name.includes('eric') && name.includes('arthur')) || acc.customerId === 'cust-1788779905017' || acc.id === 'acc-1788779905017';
+      const isArthur = (name.includes('eric') && name.includes('arthur')) || acc.customerId === 'CUST-2026-3222' || acc.customerId === 'cust-1788779905017' || acc.id === 'acc-1788779905017';
       if (isArthur) {
+        acc.customerId = 'CUST-2026-3222';
+        if (acc.customer) {
+          acc.customer.id = 'CUST-2026-3222';
+          acc.customer.customerNumber = 'CUST-2026-3222';
+        }
         acc.savingsPackage = 10;
         if (!acc.currentBalance || acc.currentBalance < 310) {
           acc.currentBalance = 310;
@@ -380,18 +449,20 @@ export const applyIncomingCloudVault = (cloudData: CloudVaultPayload): boolean =
       const isElijah =
         name.includes('elijah') ||
         name.includes('initial') ||
+        acc.customerId === 'CUST-2026-6813' ||
         acc.customerId === 'cust-1788801662780' ||
         acc.id === 'acc-cust-1788801662780' ||
         acc.id === 'acc-1788801662780' ||
         acc.accountNumber === 'ACC-2026-88461';
       if (isElijah) {
+        acc.customerId = 'CUST-2026-6813';
         acc.savingsPackage = 10;
         if (!acc.currentBalance || acc.currentBalance < 310) {
           acc.currentBalance = 310;
           acc.availableBalance = 300;
         }
         if (acc.customer) {
-          acc.customer.id = 'cust-1788801662780';
+          acc.customer.id = 'CUST-2026-6813';
           acc.customer.firstName = 'Elijah';
           acc.customer.lastName = 'Mensah';
           acc.customer.customerNumber = 'CUST-2026-6813';
