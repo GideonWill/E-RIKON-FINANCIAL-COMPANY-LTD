@@ -106,9 +106,110 @@ export const saveRealtimeDatabaseVault = async (payload: any): Promise<boolean> 
   if (!rtdb) return false;
   try {
     const vaultRef = ref(rtdb, 'system_vault');
+    const finalPayload = { ...payload };
+
+    try {
+      const snap = await get(vaultRef);
+      if (snap.exists()) {
+        const remote = snap.val() || {};
+
+        // 1. Transactions: Non-destructive union merge
+        if (Array.isArray(remote.transactions) && Array.isArray(payload.transactions)) {
+          const txMap = new Map<string, any>();
+          remote.transactions.forEach((t: any) => {
+            const k = t.id || t.receiptNo || t.referenceNo;
+            if (k) txMap.set(k, t);
+          });
+          payload.transactions.forEach((t: any) => {
+            const k = t.id || t.receiptNo || t.referenceNo;
+            if (k) {
+              const ex = txMap.get(k);
+              txMap.set(k, { ...ex, ...t });
+            }
+          });
+          finalPayload.transactions = Array.from(txMap.values());
+        }
+
+        // 2. Accounts: Non-destructive merge preserving highest balance and cycles
+        if (Array.isArray(remote.accounts) && Array.isArray(payload.accounts)) {
+          const accMap = new Map<string, any>();
+          remote.accounts.forEach((a: any) => {
+            const k = a.accountNumber || a.id;
+            if (k) accMap.set(k, a);
+          });
+          payload.accounts.forEach((a: any) => {
+            const k = a.accountNumber || a.id;
+            if (k) {
+              const ex = accMap.get(k);
+              if (ex) {
+                const mergedBal = Math.max(ex.currentBalance || 0, a.currentBalance || 0);
+                const mergedAvail = Math.max(ex.availableBalance || 0, a.availableBalance || 0);
+
+                // Merge cycles keeping all cycle numbers and highest day count
+                const cycleMap = new Map<number, any>();
+                [...(ex.dailyCycles || []), ...(a.dailyCycles || [])].forEach((c: any) => {
+                  if (!c) return;
+                  const num = c.cycleNumber || 1;
+                  const existingCycle = cycleMap.get(num);
+                  if (!existingCycle) {
+                    cycleMap.set(num, c);
+                  } else {
+                    const eDays = existingCycle.currentDayCount || 0;
+                    const iDays = c.currentDayCount || 0;
+                    if (iDays >= eDays) {
+                      cycleMap.set(num, {
+                        ...existingCycle,
+                        ...c,
+                        currentDayCount: Math.max(eDays, iDays),
+                        dailySplits: (c.dailySplits?.length || 0) >= (existingCycle.dailySplits?.length || 0) ? c.dailySplits : existingCycle.dailySplits,
+                      });
+                    } else {
+                      cycleMap.set(num, {
+                        ...c,
+                        ...existingCycle,
+                        currentDayCount: Math.max(eDays, iDays),
+                        dailySplits: (existingCycle.dailySplits?.length || 0) >= (c.dailySplits?.length || 0) ? existingCycle.dailySplits : c.dailySplits,
+                      });
+                    }
+                  }
+                });
+                const mergedCycles = Array.from(cycleMap.values()).sort((c1: any, c2: any) => (c2.cycleNumber || 0) - (c1.cycleNumber || 0));
+
+                accMap.set(k, {
+                  ...ex,
+                  ...a,
+                  currentBalance: mergedBal,
+                  availableBalance: mergedAvail,
+                  dailyCycles: mergedCycles.length > 0 ? mergedCycles : (ex.dailyCycles || a.dailyCycles),
+                });
+              } else {
+                accMap.set(k, a);
+              }
+            }
+          });
+          finalPayload.accounts = Array.from(accMap.values());
+        }
+
+        // 3. Customers: Union merge
+        if (Array.isArray(remote.customers) && Array.isArray(payload.customers)) {
+          const custMap = new Map<string, any>();
+          remote.customers.forEach((c: any) => { if (c && c.id) custMap.set(c.id, c); });
+          payload.customers.forEach((c: any) => {
+            if (c && c.id) {
+              const ex = custMap.get(c.id);
+              custMap.set(c.id, { ...ex, ...c });
+            }
+          });
+          finalPayload.customers = Array.from(custMap.values());
+        }
+      }
+    } catch (mergeErr) {
+      console.warn('[Firebase RTDB] Pre-merge read notice:', mergeErr);
+    }
+
     await set(vaultRef, {
-      ...payload,
-      updatedAt: new Date().toISOString()
+      ...finalPayload,
+      updatedAt: new Date().toISOString(),
     });
     isConnectedToCloud = true;
     return true;
