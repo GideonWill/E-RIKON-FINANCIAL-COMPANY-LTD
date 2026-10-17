@@ -10,6 +10,7 @@ import {
 } from '../services/api';
 import { initCloudSync, pushLocalToCloud } from '../services/cloudSync';
 import { connectSSE, disconnectSSE, useRealtimeSync } from '../services/realtimeSync';
+import { safeStorage } from '../utils/safeStorage';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -34,23 +35,25 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('erikon_current_user');
-    if (saved) {
-      try {
+    try {
+      const saved = safeStorage.getItem('erikon_current_user');
+      if (saved) {
         return JSON.parse(saved);
-      } catch {
-        return null;
       }
+    } catch {
+      return null;
     }
     return null;
   });
 
   useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('erikon_current_user', JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem('erikon_current_user');
-    }
+    try {
+      if (currentUser) {
+        safeStorage.setItem('erikon_current_user', JSON.stringify(currentUser));
+      } else {
+        safeStorage.removeItem('erikon_current_user');
+      }
+    } catch {}
   }, [currentUser]);
 
   // Real-time listener: when Super Admin approves this account on laptop, unlock immediately

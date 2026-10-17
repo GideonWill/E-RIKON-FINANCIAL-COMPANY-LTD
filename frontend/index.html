@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>E-RIKON Financial Company PLC | ECFMS</title>
     
     <!-- Primary Icons -->
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
@@ -34,9 +35,86 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
+
+    <!-- Universal Storage & Private Browsing Resilience Polyfill -->
+    <script>
+      (function() {
+        var storageAvailable = false;
+        try {
+          var testKey = '__erikon_storage_test__';
+          window.localStorage.setItem(testKey, testKey);
+          window.localStorage.removeItem(testKey);
+          storageAvailable = true;
+        } catch (e) {
+          storageAvailable = false;
+        }
+
+        if (!storageAvailable) {
+          var createMemoryStorage = function() {
+            var store = {};
+            return {
+              getItem: function(key) { return store.hasOwnProperty(key) ? store[key] : null; },
+              setItem: function(key, val) { store[key] = String(val); },
+              removeItem: function(key) { delete store[key]; },
+              clear: function() { store = {}; },
+              get length() { return Object.keys(store).length; },
+              key: function(i) { return Object.keys(store)[i] || null; }
+            };
+          };
+          try {
+            var memStorage = createMemoryStorage();
+            Object.defineProperty(window, 'localStorage', { value: memStorage, configurable: true, writable: true });
+            Object.defineProperty(window, 'sessionStorage', { value: createMemoryStorage(), configurable: true, writable: true });
+          } catch (err) {
+            window.localStorage = createMemoryStorage();
+            window.sessionStorage = createMemoryStorage();
+          }
+        }
+      })();
+
+      // Global Cross-Device Error & Rejection Diagnostics
+      function showDiagnosticBanner(msg, src) {
+        var errBox = document.getElementById('erikon-error-banner');
+        if (!errBox) {
+          errBox = document.createElement('div');
+          errBox.id = 'erikon-error-banner';
+          errBox.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#ffffff;border-top:3px solid #dc2626;padding:16px 20px;z-index:999999;box-shadow:0 -10px 25px rgba(0,0,0,0.1);font-family:-apple-system,BlinkMacSystemFont,sans-serif;';
+          document.body.appendChild(errBox);
+        }
+        errBox.innerHTML = '<div style="max-width:800px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
+          '<div><div style="font-size:12px;font-weight:800;color:#dc2626;">Workstation Notice</div>' +
+          '<div style="font-size:11px;color:#475569;margin-top:2px;">' + msg + (src ? ' (' + src + ')' : '') + '</div></div>' +
+          '<div style="display:flex;gap:8px;">' +
+          '<button onclick="localStorage.clear();window.location.reload()" style="background:#475569;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">Clear Cache & Reload</button>' +
+          '<button onclick="window.location.reload()" style="background:#0d9488;color:#fff;border:none;padding:6px 14px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">Reload</button>' +
+          '</div></div>';
+      }
+
+      window.addEventListener('error', function(event) {
+        var msg = event.message || (event.error && event.error.message) || 'Script Initialization Notice';
+        var src = event.filename ? event.filename.split('/').pop() + ':' + event.lineno : '';
+        showDiagnosticBanner(msg, src);
+      });
+
+      window.addEventListener('unhandledrejection', function(event) {
+        var reason = event.reason;
+        var msg = (reason && reason.message) || (typeof reason === 'string' ? reason : 'Background Sync Notice');
+        // Do not block UI for network offline or aborted sync
+        if (msg.indexOf('abort') !== -1 || msg.indexOf('Network Error') !== -1) return;
+        showDiagnosticBanner(msg, 'Async Promise');
+      });
+    </script>
+  </head>
   <body class="bg-[#f8fafc] text-slate-900 antialiased selection:bg-orange-500 selection:text-white">
-    <div id="root"></div>
+    <div id="root">
+      <div id="initial-loading-hint" style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Plus Jakarta Sans',sans-serif;color:#0f172a;text-align:center;">
+        <img src="/logo.png" alt="E-RiKON Financial Company PLC" style="width:200px;max-width:70vw;height:auto;object-fit:contain;margin-bottom:20px;" />
+        <div style="width:140px;height:3px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin-bottom:12px;">
+          <div style="width:60%;height:100%;background:#0d9488;border-radius:99px;"></div>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:#64748b;">Loading E-RiKON Workstation...</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { safeStorage } from '../utils/safeStorage';
 
 // ─── BroadcastChannel (same-tab / same-browser sync) ──────────────────────────
 const SYNC_CHANNEL_NAME = 'erikon_ecfms_realtime_sync';
@@ -18,8 +19,19 @@ let sseReconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let sseReconnectDelay = 1000;
 const SSE_MAX_DELAY = 30_000;
 
-const SSE_BASE_URL =
-  import.meta.env.VITE_API_URL || 'https://e-rikon-ecfms-backend.onrender.com/api';
+export const getSseBaseUrl = (): string => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    const port = window.location.port;
+    if (port === '3000' || host === 'localhost' || host === '127.0.0.1' || /^172\./.test(host) || /^192\.168\./.test(host) || /^10\./.test(host)) {
+      return '/api';
+    }
+  }
+  return 'https://e-rikon-ecfms-backend.onrender.com/api';
+};
+
+const SSE_BASE_URL = getSseBaseUrl();
 
 export type SyncEventType =
   | 'CUSTOMER_REGISTERED'
@@ -81,7 +93,7 @@ export const connectSSE = (token?: string): void => {
   // Only connect if in browser
   if (typeof window === 'undefined') return;
 
-  const activeToken = token || localStorage.getItem('erikon_access_token') || 'guest';
+  const activeToken = token || safeStorage.getItem('erikon_access_token') || 'guest';
   const url = `${SSE_BASE_URL}/events?token=${encodeURIComponent(activeToken)}`;
 
   try {

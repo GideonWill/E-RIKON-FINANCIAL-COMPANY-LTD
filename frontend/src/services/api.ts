@@ -17,6 +17,7 @@ import {
   TransactorInfo
 } from '../types';
 import { broadcastRealtimeEvent } from './realtimeSync';
+import { safeStorage } from '../utils/safeStorage';
 
 // Financial Precision Helper: Ensures exact 2-decimal arithmetic (no float anomalies)
 export const toDecimal = (val: number | string): number => {
@@ -25,12 +26,20 @@ export const toDecimal = (val: number | string): number => {
   return Math.round(num * 100) / 100;
 };
 
-// API Base URL (Live PostgreSQL Backend in production, localhost in dev)
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  (typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:4000/api'
-    : 'https://e-rikon-ecfms-backend.onrender.com/api');
+// API Base URL (Relative /api via Vite proxy in development, custom VITE_API_URL, or Render cloud fallback)
+export const getApiBaseUrl = (): string => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    const port = window.location.port;
+    if (port === '3000' || host === 'localhost' || host === '127.0.0.1' || /^172\./.test(host) || /^192\.168\./.test(host) || /^10\./.test(host)) {
+      return '/api';
+    }
+  }
+  return 'https://e-rikon-ecfms-backend.onrender.com/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -42,7 +51,7 @@ export const apiClient = axios.create({
 
 // Attach JWT token to requests if available
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('erikon_access_token');
+  const token = safeStorage.getItem('erikon_access_token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }

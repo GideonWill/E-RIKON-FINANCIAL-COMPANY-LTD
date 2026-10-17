@@ -19,6 +19,7 @@ import { CompanyInterestPage } from './pages/CompanyInterestPage';
 import { ApprovalsPage } from './pages/ApprovalsPage';
 import { GlobalErrorBoundary } from './components/layout/GlobalErrorBoundary';
 import { reconcileVincentTransactionsBaseline, purgeReversedNotificationsStorage } from './services/api';
+import { safeStorage } from './utils/safeStorage';
 
 const queryClient = new QueryClient();
 
@@ -27,10 +28,10 @@ if (typeof window !== 'undefined') {
   try {
     reconcileVincentTransactionsBaseline();
     purgeReversedNotificationsStorage();
-    localStorage.setItem('erikon_company_withdrawals', JSON.stringify([]));
-    localStorage.setItem('erikon_loans', JSON.stringify([]));
+    safeStorage.setItem('erikon_company_withdrawals', JSON.stringify([]));
+    safeStorage.setItem('erikon_loans', JSON.stringify([]));
     const purgeKey = 'erikon_purge_legacy_test_data_v6';
-    if (!localStorage.getItem(purgeKey)) {
+    if (!safeStorage.getItem(purgeKey)) {
       const keysToPurge = [
         'erikon_customers',
         'erikon_accounts',
@@ -41,8 +42,8 @@ if (typeof window !== 'undefined') {
         'erikon_read_notifications',
         'erikon_cleared_notifications',
       ];
-      keysToPurge.forEach((k) => localStorage.removeItem(k));
-      localStorage.setItem(purgeKey, 'true');
+      keysToPurge.forEach((k) => safeStorage.removeItem(k));
+      safeStorage.setItem(purgeKey, 'true');
     }
   } catch (err) {
     console.warn('[App.tsx] Storage initialization notice:', err);
