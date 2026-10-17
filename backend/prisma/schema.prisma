@@ -98,6 +98,8 @@ model Branch {
   transactions Transaction[]
   accounts     Account[]
 
+  @@index([isActive])
+  @@index([region])
   @@map("branches")
 }
 
@@ -126,6 +128,11 @@ model User {
   auditLogs    AuditLog[]
   dailySummaries DailyCashSummary[]
 
+  @@index([branchId])
+  @@index([role])
+  @@index([role, isActive])
+  @@index([isApproved])
+  @@index([createdAt])
   @@map("users")
 }
 
@@ -164,6 +171,12 @@ model Customer {
   loanApplications LoanApplication[]
   dailyCollections DailyCollectionCycle[]
 
+  @@index([branchId])
+  @@index([status])
+  @@index([createdById])
+  @@index([ghanaCardNumber])
+  @@index([firstName, lastName])
+  @@index([createdAt])
   @@map("customers")
 }
 
@@ -179,6 +192,7 @@ model NextOfKin {
 
   customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
+  @@index([customerId])
   @@map("next_of_kin")
 }
 
@@ -197,6 +211,8 @@ model Guarantor {
 
   customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
+  @@index([customerId])
+  @@index([ghanaCardNumber])
   @@map("guarantors")
 }
 
@@ -221,6 +237,11 @@ model Account {
   loanApplications LoanApplication[]
   dailyCycles      DailyCollectionCycle[]
 
+  @@index([customerId])
+  @@index([branchId])
+  @@index([status])
+  @@index([type])
+  @@index([customerId, status])
   @@map("accounts")
 }
 
@@ -243,6 +264,10 @@ model DailyCollectionCycle {
   customer          Customer @relation(fields: [customerId], references: [id])
   account           Account  @relation(fields: [accountId], references: [id])
 
+  @@index([customerId])
+  @@index([accountId])
+  @@index([isCompleted])
+  @@index([feeDeducted])
   @@map("daily_collection_cycles")
 }
 
@@ -264,6 +289,7 @@ model LoanProduct {
   
   applications LoanApplication[]
 
+  @@index([isActive])
   @@map("loan_products")
 }
 
@@ -297,6 +323,12 @@ model LoanApplication {
   collaterals      LoanCollateral[]
   loanGuarantors   LoanGuarantor[]
 
+  @@index([customerId])
+  @@index([accountId])
+  @@index([productId])
+  @@index([status])
+  @@index([approvedById])
+  @@index([createdAt])
   @@map("loan_applications")
 }
 
@@ -316,6 +348,10 @@ model LoanSchedule {
 
   loan             LoanApplication @relation(fields: [loanId], references: [id], onDelete: Cascade)
 
+  @@index([loanId])
+  @@index([dueDate])
+  @@index([isPaid])
+  @@index([loanId, isPaid])
   @@map("loan_schedules")
 }
 
@@ -330,6 +366,7 @@ model LoanCollateral {
 
   loan             LoanApplication @relation(fields: [loanId], references: [id], onDelete: Cascade)
 
+  @@index([loanId])
   @@map("loan_collaterals")
 }
 
@@ -346,6 +383,7 @@ model LoanGuarantor {
 
   loan            LoanApplication @relation(fields: [loanId], references: [id], onDelete: Cascade)
 
+  @@index([loanId])
   @@map("loan_guarantors")
 }
 
@@ -373,6 +411,14 @@ model Transaction {
   approvedBy     User?             @relation("ApprovedBy", fields: [approvedById], references: [id])
   ledgerEntries  LedgerEntry[]
 
+  @@index([accountId])
+  @@index([branchId])
+  @@index([recordedById])
+  @@index([approvedById])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@index([accountId, createdAt])
   @@map("transactions")
 }
 
@@ -388,6 +434,10 @@ model LedgerEntry {
   transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   account       Account     @relation(fields: [accountId], references: [id])
 
+  @@index([transactionId])
+  @@index([accountId])
+  @@index([entryType])
+  @@index([createdAt])
   @@map("ledger_entries")
 }
 
@@ -401,6 +451,8 @@ model CustomerDocument {
 
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
+  @@index([customerId])
+  @@index([documentType])
   @@map("customer_documents")
 }
 
@@ -414,6 +466,8 @@ model CustomerTimeline {
 
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
+  @@index([customerId])
+  @@index([createdAt])
   @@map("customer_timelines")
 }
 
@@ -434,6 +488,9 @@ model AuditLog {
 
   user          User?    @relation(fields: [userId], references: [id])
 
+  @@index([userId])
+  @@index([resource, action])
+  @@index([createdAt])
   @@map("audit_logs")
 }
 
@@ -452,6 +509,10 @@ model DailyCashSummary {
 
   user          User     @relation(fields: [tellerId], references: [id])
 
+  @@index([branchId])
+  @@index([tellerId])
+  @@index([date])
+  @@index([branchId, tellerId, date])
   @@map("daily_cash_summaries")
 }
 
@@ -478,6 +539,9 @@ model CompanyInterestAccumulation {
   withdrawalId      String?
   createdAt         DateTime @default(now())
 
+  @@index([customerId])
+  @@index([accountId])
+  @@index([status])
   @@map("company_interest_accumulations")
 }
 
@@ -494,6 +558,9 @@ model CompanyInterestWithdrawal {
   requestedAt        DateTime @default(now())
   approvedAt         DateTime?
 
+  @@index([requestedById])
+  @@index([status])
+  @@index([requestedAt])
   @@map("company_interest_withdrawals")
 }
 
@@ -515,6 +582,10 @@ model ApprovalRequest {
   reviewRemarks String?
   createdAt     DateTime @default(now())
 
+  @@index([type])
+  @@index([targetId])
+  @@index([status])
+  @@index([requestedById])
+  @@index([createdAt])
   @@map("approval_requests")
 }
-

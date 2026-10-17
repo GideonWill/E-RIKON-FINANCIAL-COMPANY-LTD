@@ -1,16 +1,27 @@
 import { Controller, Post, Get, Patch, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService, LoginDto, RegisterDto } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  /**
+   * Protected against brute force credential stuffing attacks
+   * Rate Limit: Max 10 attempts per minute per IP
+   */
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto) {
     return this.authService.validateUser(dto);
   }
 
+  /**
+   * Protected against bot spam and automated registrations
+   * Rate Limit: Max 10 attempts per minute per IP
+   */
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() dto: RegisterDto) {

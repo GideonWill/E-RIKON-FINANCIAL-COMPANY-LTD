@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaService } from './common/prisma.service';
 import { FinancialCalculatorService } from './common/financial-calculator.service';
+import { DataLoaderService } from './common/data-loader.service';
 import { AuthService } from './auth/auth.service';
 import { AuthController } from './auth/auth.controller';
 import { CustomersService } from './customers/customers.service';
@@ -25,6 +28,23 @@ import { SyncModule } from './sync/sync.module';
       secret: process.env.JWT_SECRET || 'ERIKON_CORE_FINANCIAL_SUPER_SECRET_KEY_2026',
       signOptions: { expiresIn: '12h' },
     }),
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60000, // 60 seconds window
+        limit: 100, // 100 requests per minute by default
+      },
+      {
+        name: 'strict',
+        ttl: 60000,
+        limit: 10, // 10 requests per minute for sensitive endpoints (auth / brute force protection)
+      },
+      {
+        name: 'financial',
+        ttl: 60000,
+        limit: 30, // 30 requests per minute for high-value financial actions
+      },
+    ]),
     EventsModule,
     SyncModule,
   ],
@@ -40,6 +60,7 @@ import { SyncModule } from './sync/sync.module';
   providers: [
     PrismaService,
     FinancialCalculatorService,
+    DataLoaderService,
     AuthService,
     CustomersService,
     TransactionsService,
@@ -47,6 +68,10 @@ import { SyncModule } from './sync/sync.module';
     ReportsService,
     AuditService,
     BranchesService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

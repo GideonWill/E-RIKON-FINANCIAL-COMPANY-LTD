@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../common/prisma.service';
 import { CustomerStatus, AccountType } from '@prisma/client';
 import { EventsService } from '../events/events.service';
+import { DataLoaderService } from '../common/data-loader.service';
 
 export interface RegisterCustomerDto {
   firstName: string;
@@ -36,6 +37,7 @@ export class CustomersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventsService: EventsService,
+    private readonly dataLoader: DataLoaderService,
   ) {}
 
   async registerCustomer(dto: RegisterCustomerDto) {
@@ -150,20 +152,60 @@ export class CustomersService {
     return customer;
   }
 
-  async searchCustomers(query: string, branchId?: string) {
+  async searchCustomers(query: string, branchId?: string, take = 25, skip = 0) {
     return this.prisma.customer.findMany({
       where: {
         branchId: branchId || undefined,
-        OR: [
-          { firstName: { contains: query, mode: 'insensitive' } },
-          { lastName: { contains: query, mode: 'insensitive' } },
-          { customerNumber: { contains: query, mode: 'insensitive' } },
-          { ghanaCardNumber: { contains: query, mode: 'insensitive' } },
-          { phone: { contains: query, mode: 'insensitive' } },
-        ],
+        OR: query
+          ? [
+              { firstName: { contains: query, mode: 'insensitive' } },
+              { lastName: { contains: query, mode: 'insensitive' } },
+              { customerNumber: { contains: query, mode: 'insensitive' } },
+              { ghanaCardNumber: { contains: query, mode: 'insensitive' } },
+              { phone: { contains: query, mode: 'insensitive' } },
+            ]
+          : undefined,
       },
       include: { accounts: true, branch: true },
-      take: 25,
+      take,
+      skip,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Batch fetch customers with pre-aggregated account balances
+   * Eliminates N+1 queries by leveraging DataLoaderService
+   */
+  async getCustomersWithBalances(branchId?: string, take = 50, skip = 0) {
+    const customers = await this.prisma.customer.findMany({
+      where: branchId ? { branchId } : undefined,
+      take,
+      skip,
+      orderBy: { createdAt: 'desc' },
+      include: { branch: true },
+    });
+
+    const customerIds = customers.map((c) => c.id);
+    const [balanceMap, accountMap] = await Promise.all([
+      this.dataLoader.getAggregatedBalancesByCustomerIds(customerIds),
+      this.dataLoader.getAccountsByCustomerIds(customerIds),
+    ]);
+
+    return customers.map((customer) => {
+      const balance = balanceMap.get(customer.id) || {
+        totalCurrentBalance: 0,
+        totalAvailableBalance: 0,
+        accountCount: 0,
+      };
+      const accounts = accountMap.get(customer.id) || [];
+      return {
+        ...customer,
+        accounts,
+        accountCount: balance.accountCount,
+        totalCurrentBalance: balance.totalCurrentBalance,
+        totalAvailableBalance: balance.totalAvailableBalance,
+      };
     });
   }
 

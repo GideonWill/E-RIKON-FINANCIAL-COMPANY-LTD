@@ -167,41 +167,59 @@ export class LoansService {
     const newOutstanding = curBal - amount;
     const isFullyPaid = newOutstanding <= 0.01;
 
-    // 2. Update schedule statuses
+    // 2. Batch compute schedule updates in-memory to avoid N+1 query roundtrips
     let remainingAmount = amount;
+    const fullyPaidScheduleIds: string[] = [];
+    let partialUpdate: { id: string; increment: number } | null = null;
+
     for (const schedule of loan.schedules) {
       if (remainingAmount <= 0) break;
       if (schedule.isPaid) continue;
 
       const due = Number(schedule.totalDue) - (Number(schedule.principalPaid) + Number(schedule.interestPaid));
       if (remainingAmount >= due) {
-        await this.prisma.loanSchedule.update({
-          where: { id: schedule.id },
-          data: {
-            principalPaid: schedule.principalDue,
-            interestPaid: schedule.interestDue,
-            isPaid: true,
-            paidAt: new Date(),
-          },
-        });
+        fullyPaidScheduleIds.push(schedule.id);
         remainingAmount -= due;
       } else {
-        await this.prisma.loanSchedule.update({
-          where: { id: schedule.id },
-          data: {
-            principalPaid: { increment: remainingAmount },
-          },
-        });
+        partialUpdate = {
+          id: schedule.id,
+          increment: remainingAmount,
+        };
         remainingAmount = 0;
       }
     }
 
-    const repaidLoan = await this.prisma.loanApplication.update({
-      where: { id: loanId },
-      data: {
-        outstandingBal: newOutstanding,
-        status: isFullyPaid ? LoanStatus.FULLY_PAID : LoanStatus.ACTIVE,
-      },
+    // Execute schedule updates and loan application update in a single atomic transaction
+    const repaidLoan = await this.prisma.$transaction(async (tx) => {
+      // Batch update all fully paid schedules in 1 query
+      if (fullyPaidScheduleIds.length > 0) {
+        await tx.loanSchedule.updateMany({
+          where: { id: { in: fullyPaidScheduleIds } },
+          data: {
+            isPaid: true,
+            paidAt: new Date(),
+          },
+        });
+      }
+
+      // Single update for partial schedule if any
+      if (partialUpdate) {
+        await tx.loanSchedule.update({
+          where: { id: partialUpdate.id },
+          data: {
+            principalPaid: { increment: partialUpdate.increment },
+          },
+        });
+      }
+
+      // Update parent loan status and outstanding balance
+      return tx.loanApplication.update({
+        where: { id: loanId },
+        data: {
+          outstandingBal: newOutstanding,
+          status: isFullyPaid ? LoanStatus.FULLY_PAID : LoanStatus.ACTIVE,
+        },
+      });
     });
 
     // Broadcast to all connected SSE clients
@@ -210,24 +228,43 @@ export class LoansService {
     return repaidLoan;
   }
 
+  /**
+   * Optimized Portfolio Summary using Database Aggregation
+   * Eliminates full-table fetch & in-memory iteration (solves N+1 and O(N) memory load)
+   */
   async getLoanPortfolioSummary() {
-    const loans = await this.prisma.loanApplication.findMany({
-      include: { customer: true, product: true },
-    });
+    const [aggregates, inArrearsCount, totalLoans, recentLoans] = await Promise.all([
+      this.prisma.loanApplication.aggregate({
+        _sum: {
+          amountRequested: true,
+          outstandingBal: true,
+        },
+      }),
+      this.prisma.loanApplication.count({
+        where: { status: LoanStatus.IN_ARREARS },
+      }),
+      this.prisma.loanApplication.count(),
+      this.prisma.loanApplication.findMany({
+        take: 50,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          customer: { select: { firstName: true, lastName: true, phone: true, ghanaCardNumber: true } },
+          product: { select: { name: true, code: true } },
+        },
+      }),
+    ]);
 
-    const totalDisbursed = loans.reduce((acc, l) => acc + Number(l.amountRequested), 0);
-    const totalOutstanding = loans.reduce((acc, l) => acc + Number(l.outstandingBal), 0);
-    const totalRepaid = totalDisbursed - totalOutstanding;
-
-    const inArrearsCount = loans.filter((l) => l.status === LoanStatus.IN_ARREARS).length;
+    const totalDisbursed = Number(aggregates._sum.amountRequested || 0);
+    const totalOutstanding = Number(aggregates._sum.outstandingBal || 0);
+    const totalRepaid = Math.max(0, totalDisbursed - totalOutstanding);
 
     return {
-      totalLoans: loans.length,
+      totalLoans,
       totalDisbursed,
       totalOutstanding,
       totalRepaid,
       inArrearsCount,
-      loans,
+      loans: recentLoans,
     };
   }
 }

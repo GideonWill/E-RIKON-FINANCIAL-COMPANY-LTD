@@ -195,7 +195,7 @@ export class TransactionsService {
     return result;
   }
 
-  async getAccountTransactions(accountId: string) {
+  async getAccountTransactions(accountId: string, take = 50, skip = 0) {
     return this.prisma.transaction.findMany({
       where: { accountId },
       include: {
@@ -203,18 +203,33 @@ export class TransactionsService {
         ledgerEntries: true,
       },
       orderBy: { createdAt: 'desc' },
+      take,
+      skip,
     });
   }
 
-  async getBranchTransactions(branchId: string) {
+  async getBranchTransactions(branchId: string, take = 100, skip = 0) {
     return this.prisma.transaction.findMany({
       where: { branchId },
       include: {
-        account: { include: { customer: true } },
+        account: {
+          include: {
+            customer: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                customerNumber: true,
+                phone: true,
+              },
+            },
+          },
+        },
         recordedBy: { select: { firstName: true, lastName: true } },
       },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take,
+      skip,
     });
   }
 }
