@@ -6,8 +6,7 @@ import { StaffProfileModal } from '../ui/StaffProfileModal';
 import { AppWalkthroughModal } from '../ui/AppWalkthroughModal';
 import { NotificationsModal, getSystemNotifications } from '../ui/NotificationsModal';
 import { LoadingScreen } from '../ui/LoadingScreen';
-import { triggerAppRefresh } from '../ui/SplashScreen';
-import { useRealtimeSync } from '../../services/realtimeSync';
+import { useRealtimeSync, broadcastRealtimeEvent } from '../../services/realtimeSync';
 import { pushLocalToCloud, pullCloudToLocal } from '../../services/cloudSync';
 import logoImg from '../../assets/logo.png';
 import { 
@@ -174,7 +173,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                   await pushLocalToCloud();
                   await pullCloudToLocal();
                 } catch {}
-                triggerAppRefresh();
+                broadcastRealtimeEvent('MANUAL_SYNC', { timestamp: Date.now() });
+                window.location.reload();
               }}
               className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#0d9488] dark:hover:text-teal-400 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer group shadow-2xs shrink-0"
               title="Refresh Page & Sync Latest Cloud Data"

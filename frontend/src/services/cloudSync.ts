@@ -80,18 +80,15 @@ export const isRemoteSyncInProgress = () => isApplyingRemoteUpdate;
 const getSyncEndpoints = (): string[] => {
   const endpoints: string[] = [];
 
-  // 1. Authoritative Production Backend Endpoint
-  endpoints.push('https://e-rikon-ecfms-backend.onrender.com/api/sync');
-
-  // 2. Same-Origin / Vercel Serverless Function Endpoint (Primary)
-  if (typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes('localhost')) {
+  // 1. Same-Origin Endpoint (Fastest & direct)
+  if (typeof window !== 'undefined' && window.location.origin) {
     endpoints.push(`${window.location.origin}/api/sync`);
   }
 
-  // 3. Relative Endpoint
+  // 2. Relative Endpoint
   endpoints.push('/api/sync');
 
-  // 4. Custom Environment API URL
+  // 3. Custom Environment API URL
   if (import.meta.env.VITE_API_URL) {
     const customUrl = `${import.meta.env.VITE_API_URL}/sync`.replace(/([^:]\/)\/+/g, '$1');
     if (!endpoints.includes(customUrl)) {
@@ -99,7 +96,10 @@ const getSyncEndpoints = (): string[] => {
     }
   }
 
-  return endpoints;
+  // 4. Remote Production Fallback
+  endpoints.push('https://e-rikon-ecfms-backend.onrender.com/api/sync');
+
+  return Array.from(new Set(endpoints));
 };
 
 /**
@@ -162,7 +162,7 @@ export const pushLocalToCloud = async (authoritative = true): Promise<boolean> =
   endpoints.forEach((url) => {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
       fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

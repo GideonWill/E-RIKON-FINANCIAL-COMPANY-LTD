@@ -17,7 +17,6 @@ import { EndOfDayPage } from './pages/EndOfDayPage';
 import { AuditPage } from './pages/AuditPage';
 import { CompanyInterestPage } from './pages/CompanyInterestPage';
 import { ApprovalsPage } from './pages/ApprovalsPage';
-import { SplashScreen } from './components/ui/SplashScreen';
 import { GlobalErrorBoundary } from './components/layout/GlobalErrorBoundary';
 import { reconcileVincentTransactionsBaseline, purgeReversedNotificationsStorage } from './services/api';
 
@@ -25,24 +24,28 @@ const queryClient = new QueryClient();
 
 // Ensure clean state and zero corporate test withdrawals across all devices
 if (typeof window !== 'undefined') {
-  reconcileVincentTransactionsBaseline();
-  purgeReversedNotificationsStorage();
-  localStorage.setItem('erikon_company_withdrawals', JSON.stringify([]));
-  localStorage.setItem('erikon_loans', JSON.stringify([]));
-  const purgeKey = 'erikon_purge_legacy_test_data_v6';
-  if (!localStorage.getItem(purgeKey)) {
-    const keysToPurge = [
-      'erikon_customers',
-      'erikon_accounts',
-      'erikon_transactions',
-      'erikon_company_interest',
-      'erikon_approvals',
-      'erikon_dynamic_notifications',
-      'erikon_read_notifications',
-      'erikon_cleared_notifications',
-    ];
-    keysToPurge.forEach((k) => localStorage.removeItem(k));
-    localStorage.setItem(purgeKey, 'true');
+  try {
+    reconcileVincentTransactionsBaseline();
+    purgeReversedNotificationsStorage();
+    localStorage.setItem('erikon_company_withdrawals', JSON.stringify([]));
+    localStorage.setItem('erikon_loans', JSON.stringify([]));
+    const purgeKey = 'erikon_purge_legacy_test_data_v6';
+    if (!localStorage.getItem(purgeKey)) {
+      const keysToPurge = [
+        'erikon_customers',
+        'erikon_accounts',
+        'erikon_transactions',
+        'erikon_company_interest',
+        'erikon_approvals',
+        'erikon_dynamic_notifications',
+        'erikon_read_notifications',
+        'erikon_cleared_notifications',
+      ];
+      keysToPurge.forEach((k) => localStorage.removeItem(k));
+      localStorage.setItem(purgeKey, 'true');
+    }
+  } catch (err) {
+    console.warn('[App.tsx] Storage initialization notice:', err);
   }
 }
 
@@ -52,7 +55,6 @@ export const App: React.FC = () => {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <AuthProvider>
-            <SplashScreen minDuration={1800} />
             <BrowserRouter>
             <Routes>
               {/* Login & Registration Portal */}
